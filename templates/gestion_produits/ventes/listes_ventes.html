@@ -87,7 +87,7 @@
     </form>
 
         <br>
-
+{% if listes_ventes %}
         <div class="row">
             <div class="col-md-12">
                 <div class="panel panel-default">
@@ -132,6 +132,7 @@
                                         <th>Catégorie</th>
                                         <th>Date Vente</th>
                                         <th>Photo Produit</th>
+                                        <th>Imprimer</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -159,18 +160,23 @@
                                                 <label>Photo indisponible</label>   
                                             {% endif %}           
                                         </td> 
-
+                                  <td>
+                                    <a class="btn btn-primary" href="{% url 'produits:recu_vente_global' elem.vente.code %}" title="Imprimer le recu"><i class="fa fa-print"></i></a>
+                                  </td>
                                         <td>
 
                                     <a class="btn btn-primary" href="{% url 'produits:consulter_produit' elem.id %}" title="Voir"><i class="fa fa-eye"></i></a>
                                             <a class="btn btn-info" href="{% url 'produits:editer_produit' elem.id  %}" title="Modifier"><i class="fa fa-edit"></i></a>
-                                          <!-- Bouton Supprimer -->
-                                          
-                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-toggle="modal" data-target="#supprimer" data-id="{{element.id}}">
+                                          <!-- Bouton Supprimer -->       
+                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-toggle="modal" data-target="#supprimer" data-id="{{ elem.id}}">
                                               <i class="fa fa-trash"></i>
                                             </button>
                                          </td>
                                     </tr>
+                                    {% empty %}
+                             <tr>
+                               <td colspan="16" class="text-center">Aucune vente récente.</td>
+                              </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -210,6 +216,140 @@
   </div> <!-- fin Pagination-->
 
                         </div> <!-- .table-responsive -->
+      {% elif listes_ventes_filtre %}
+
+             <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">LISTE DES VENTES EFFECTUEES</div>
+                    <div class="panel-body">
+
+                      <div class="row align-items-center mb-3">
+                <!-- Total à gauche -->
+                <div class="col-md-6 col-sm-12">
+                    <small class="text-muted" style="font-size: 20px; font-weight: bold;">
+                        <i class="fa fa-users text-primary me-1"></i>
+                        Total Ventes Enregistrer :
+                        <strong>{{ total_ventes }}</strong>
+                    </small>
+                </div>
+
+                  <!-- Recherche à droite -->
+                  <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
+                      <div class="input-group" style="max-width: 400px; margin-left: auto;">
+                          <input type="text" class="form-control" placeholder="Rechercher une vente..." name="rechercher_informations" id="rechercher_informations">
+
+                      </div>
+                  </div>
+              </div>
+              <br>
+
+           <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-hover" >
+                                <thead>
+                                    <tr>         
+                                    <th>#</th>
+                                        <th>Ref Ventes</th>
+                                        <th>Ref Produit</th>
+                                        <th>Nom Complet Client</th>
+                                        <th>Téléphone</th>
+                                        <th>Adresse</th>
+                                        <th>Désignation</th>
+                                        <th>Quantité Vendue</th>
+                                        <th>Quantité</th>
+                                        <th>Seuil</th>
+                                        <th>Prix Unitaire</th>
+                                        <th>Catégorie</th>
+                                        <th>Date Vente</th>
+                                        <th>Photo Produit</th>
+                                        <th>Imprimer</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="my_table">
+                                     {% for elem in listes_ventes_filtre %}
+                            
+                                    <tr>      
+                                       <td>{{ forloop.counter}}</td>
+                                        <td>{{ elem.vente.code }}</td>  
+                                        <td>{{ elem.produit.refprod }}</td>  
+                                        <td>{{ elem.produit.desgprod }}</td>    
+                                        <td>{{ elem.nom_complet }}</td>    
+                                        <td>{{ elem.telclt_client }}</td>    
+                                        <td>{{ elem.adresseclt_client }}</td>    
+                                        <td>{{ elem.quantite }}</td>    
+                                        <td>{{ elem.produit.qtestock }}</td>
+                                        <td>{{ elem.produit.seuil }}</td>
+                                        <td>{{ elem.produit.pu }}</td>
+                                        <td>{{ elem.produit.categorie }}</td>
+                                        <td>{{ elem.vente.date_vente |date:'Y-n-j' }}</td>
+                                        <td>
+                                            {% if elem.produit.photoprod %}
+                                                <img src="{{ elem.produit.photoprod.url }}" width="50px" height="50px">
+                                            {% else %}   
+                                                <label>Photo indisponible</label>   
+                                            {% endif %}           
+                                        </td> 
+                                  <td>
+                                    <a class="btn btn-primary" href="{% url 'produits:recu_vente_global' elem.vente.code %}" title="Imprimer le recu"><i class="fa fa-print"></i></a>
+                                  </td>
+                                        <td>
+
+                                    <a class="btn btn-primary" href="{% url 'produits:consulter_produit' elem.id %}" title="Voir"><i class="fa fa-eye"></i></a>
+                                            <a class="btn btn-info" href="{% url 'produits:editer_produit' elem.id  %}" title="Modifier"><i class="fa fa-edit"></i></a>
+                                          <!-- Bouton Supprimer -->       
+                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-toggle="modal" data-target="#supprimer" data-id="{{ elem.id}}">
+                                              <i class="fa fa-trash"></i>
+                                            </button>
+                                         </td>
+                                    </tr>
+                                    {% empty %}
+                             <tr>
+                               <td colspan="16" class="text-center">Aucune vente récente.</td>
+                              </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+
+                              <!-- PAGINATION -->
+  <div class="row mt-4">
+
+    <div class="col-md-8 offset-md-2">
+
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+          {% if listes_ventes_filtre.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?pages=1">&laquo; Première</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?pages={{ listes_ventes_filtre.previous_page_number }}">Précédent</a>
+            </li>
+          {% endif %}
+
+          <li class="page-item active">
+            <span class="page-link">Page {{ listes_ventes_filtre.number }} / {{ listes_ventes_filtre.paginator.num_pages }}</span>
+          </li>
+
+          {% if listes_ventes_filtre.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?pages={{ listes_ventes_filtre.next_page_number }}">Suivant</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?pages={{ listes_ventes_filtre.paginator.num_pages }}">Dernière &raquo;</a>
+            </li>
+          {% endif %}
+
+        </ul>
+      </nav>
+    </div>
+  </div> <!-- fin Pagination-->
+
+                        </div> <!-- .table-responsive -->
+
+    {% else %}  
+    <p class="text-center"><small>Aucun filtre éffectuée ou vente non éffectuée</small></p>
+    {% endif %}
 
         <!--  ========================================================== -->
 <!-- Modal Suppression -->

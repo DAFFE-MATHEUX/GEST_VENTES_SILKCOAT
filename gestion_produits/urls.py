@@ -23,7 +23,6 @@ urlpatterns = [
     path('vente/supprimer_ventes/', supprimer_ventes, name='supprimer_ventes'),
     path('vente/vendre_produit/', vendre_produit, name='vendre_produit'),
     path('vente/details_vente/<int:id>/', details_vente, name='details_vente'),
-    path('vente/imprimer_ticket/<int:id>/ticket/', imprimer_ticket, name='imprimer_ticket'),
     path('vente/recu_vente_global/<str:vente_code>/', recu_vente_global, name='recu_vente_global'),
         
     #=============================================================================

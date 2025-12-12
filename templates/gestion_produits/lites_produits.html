@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="col-md-6 text-right">
-                    <a href="{% url 'produits:listes_produits' %}" class="btn btn-danger" data-toggle="modal">
+                    <a href="{% url 'produits:nouveau_produit' %}" class="btn btn-danger" data-toggle="modal">
                     <i class="fa fa-plus"></i> NOUVELLE SAISIE
                     </a>
                 </div>
@@ -139,7 +139,7 @@
                                             <a class="btn btn-info" href="{% url 'produits:editer_produit' elem.id  %}" title="Modifier"><i class="fa fa-edit"></i></a>
                                           <!-- Bouton Supprimer -->
                                           
-                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-toggle="modal" data-target="#supprimer" data-id="{{element.id}}">
+                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-toggle="modal" data-target="#supprimer" data-id="{{ elem.id}}">
                                               <i class="fa fa-trash"></i>
                                             </button>
                                          </td>

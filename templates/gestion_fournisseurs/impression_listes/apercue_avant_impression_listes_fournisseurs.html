@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES PRODUITS</title>
+    <title>LISTE DES FOURNISSEURS</title>
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
@@ -74,7 +74,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES VENTES</h2>
+            <h2>LISTE DES FOURNISSEURS</h2>
         </div>
 
         <div class="header-right">
@@ -85,44 +85,35 @@
     </div>
 
     <!-- TITRE -->
-    <h4>CATALOGUE COMPLET DES PRODUITS VENDUS</h4>
+    <h4>CATALOGUE COMPLET DES FOURNISSEURS ENREGISTRÉS</h4>
 
     <!-- TABLEAU DES PRODUITS -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Références de la Vente</th>
-                <th>Références du Produit</th>
-                <th>Désignation</th>
-                <th>Catégorie</th>
-                <th>Prix (GNF)</th>
-                <th>Stock</th>
-                <th>Quantité Vendue</th>
-                <th>Date Vente</th>
+                <th>Noms Complet</th>
+                <th>Adresse</th>
+                <th>Téléphone</th>
+                <th>E-mail</th>
+                <th>Date Enregistrement</th>
             </tr>
         </thead>
 
         <tbody>
-        {% for vente in listes_ventes %}
-            {% for ligne in vente.lignes.all %}
+        {% for f in listes_fournisseurs %}
             <tr>
-                <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
-                <td>{{ vente.code }}</td>
-                <td>{{ ligne.produit.refprod }}</td>
-                <td>{{ ligne.produit.desgprod }}</td>
-                <td>{{ ligne.produit.categorie.desgcategorie|default:"-" }}</td>
-                <td>{{ ligne.prix }}</td>
-                <td>{{ ligne.produit.qtestock }}</td>
-                <td>{{ ligne.quantite }}</td>
-                <td>{{ vente.date_vente }}</td>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ f.nomcomplets }}</td>
+                <td>{{ f.adressefour }}</td>
+                <td>{{ f.telfour }}</td>
+                <td>{{ f.emailfour }}</td>
+                <td>{{ f.date_saisie|date:'Y-m-d' }}</td>
             </tr>
-            {% endfor %}
         {% empty %}
             <tr>
-                <td colspan="8" style="text-align:center;">⚠️ Aucun produit trouvé.</td>
+                <td colspan="8" style="text-align:center;">⚠️ Aucun fournisseur trouvé.</td>
             </tr>
-            
         {% endfor %}
         </tbody>
     </table>

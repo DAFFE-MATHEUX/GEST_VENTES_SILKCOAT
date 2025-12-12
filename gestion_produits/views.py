@@ -1,11 +1,8 @@
 from datetime import datetime
 from django.template import TemplateDoesNotExist
-from django.utils import timezone
-import uuid
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import Produits, VenteProduit, LigneVente
 from gest_entreprise.models import Entreprise
 from django.utils.timezone import now
 from decimal import Decimal
@@ -14,16 +11,18 @@ from io import BytesIO
 import base64
 import openpyxl
 from openpyxl.utils import get_column_letter
-from django.http import Http404
 from .utils import *
 from gestion_clients.views import nouveau_client
 from gestion_audit.views import enregistrer_audit
-from datetime import datetime
-from .models import Produits, CategorieProduit
+from .models import * 
 from django.core.mail import EmailMessage
 from django.utils import timezone
-from .models import Produits, VenteProduit, LigneVente, Commandes, Livraisons
 from django.conf import settings
+from django.http import HttpResponse
+#================================================================================================
+# Fonction pour ajouter une catégorie de produit
+#================================================================================================
+
 @login_required
 def ajouter_categorie(request):
     if request.method == 'POST':
@@ -46,7 +45,10 @@ def ajouter_categorie(request):
     return render(request, 'gestion_produits/listes_categorie.html')
 
 
-
+#================================================================================================
+# Fonction pour éffectuer un approvisionnement
+#================================================================================================
+@login_required
 def approvisionner_produit(request, id):
     produit = Produits.objects.get(id=id)
 
@@ -63,8 +65,11 @@ def approvisionner_produit(request, id):
         "produit": produit
     })
 
-@login_required
+#================================================================================================
+# Fonction pour éffectuer une nouvelle vente
+#================================================================================================
 
+@login_required
 def vendre_produit(request):
     produits = Produits.objects.all()
 
@@ -72,9 +77,9 @@ def vendre_produit(request):
         ids = request.POST.getlist("produit_id[]")
         quantites = request.POST.getlist("quantite[]")
 
-        nom_complet = request.POST.get("nom_complet_client")
-        telephone = request.POST.get("telephone_client")
-        adresse = request.POST.get("adresse_client")
+        nom_complet = request.POST.get("nom_complet_client[]")
+        telephone = request.POST.get("telephone_client[]")
+        adresse = request.POST.get("adresse_client[]")
 
         if not nom_complet or not telephone:
             messages.error(request, "Veuillez renseigner le nom complet et le numéro de téléphone du client.")
@@ -108,10 +113,13 @@ def vendre_produit(request):
         vente = VenteProduit.objects.create(
             code=code,
             total=total_general,
-            nom_client=nom_complet,
-            telephone_client=telephone,
-            adresse_client=adresse,
+            utilisateur = request.user,
         )
+        nouveau_client(
+                nomcomplet = nom_complet,
+                telephone= telephone,
+                adresse = adresse
+            )
 
         # Lignes de vente
         for prod, qte, pu, st in lignes:
@@ -121,21 +129,23 @@ def vendre_produit(request):
                 quantite=qte,
                 prix=pu,
                 sous_total=st,
-                nom_complet_client=nom_complet,
-                telclt_client=telephone,
-                adresseclt_client=adresse,
+                
+                #nom_complet_client = nom_complet,
+                #telclt_client = telephone,
+                #adresseclt_client = adresse,
             )
 
             # Mise à jour stock
             prod.qtestock -= qte
             prod.save()
+            
 
         # 🟦 ENVOI D'EMAIL À L'ADMIN
         try:
             sujet = f"Nouvelle vente enregistrée - Code {vente.code}"
             contenu = f"""
                 Nouvelle vente effectuée.
-
+                Par l'utilisateur : {request.user}
                 Code vente : {vente.code}
                 Client : {nom_complet}
                 Téléphone : {telephone}
@@ -166,9 +176,10 @@ def vendre_produit(request):
     return render(request, "gestion_produits/ventes/nouvelle_vente.html", {"produits": produits})
 
 
-
-
-
+#================================================================================================
+# Fonction pour éffectuer une nouvelle commande
+#================================================================================================
+@login_required
 def nouvelle_commande(request):
     produits = Produits.objects.all()
 
@@ -244,28 +255,15 @@ Détails :
         "produits": produits,
     })
 
+#================================================================================================
+# Fonction pour voir le details de produit lors de la vente
+#================================================================================================
+
 @login_required
 def details_vente(request, id):
     vente = get_object_or_404(VenteProduit, id=id)
     lignes = vente.lignes.select_related('produit').all()
     return render(request, "gestion_produits/ventes/details_vente.html", {"vente": vente, "lignes": lignes})
-
-@login_required
-def imprimer_ticket(request, id):
-    vente = get_object_or_404(VenteProduit, id=id)
-    lignes = vente.lignes.select_related('produit').all()
-    context = {"vente": vente, "lignes": lignes}
-
-    # OPTION 1: rendre HTML (afficher dans navigateur)
-    return render(request, "gestion_produits/ventes/ticket.html", context)
-
-    # OPTION 2: générer PDF avec WeasyPrint
-    # html_string = render_to_string("gestion_produits/ticket.html", context)
-    # html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
-    # pdf = html.write_pdf()
-    # response = HttpResponse(pdf, content_type='application/pdf')
-    # response['Content-Disposition'] = f'attachment; filename=ticket_{vente.code}.pdf'
-    # return response
 
 
 #=============================================================================================
@@ -323,6 +321,10 @@ def recu_vente_global(request, vente_code):
 
     return render(request, "gestion_produits/recu_ventes/recu_vente_global.html", context)
 
+#================================================================================================
+# Fonction pour afficher la listes des catégories
+#================================================================================================
+
 @login_required
 def listes_categorie(request):
     try:
@@ -338,6 +340,10 @@ def listes_categorie(request):
         'total_categories': total_categories,
     }
     return render(request, "gestion_produits/listes_categorie.html", context)
+
+#================================================================================================
+# Fonction pour modifier les informations d'une catégorie de produit
+#================================================================================================
 
 @login_required
 def modifier_categorie(request):
@@ -358,17 +364,21 @@ def modifier_categorie(request):
 
         return redirect('produits:listes_categorie')
 
+#================================================================================================
+# Fonction pour supprimer une catégorie de produit
+#================================================================================================
 
 @login_required
 def supprimer_categorie(request):
     if request.method == 'POST':
         cat_id = request.POST.get('id_supprime')
+        print(f"valeur : {cat_id}")
 
         try:
             categorie = CategorieProduit.objects.get(id=cat_id)
 
             # Vérifier si un produit utilise cette catégorie
-            if Produits.objects.filter(categorie=categorie).exists():
+            if Produits.objects.filter(categorie = cat_id).exists():
                 messages.warning(
                     request,
                     "Impossible de supprimer cette catégorie car elle est déjà utilisée par un produit. "
@@ -379,7 +389,7 @@ def supprimer_categorie(request):
             # ----- Préparer l'ancienne valeur pour l'audit -----
             ancienne_valeur = {
                 "id": categorie.id,
-                "nom_categorie": categorie.nom_categorie,
+                "nom_categorie": categorie.desgcategorie,
                 "description": categorie.description if hasattr(categorie, 'description') else ""
             }
 
@@ -404,8 +414,11 @@ def supprimer_categorie(request):
 
         return redirect('produits:listes_categorie')
 
-@login_required
+#================================================================================================
+# Fonction pour supprimer un produit donné
+#================================================================================================
 
+@login_required
 def supprimer_produits(request):
     if request.method == 'POST':
         prod_id = request.POST.get('id_supprimer')
@@ -414,7 +427,9 @@ def supprimer_produits(request):
             produit = Produits.objects.get(id=prod_id)
 
             # Vérifier si le produit est lié à des ventes
-            if VenteProduit.objects.filter(produit=produit).exists():
+            if LigneVente.objects.filter(
+                produit = prod_id
+                ).exists():
                 messages.warning(
                     request,
                     "Impossible de supprimer ce produit car il est déjà utilisé dans une vente. "
@@ -437,7 +452,7 @@ def supprimer_produits(request):
 
             # ----- Audit -----
             enregistrer_audit(
-                utilisateur=request.user,
+                utilisateur = request.user,
                 action="Suppression produit",
                 table="Produits",
                 ancienne_valeur=ancienne_valeur,
@@ -453,9 +468,11 @@ def supprimer_produits(request):
 
         return redirect('produits:listes_produits')
 
+#================================================================================================
+# Fonction pour supprimer une commande donnée
+#================================================================================================
 
 @login_required
-
 def supprimer_commandes(request):
     if request.method == 'POST':
         prod_id = request.POST.get('id_supprimer')
@@ -503,6 +520,10 @@ def supprimer_commandes(request):
 
         return redirect('produits:listes_produits')
 
+#================================================================================================
+# Fonction pour supprimer une vente donnée
+#================================================================================================
+
 @login_required
 def supprimer_ventes(request):
     if request.method == 'POST':
@@ -517,6 +538,10 @@ def supprimer_ventes(request):
             messages.error(request, f"Erreur lors de la suppression : {str(ex)}")
 
         return redirect('produits:listes_des_ventes')
+
+#================================================================================================
+# Fonction pour afficher la liste de tout les produits
+#================================================================================================
 
 @login_required
 def listes_produits(request):
@@ -535,6 +560,30 @@ def listes_produits(request):
     }
     return render(request, "gestion_produits/lites_produits.html", context)
 
+#================================================================================================
+# Fonction pour afficher la liste de tout les livraisons
+#================================================================================================
+
+@login_required
+def listes_des_livraisons(request):
+    listes_livraisons = []
+    total_livraison = 0
+    
+    try:
+        listes_livraisons = Livraisons.objects.all().order_by('-id')
+        total_livraison = listes_livraisons.count()
+        listes_livraisons = pagination_liste(request, listes_livraisons)
+    except Exception as ex :
+        return messages.warning(request, f"Erreur de récupération des produits {str(ex)} !")
+    context = {
+        'listes_livraisons' : listes_livraisons,
+        'total_livraison' : total_livraison
+    }
+    return render(request, "gestion_produits/lites_produits.html", context)
+
+#================================================================================================
+# Fonction pour afficher la liste des ventes
+#================================================================================================
 
 @login_required
 def listes_des_ventes(request):
@@ -556,6 +605,10 @@ def listes_des_ventes(request):
     }
     return render(request, "gestion_produits/ventes/listes_ventes.html", context)
 
+#================================================================================================
+# Fonction pour afficher la liste des commandes éffectuées
+#================================================================================================
+
 @login_required
 def listes_des_commandes(request):
     listes_commandes = []
@@ -576,7 +629,9 @@ def listes_des_commandes(request):
     }
     return render(request, "gestion_produits/commandes/listes_commandes.html", context)
 
-
+#================================================================================================
+# Fonction pour filter la liste des vente selon un intervalle de date donnée
+#================================================================================================
 @login_required
 def filtrer_listes_ventes(request):
     """
@@ -625,6 +680,10 @@ def filtrer_listes_ventes(request):
 
     return render(request, "gestion_produits/ventes/listes_ventes.html", context)
 
+#================================================================================================
+# Fonction pour consulter un produit donnée
+#================================================================================================
+@login_required
 def consulter_produit(request, id):
     try:
         produit = Produits.objects.get(id=id)
@@ -637,6 +696,10 @@ def consulter_produit(request, id):
     }
     return render(request, 'gestion_produits/consulter_informations_eleves.html', context)
 
+#================================================================================================
+# Fonction pour editer un produit pour provoir le modifier
+#================================================================================================
+@login_required
 def editer_produit(request, id):
     try:
         produit = Produits.objects.get(id=id)
@@ -649,6 +712,11 @@ def editer_produit(request, id):
         'categories': CategorieProduit.objects.all(),
     }
     return render(request, 'gestion_produits/modifier_produits.html', context)
+
+#================================================================================================
+# Fonction pour modifier un produit donnée
+#================================================================================================
+
 @login_required
 def modifier_produit(request, id):
     try:
@@ -682,10 +750,16 @@ def modifier_produit(request, id):
     }
     return render(request, 'gestion_produits/modifier_produits.html', context)
 
+#================================================================================================
+# Fonction gérer les réferenes de produit
+#================================================================================================
 
 def generate_references(prefix, date_str, numero):
     return f"{prefix}{date_str}{str(numero).zfill(4)}"
 
+#================================================================================================
+# Fonction pour ajouter un nouveau produit
+#================================================================================================
 
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def nouveau_produit(request):
@@ -768,8 +842,16 @@ def nouveau_produit(request):
 
     return render(request, "gestion_produits/nouveau_produit.html", context)
 
+#================================================================================================
+# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des produit
+#================================================================================================
+
 def choix_par_dates_produit_impression(request):
     return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_produits.html')
+
+#================================================================================================
+# Fonction pour imprimer la listes des produits
+#================================================================================================
 
 @login_required
 def listes_produits_impression(request):
@@ -799,8 +881,16 @@ def listes_produits_impression(request):
         context
     )
 
+#================================================================================================
+# Fonction pour afficher formulaire de choix de dates de saisie pour l'impression
+#================================================================================================
+
 def choix_par_dates_ventes_impression(request):
     return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_ventes.html')
+
+#================================================================================================
+# Fonction pour imprimer la listes des ventes
+#================================================================================================
 
 @login_required
 def listes_ventes_impression(request):
@@ -818,7 +908,7 @@ def listes_ventes_impression(request):
         date_vente__range=[date_debut, date_fin]
     )
 
-    nom_entreprise = Produits.objects.first()
+    nom_entreprise = Entreprise.objects.first()
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
@@ -831,6 +921,10 @@ def listes_ventes_impression(request):
     )
 
 
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+
 @login_required
 def exportation_donnees_excel(request):
     
@@ -839,9 +933,8 @@ def exportation_donnees_excel(request):
 #=============================================================================================
 # Fonction pour exporter les données des ventes
 #==============================================================================================
-from django.http import HttpResponse
-from .models import VenteProduit, LigneVente
 
+@login_required
 def export_ventes_excel(request):
     # 1. Récupérer toutes les ventes
     ventes = VenteProduit.objects.prefetch_related('lignes', 'lignes__produit').all()
@@ -883,3 +976,5 @@ def export_ventes_excel(request):
     response['Content-Disposition'] = 'attachment; filename=ventes_produits.xlsx'
     wb.save(response)
     return response
+
+#==============================================================================================

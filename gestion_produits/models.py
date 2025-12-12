@@ -1,6 +1,6 @@
 from django.db import models
 from gestion_fournisseurs.models import Fournisseurs
-from gestion_clients.models import Clients 
+from gestion_utilisateur.models import Utilisateur
 
 #==================================================================================
 # Classe Categorie Produit
@@ -26,7 +26,7 @@ class Produits(models.Model):
     pu = models.IntegerField(default = 0)
     photoprod = models.ImageField(upload_to = 'Produits/', null = True, blank = True)
     date_maj = models.DateField(auto_now = True)
-    categorie = models.ForeignKey(CategorieProduit, on_delete=models.CASCADE)
+    categorie = models.ForeignKey(CategorieProduit, on_delete=models.CASCADE, related_name='produit')
     
     class Meta:
         unique_together = ['refprod', 'categorie']
@@ -69,10 +69,12 @@ class VenteProduit(models.Model):
     code = models.CharField(max_length=20, unique=True)
     date_vente = models.DateTimeField(auto_now_add=True)
     total = models.IntegerField(default=0)
+    utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
-        return f"Vente {self.code}"
+        return f"Vente {self.code} Par {self.utilisateur}"
 
+#==================================================================================
 
 class LigneVente(models.Model):
     vente = models.ForeignKey(VenteProduit, on_delete=models.CASCADE, related_name='lignes')

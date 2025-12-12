@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from .models import Entreprise
 from django.shortcuts import get_object_or_404, redirect, render
-# Create your views here.
+
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur') #Empecher tant que l'utilisateur n'est pas connecté
 def nouvelle_saisie(request, *args, **kwargs):
     template_name = "gestion_entreprise/listes_entreprise.html"

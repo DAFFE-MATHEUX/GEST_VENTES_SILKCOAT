@@ -16,7 +16,7 @@
 
     <div class="row">
       <div class="col-md-12">
-        <h2>INFORMATION PERSONNELS DE L'ENTREPRISE</h2>
+        <h2>GESTION DES FOURNISSEURS</h2>
       </div>
     </div>
 
@@ -35,58 +35,76 @@
     {% endif %}
 
     <div class="row mb-3">
-      <div class="col-md-6"></div>
+      <div class="col-md-6">
+        <a href="{% url 'listes_fournisseurs_impression' %}" class="btn btn-primary">
+          <i class="fa print"></i> Imprimer la liste
+        </a>
+      </div>
       <div class="col-md-6 text-right">
-        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#nouvelle_categorie">
-          <i class="fa fa-plus"></i> Nouvelle Saisie
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#nouveau_fournisseur">
+          <i class="fa fa-plus"></i> Nouveau Fournisseur
         </button>
       </div>
     </div>
 
     <div class="panel panel-default">
-      <div class="panel-heading">Informations</div>
+      <div class="panel-heading">LISTE DES FOURNISSEURS</div>
       <div class="panel-body">
 
+        <div class="row mb-3">
+          <div class="col-md-6 col-sm-12">
+            <strong>Total : {{ total_fournisseur }}</strong>
+          </div>
+
+          <div class="col-md-6 col-sm-12 text-right">
+            <input type="text" class="form-control" style="max-width: 350px; margin-left:auto;"
+            placeholder="Rechercher..." id="search_fournisseur">
+          </div>
+        </div>
 
         <div class="table-responsive">
-          <table class="table table-striped table-bordered" id="dataTables-example">
+          <table class="table table-striped table-bordered">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Nom Complet</th>
-                <th>Contact 1</th>
-                <th>Contact 2</th>
+                <th>Noms Complet</th>
                 <th>Adresse</th>
+                <th>Téléphone</th>
                 <th>E-mail</th>
-                <th>Date Mise à jour</th>
+                <th>Date Enregistrement</th>
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="table_categories">
-              {% for element in liste_entreprise %}
+            <tbody id="table_fournisseurs">
+              {% for f in listes_fournisseur %}
               <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ element.nom_entrepriese }}</td>
-                <td>{{ element.contact1 }}</td>
-                <td>{{ element.contact1 }}</td>
-                <td>{{ element.adresse }}</td>
-                <td>{{ element.email }}</td>
-                <td>{{ element.date_maj|date:'Y-m-d' }}</td>
+                <td>{{ forloop.counter }}</td> 
+                <td>{{ f.nomcomplets }}</td>
+                <td>{{ f.adressefour }}</td>
+                <td>{{ f.telfour }}</td>
+                <td>{{ f.emailfour }}</td>
+                <td>{{ f.date_saisie|date:'Y-m-d' }}</td>
                 <td class="text-center">
 
                   <!-- Modifier -->
-                  <button type="button" class="btn btn-warning btn-sm btn-cat-mod" data-toggle="modal"
-                    data-target="#modifier_categorie"
-                    data-id="{{ element.id }}"
-                    data-nom="{{ element.desgcategorie }}"
-                    data-description="{{ element.description }}">
+                  <button type="button" 
+                          class="btn btn-warning btn-sm btn-fourn-mod"
+                          data-toggle="modal"
+                          data-target="#modifier_fournisseur"
+                          data-id="{{ f.id }}"
+                          data-nom="{{ f.nomcomplets }}"
+                          data-adresse="{{ f.adressefour }}"
+                          data-tel="{{ f.telfour }}"
+                          data-email="{{ f.emailfour }}">
                     <i class="fa fa-pencil"></i>
                   </button>
 
                   <!-- Supprimer -->
-                  <button type="button" class="btn btn-danger btn-sm btn-cat-sup" data-toggle="modal"
-                    data-target="#supprimer_categorie"
-                    data-id="{{ element.id }}">
+                  <button type="button" 
+                          class="btn btn-danger btn-sm btn-fourn-sup"
+                          data-toggle="modal"
+                          data-target="#supprimer_fournisseur"
+                          data-id="{{ f.id }}">
                     <i class="fa fa-trash"></i>
                   </button>
 
@@ -103,48 +121,39 @@
   </div>
 </div>
 
-<!-- ===================== Modals ===================== -->
+<!-- ===================== MODALS ===================== -->
 
 <!-- Ajouter -->
-<div class="modal fade" id="nouvelle_categorie">
+<div class="modal fade" id="nouveau_fournisseur">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
 
       <div class="modal-header bg-primary">
-        <h4 class="modal-title">Nouvelle SAISIE</h4>
+        <h4 class="modal-title">Nouveau Fournisseur</h4>
       </div>
 
-      <form method="POST" action="{% url 'nouvelle_saisie' %}" enctype="multipart/form-data">
+      <form method="POST" action="{% url 'ajouter_fournisseur' %}">
         {% csrf_token %}
         <div class="modal-body">
+
           <div class="form-group">
-            <label>Nom Complet</label>
-            <input type="text" name="nom_entrepriese" class="form-control" required>
+            <label>Nom complet</label>
+            <input type="text" name="nomcomplets" class="form-control" required>
           </div>
 
           <div class="form-group">
             <label>Adresse</label>
-            <input type="text" name="adresse" class="form-control" required>
+            <textarea name="adressefour" class="form-control" required></textarea>
           </div>
 
           <div class="form-group">
-            <label>E-mail</label>
-            <input type="email" name="email" class="form-control" required>
+            <label>Téléphone</label>
+            <input type="text" name="telfour" class="form-control" required>
           </div>
 
           <div class="form-group">
-            <label>Contact 1</label>
-            <input type="text" name="nom" class="form-control" required>
-          </div>
-
-          <div class="form-group">
-            <label>Contact 2</label>
-            <input type="text" name="contact2" class="form-control">
-          </div>
-
-          <div class="form-group">
-            <label>Logo</label>
-            <input type="file" name="logo" class="form-control">
+            <label>Email</label>
+            <input type="email" name="emailfour" class="form-control">
           </div>
 
         </div>
@@ -160,28 +169,38 @@
 </div>
 
 <!-- Modifier -->
-<div class="modal fade" id="modifier_categorie">
+<div class="modal fade" id="modifier_fournisseur">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
 
       <div class="modal-header bg-warning">
-        <h4 class="modal-title">Modifier les Informations</h4>
+        <h4 class="modal-title">Modifier Fournisseur</h4>
       </div>
 
-      <form method="POST" action="{% url 'produits:modifier_categorie' %}">
+      <form method="POST" action="{% url 'modifier_fournisseur' %}">
         {% csrf_token %}
         <div class="modal-body">
 
           <input type="hidden" name="id_modif" id="id_modif">
 
           <div class="form-group">
-            <label>Nom</label>
+            <label>Nom complet</label>
             <input type="text" name="nom_modif" id="nom_modif" class="form-control" required>
           </div>
 
           <div class="form-group">
-            <label>Description</label>
-            <textarea name="description_modif" id="description_modif" class="form-control"></textarea>
+            <label>Adresse</label>
+            <textarea name="adresse_modif" id="adresse_modif" class="form-control" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Téléphone</label>
+            <input type="text" name="tel_modif" id="tel_modif" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email_modif" id="email_modif" class="form-control">
           </div>
 
         </div>
@@ -198,19 +217,19 @@
 </div>
 
 <!-- Supprimer -->
-<div class="modal fade" id="supprimer_categorie">
+<div class="modal fade" id="supprimer_fournisseur">
   <div class="modal-dialog">
     <div class="modal-content">
 
       <div class="modal-header bg-danger">
-        <h4 class="modal-title">Supprimer L'entreprise</h4>
+        <h4 class="modal-title">Supprimer Fournisseur</h4>
       </div>
 
-      <form method="POST" action="{% url 'supprimer_entreprise' %}">
+      <form method="POST" action="{% url 'supprimer_fournisseur' %}">
         {% csrf_token %}
         <div class="modal-body">
           <input type="hidden" name="id_supprime" id="id_supprime">
-          <p>Voulez-vous vraiment supprimer cette catégorie ?</p>
+          <p>Voulez-vous vraiment supprimer ce fournisseur ?</p>
         </div>
 
         <div class="modal-footer">
@@ -224,32 +243,36 @@
   </div>
 </div>
 
+
 <!-- ====================== JS ====================== -->
 <script>
-  // Pré-remplissage du modal Modifier
-  document.querySelectorAll('.btn-cat-mod').forEach(btn => {
+  // Remplir le modal Modifier
+  document.querySelectorAll('.btn-fourn-mod').forEach(btn => {
     btn.addEventListener('click', () => {
       document.getElementById('id_modif').value = btn.dataset.id;
       document.getElementById('nom_modif').value = btn.dataset.nom;
-      document.getElementById('description_modif').value = btn.dataset.description;
+      document.getElementById('adresse_modif').value = btn.dataset.adresse;
+      document.getElementById('tel_modif').value = btn.dataset.tel;
+      document.getElementById('email_modif').value = btn.dataset.email;
     });
   });
 
-  // Pré-remplissage pour Supprimer
-  document.querySelectorAll('.btn-cat-sup').forEach(btn => {
+  // Supprimer
+  document.querySelectorAll('.btn-fourn-sup').forEach(btn => {
     btn.addEventListener('click', () => {
       document.getElementById('id_supprime').value = btn.dataset.id;
     });
   });
 
   // Recherche
-  const search = document.getElementById("rechercher_categories");
-  const rows = document.querySelectorAll("#table_categories tr");
+  const search = document.getElementById("search_fournisseur");
+  const rows = document.querySelectorAll("#table_fournisseurs tr");
+
   search.addEventListener("keyup", () => {
     const val = search.value.toLowerCase();
-    rows.forEach(row => row.style.display = 
-      row.textContent.toLowerCase().includes(val) ? "" : "none"
-    );
+    rows.forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(val) ? "" : "none";
+    });
   });
 
   // Auto-disparition messages

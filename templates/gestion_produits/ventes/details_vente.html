@@ -5,13 +5,13 @@
 <hr>
 
 <table class="table table-bordered">
-  <thead><tr><th>Produit</th><th>PU</th><th>Quantité</th><th>Sous-total</th></tr></thead>
+  <thead><tr><th>Produit</th><th>PU</th><th>Quantité Disponible</th><th>Sous-total</th></tr></thead>
   <tbody>
     {% for l in lignes %}
     <tr>
       <td>{{ l.produit.desgprod }}</td>
       <td>{{ l.prix }}</td>
-      <td>{{ l.quantite }}</td>
+      <td>{{ l.produit.qtestock }}</td>
       <td>{{ l.sous_total }}</td>
     </tr>
     {% endfor %}
@@ -20,6 +20,5 @@
 
 <h4>Total : {{ vente.total }} GNF</h4>
 
-<a href="{% url 'produits:imprimer_ticket' vente.id %}" class="btn btn-primary">Afficher / Imprimer le ticket</a>
-<a href="{% url 'produits:listes_des_ventes' %}" class="btn btn-default">Retour</a>
+<a href="{% url 'produits:vendre_produit' %}" class="btn btn-default"> <i class="fa fa-arrow-left"></i> Retour</a>
 {% endblock %}

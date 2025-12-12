@@ -164,9 +164,9 @@
       <div class="modal-content">
         <div class="modal-header bg-danger">
           <button type="button" class="close" data-dismiss="modal">&times;</button>
-          <h4 class="modal-title">SUPPRESSION D'UN PRODUIT</h4>
+          <h4 class="modal-title">SUPPRESSION D'UN CLIENT</h4>
         </div>
-        <form method="POST" action="">
+        <form method="POST" action="{% url 'supprimer_client' %}">
           {% csrf_token %}
 
           <div class="modal-body">

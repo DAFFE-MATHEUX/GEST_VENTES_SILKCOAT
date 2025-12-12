@@ -35,7 +35,6 @@
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_des_ventes' %}"><i class="fa fa-list"></i> Listes des Ventes</a></li>
                     <li><a href="{% url 'produits:vendre_produit' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
-                    <li><a href="{% url 'produits:vendre_produit' %}"><i class="fa fa-list"></i> Nouvelle Vente</a></li>
                 </ul>
             </li>
 
@@ -59,8 +58,7 @@
                     <i class="fa fa-angle-left pull-right"></i>
                 </a>
                 <ul class="treeview-menu">
-                    <li><a href="#"><i class="fa fa-list"></i> Nouveau Fournisseur</a></li>
-                    <li><a href="#"><i class="fa fa-list"></i> Listes Fournisseur</a></li>
+                    <li><a href="{% url 'listes_des_fournisseurs' %}"><i class="fa fa-list"></i> Listes Fournisseur</a></li>
                 </ul>
             </li>
 
@@ -94,7 +92,6 @@
                 </a>
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_categorie' %}"><i class="fa fa-user-plus"></i> Gestion des Catégories</a></li>
-                    <li><a href="{% url 'produits:nouveau_produit' %}"><i class="fa fa-user-plus"></i> Nouveau Produits</a></li>
                     <li><a href="{% url 'produits:listes_produits' %}"><i class="fa fa-list"></i>Listes des Produits</a></li>
                 </ul>
             </li>
