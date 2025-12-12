@@ -55,16 +55,17 @@
 
     <!-- INFOS VENTE -->
     <table>
-        <tr><th>Code Vente</th><td>{{ vente.code }}</td></tr>
-        <tr><th>Date</th><td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td></tr>
+        <tr><th>Références de la Vente</th><td>{{ vente.code }}</td></tr>
+        <tr><th>Vendu Par</th><td>{{ vente.utilisateur }}</td></tr>
+        <tr><th>Date de la Vente</th><td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td></tr>
     </table>
 
     <!-- INFOS CLIENT -->
     <h5 class="section-title">Informations Client</h5>
     <table>
-        <tr><th>Nom complet</th><td>{{ vente.client.nomclt }} {{ vente.client.prenomclt }}</td></tr>
-        <tr><th>Adresse</th><td>{{ vente.client.adresse|default:"-" }}</td></tr>
-        <tr><th>Téléphone</th><td>{{ vente.client.telclt|default:"-" }}</td></tr>
+        <tr><th>Noms complet</th><td>{{ ligne.nom_complet_client }}</td></tr>
+        <tr><th>Adresse</th><td>{{ ligne.adresseclt_client|default:"-" }}</td></tr>
+        <tr><th>Téléphone</th><td>{{ ligne.telclt_client|default:"-" }}</td></tr>
     </table>
 
     <h5 class="section-title">Détails des produits achetés</h5>
@@ -72,6 +73,7 @@
         <thead>
             <tr>
                 <th>#</th>
+                <th>Catégories</th>
                 <th>Produit</th>
                 <th>Quantité</th>
                 <th>Prix unitaire (GNF)</th>
@@ -82,6 +84,7 @@
             {% for l in lignes %}
             <tr>
                 <td>{{ forloop.counter }}</td>
+                <td>{{ l.produit.categorie.desgcategorie }}</td>
                 <td>{{ l.produit.desgprod }}</td>
                 <td>{{ l.quantite }}</td>
                 <td>{{ l.prix|floatformat:"0" }}</td>
@@ -95,7 +98,7 @@
 
     <br>
     <table>
-        <tr><th>Total général :</th><td><strong>{{ total|floatformat:"0" }} GNF</strong></td></tr>
+        <tr><th>Total Global :</th><td><strong>{{ total|floatformat:"0" }} GNF</strong></td></tr>
     </table>
 
     <!-- SIGNATURE -->

@@ -12,7 +12,6 @@ import base64
 import openpyxl
 from openpyxl.utils import get_column_letter
 from .utils import *
-from gestion_clients.views import nouveau_client
 from gestion_audit.views import enregistrer_audit
 from .models import * 
 from django.core.mail import EmailMessage
@@ -115,11 +114,6 @@ def vendre_produit(request):
             total=total_general,
             utilisateur = request.user,
         )
-        nouveau_client(
-                nomcomplet = nom_complet,
-                telephone= telephone,
-                adresse = adresse
-            )
 
         # Lignes de vente
         for prod, qte, pu, st in lignes:
@@ -130,9 +124,9 @@ def vendre_produit(request):
                 prix=pu,
                 sous_total=st,
                 
-                #nom_complet_client = nom_complet,
-                #telclt_client = telephone,
-                #adresseclt_client = adresse,
+                nom_complet_client = nom_complet,
+                telclt_client = telephone,
+                adresseclt_client = adresse,
             )
 
             # Mise à jour stock
@@ -316,7 +310,7 @@ def recu_vente_global(request, vente_code):
         "total": total,
         "today": now(),
         "qr_code_base64": qr_code_base64,
-        "etablissement": Entreprise.objects.first(),
+        "entreprise": Entreprise.objects.first(),
     }
 
     return render(request, "gestion_produits/recu_ventes/recu_vente_global.html", context)

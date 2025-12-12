@@ -13,7 +13,6 @@ from io import BytesIO
 import base64
 import openpyxl
 from openpyxl.utils import get_column_letter
-from gestion_clients.views import nouveau_client
 from gestion_audit.views import enregistrer_audit
 from django.utils import timezone
 #================================================================================================

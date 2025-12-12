@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     'gestion_utilisateur',
     'gestion_audit',
     'gestion_notifications',
-    'gestion_clients',
     'gestion_fournisseurs',
     'gestion_produits',
     'gest_entreprise',
@@ -119,6 +118,7 @@ WSGI_APPLICATION = 'gest_commerce.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -132,15 +132,15 @@ DATABASES = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'gestion_etablissements',
+        'NAME': 'gest_commerce',
         'USER': 'root',
         'PASSWORD': '19014',
         'HOST': 'localhost',
         'PORT': '3306',
     }
 }
-    
 """
+
 
 # ==============================
 # EMAIL
