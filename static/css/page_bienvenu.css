@@ -1,0 +1,66 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+header{
+    height: 60px;
+    background: rgb(60, 116, 194);
+    padding-top: 10px;
+}
+header nav h1 a{
+    float: left;
+    font-size: 20px;
+    padding-left: 15px;
+    text-transform: uppercase;
+    color: rgb(235, 230, 230);
+}
+#connexion ul li{
+    list-style: none;
+}
+#connexion ul li a{
+    display: inline;
+    float: right;
+    margin-right: 15px;
+    text-transform: uppercase;
+    color: white;
+    font-size: 20px;
+    font-weight: bolder;
+}
+#connexion ul li a:hover{
+    color: orangered;
+}
+
+.container{
+    min-height: 500px;
+    background: url("/static/img/blur-background09.jpg");
+}
+.container #section1{
+    font-size: 15px;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+}
+.container #section2{
+    text-align: center;
+    font-size: 25px;
+    text-transform: uppercase;
+    font-weight: bolder;
+    margin-bottom: 10px;
+}
+.container #section3{
+    text-align: center;
+}
+
+footer{
+    background-color: darkgray;
+    height: 150px;
+    text-align: center;
+}
+footer h1{
+    padding-top: 25px;
+    font-size: 19px;
+}
+footer #rejoigner{
+       padding-top: 10px;
+}

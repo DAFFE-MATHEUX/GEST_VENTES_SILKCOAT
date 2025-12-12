@@ -1,0 +1,145 @@
+{% extends 'admin.html' %}
+{% block contents %}
+
+<h2>GESTION DES VENTES</h2>
+<hr>
+
+{% if messages %}
+  {% for m in messages %}
+    <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+  {% endfor %}
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="form-group">
+    <label for="" class="form-control">Nom Complet du Client</label>
+    <input type="text" class="form-control" placeholder="Entrer le nom complet" name="nom_complet_client[]">
+  </div>
+
+<div class="form-group">
+    <label for="" class="form-control">Téléphone du Client</label>
+    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="telephone_client[]">
+  </div>
+
+  <div class="form-group">
+    <label for="" class="form-control">Adresse du Client</label>
+    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="adresse_client[]">
+  </div>
+
+  <div class="mb-3">
+    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)...">
+  </div>
+<br>
+  <table class="table table-bordered" id="table-produits">
+    <thead>
+      <tr>
+        <th>Produit</th>
+        <th>PU</th>
+        <th>Stock</th>
+        <th>Quantité à vendre</th>
+        <th>Sous-total</th>
+        <th>Détail Produit</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for p in produits %}
+      <tr class="produit-row">
+
+        <!-- Produit -->
+        <td>
+          <strong>{{ p.desgprod }}</strong><br>
+          <small>{{ p.categorie.desgcategorie }}</small>
+
+          <input type="hidden" name="produit_id[]" value="{{ p.id }}">
+        </td>
+
+        <!-- PU -->
+        <td class="pu">{{ p.pu }}</td>
+
+        <!-- Stock -->
+        <td class="stock">{{ p.qtestock }}</td>
+
+        <!-- Quantité de vente -->
+        <td>
+          <input type="number" 
+                 name="quantite[]" 
+                 class="form-control qte" 
+                 min="0" 
+                 max="{{ p.qtestock }}" 
+                 value="0" 
+                 data-pu="{{ p.pu }}">
+        </td>
+
+        <!-- Sous-total -->
+        <td class="sous-total">0</td>
+
+        <!-- APPRO BOUTON -->
+    <td>
+          <a href="{% url 'produits:details_vente' p.id %}" 
+             class="btn btn-primary btn-sm">
+            <i class="fa fa-eye"></i> Details
+          </a>
+        </td>
+
+
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="text-right">
+    <h4>Total : <span id="total-general">0</span> GNF</h4>
+  </div>
+
+  <button class="btn btn-success mt-3">Valider la vente</button>
+</form>
+
+<script>
+  // ----- CALCUL DES SOUS-TOTAUX -----
+  function recalc() {
+    let total = 0;
+
+    document.querySelectorAll("tbody tr").forEach(row => {
+      const qtyInput = row.querySelector(".qte");
+      const qte = parseInt(qtyInput.value || 0);
+      const pu = parseInt(qtyInput.dataset.pu || 0);
+
+      const sousTotal = qte * pu;
+      row.querySelector(".sous-total").textContent = sousTotal;
+
+      total += sousTotal;
+    });
+
+    document.getElementById("total-general").textContent = total;
+  }
+
+  // Mise à jour dynamique
+  document.querySelectorAll(".qte").forEach(input => {
+    input.addEventListener("input", function () {
+      const max = parseInt(this.max);
+      let v = parseInt(this.value || 0);
+
+      if (v < 0) v = 0;
+      if (v > max) v = max;
+
+      this.value = v;
+      recalc();
+    });
+  });
+
+  // ----- RECHERCHE PRODUIT -----
+  document.getElementById("search").addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+
+    document.querySelectorAll(".produit-row").forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
+    });
+  });
+
+  recalc();
+</script>
+
+{% endblock %}

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+    <title>Se Connecter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #01579b, #00acc1);
+            padding: 25px;
+        }
+
+        .form-container {
+            width: 430px;
+            padding: 35px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0px 12px 35px rgba(0,0,0,0.25);
+            text-align: center;
+            animation: fadeIn 0.7s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #01579b;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 25px;
+        }
+
+        /* Champs */
+        .input-box {
+            display: flex;
+            align-items: center;
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 14px;
+            border: 1px solid transparent;
+            transition: 0.3s;
+        }
+
+        .input-box:hover {
+            border-color: #0288d1;
+            box-shadow: 0px 0px 5px rgba(2,136,209,0.4);
+        }
+
+        .input-box i {
+            font-size: 1.3em;
+            color: #0277bd;
+            margin-right: 12px;
+        }
+
+        .input-box input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 0.97em;
+        }
+
+        .toggle-password {
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #0277bd;
+            margin-left: 10px;
+        }
+
+        /* Bouton principal */
+        button {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            font-weight: bold;
+            background: #0288d1;
+            color: #fff;
+            transition: 0.25s;
+            box-shadow: 0px 4px 12px rgba(2,136,209,0.45);
+        }
+
+        button:hover {
+            background: #01579b;
+            transform: translateY(-2px);
+        }
+
+        /* Texte inférieur */
+        .login {
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .login a {
+            color: #01579b;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .login a:hover {
+            text-decoration: underline;
+        }
+
+        /* Bouton Google */
+        .google-btn {
+            margin-top: 18px;
+            width: 100%;
+            height: 44px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: 0.25s;
+            font-weight: 600;
+            box-shadow: 0px 3px 12px rgba(0,0,0,0.1);
+        }
+
+        .google-btn img {
+            width: 22px;
+        }
+
+        .google-btn:hover {
+            background: #f5f5f5;
+            transform: translateY(-2px);
+        }
+
+        /* Bouton retour */
+        .btn-retour {
+            margin-top: 22px;
+            display: inline-block;
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            background: #ffffff;
+            border: 2px solid #0288d1;
+            color: #0288d1;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .btn-retour i {
+            margin-right: 7px;
+        }
+
+        .btn-retour:hover {
+            background: #0288d1;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="form-container">
+
+        <h2><i class="fa fa-user-circle"></i> Connexion</h2>
+        <p class="subtitle">Connectez-vous pour accéder à votre espace</p>
+
+        <form action="" method="POST">
+            {% csrf_token %}
+
+            <div class="input-box">
+                <i class="fa fa-envelope"></i>
+                <input type="text" name="username" placeholder="E-mail ou Nom d'utilisateur" required>
+            </div>
+
+            <div class="input-box">
+                <i class="fa fa-lock"></i>
+                <input type="password" id="passwordField" name="password" placeholder="Mot de passe" required>
+                <i class="fa fa-eye toggle-password" id="togglePassword"></i>
+            </div>
+
+            <button type="submit"><i class="fa fa-sign-in-alt"></i> Se Connecter</button>
+        </form>
+
+        <!-- Bouton Google -->
+        <a href="{% url 'social:begin' 'google-oauth2' %}" class="google-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
+            Se connecter avec Google
+        </a>
+
+        <div class="login">
+            <p>Pas encore de compte ?
+                <a href="{% url 'gestionUtilisateur:inscription_utilisateur' %}">
+                    <i class="fa fa-user-plus"></i> Inscription
+                </a>
+            </p>
+        </div>
+
+        <div class="login">
+            <p>Mot de passe oublié ? 
+                <a href="{% url 'gestionUtilisateur:password_reset' %}">
+                    Réinitialiser
+                </a>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- Script afficher/masquer -->
+    <script>
+        const passwordField = document.getElementById("passwordField");
+        const toggleIcon = document.getElementById("togglePassword");
+
+        toggleIcon.onclick = function() {
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                toggleIcon.classList.replace("fa-eye", "fa-eye-slash");
+            } else {
+                passwordField.type = "password";
+                toggleIcon.classList.replace("fa-eye-slash", "fa-eye");
+            }
+        };
+    </script>
+
+</body>
+</html>

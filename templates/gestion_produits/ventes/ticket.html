@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ticket {{ vente.code }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 4px; border-bottom: 1px solid #ddd; text-align: left; }
+    .right { text-align: right; }
+  </style>
+</head>
+<body>
+  <h3>Ticket N° {{ vente.code }}</h3>
+  <p>Date : {{ vente.date_vente }}</p>
+
+  <table>
+    <thead><tr><th>Produit</th><th>PU</th><th>Qte</th><th class="right">Total</th></tr></thead>
+    <tbody>
+      {% for l in lignes %}
+      <tr>
+        <td>{{ l.produit.desgprod }}</td>
+        <td>{{ l.prix }}</td>
+        <td>{{ l.quantite }}</td>
+        <td class="right">{{ l.sous_total }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3" class="right"><strong>TOTAL</strong></td>
+        <td class="right"><strong>{{ vente.total }} GNF</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>

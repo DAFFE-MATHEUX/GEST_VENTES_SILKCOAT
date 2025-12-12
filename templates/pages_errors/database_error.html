@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erreur Base de Données</title>
+
+    <style>
+        body {
+            font-family: "Poppins", Arial, sans-serif;
+            background: #fff4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #942020;
+        }
+        .error-box {
+            background: white;
+            text-align: center;
+            padding: 40px;
+            border-radius: 15px;
+            border: 2px solid #e6b3b3;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.07);
+            max-width: 450px;
+        }
+        .error-box svg {
+            width: 95px;
+            height: 95px;
+            margin-bottom: 10px;
+            fill: #d9534f;
+        }
+        h1 {
+            font-size: 30px;
+            margin-bottom: 8px;
+        }
+        p {
+            font-size: 17px;
+            color: #7b2e2e;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 12px 24px;
+            background: #d9534f;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: .3s;
+        }
+        .btn:hover { background: #bf4340; }
+    </style>
+</head>
+
+<body>
+    <div class="error-box">
+        <svg viewBox="0 0 24 24">
+            <path d="M12 5c1.1 0 2 .9 2 2v3h3c1.1 0 2 
+            .9 2 2s-.9 2-2 2h-3v3c0 1.1-.9 
+            2-2 2s-2-.9-2-2v-3H7c-1.1 0-2-.9-2-2s.9-2 
+            2-2h3V7c0-1.1.9-2 2-2z"/>
+        </svg>
+
+        <h1>Erreur Base de Données</h1>
+        <p>{{ message }}</p>
+
+        <a href="javascript:history.back()" class="btn">⬅ Retour</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+    
+{% include 'include/admin/header.html' %}
+
+    <body class="skin-black">
+        <!-- header logo: style can be found in header.less -->
+        <header class="header">
+            <a href="{% url 'gestionUtilisateur:tableau_bord' %}" class="logo">
+                <!-- Add the class icon to your logo image or logo icon to add the margining -->
+                 GEST_COMMERCE
+            </a>
+            <!-- Header Navbar: style can be found in header.less -->
+   {% include 'include/admin/navbar.html' %}
+        </header>
+        <div class="wrapper row-offcanvas row-offcanvas-left">
+            <!-- Left side column. contains the logo and sidebar -->
+           
+        {% include 'include/admin/sidebar.html' %}
+            <!-- Right side column. Contains the navbar and content of the page -->
+           
+
+            <aside class="right-side" style="padding: 15px;">
+         {% block contents %}
+
+           {% endblock %}
+            </aside><!-- /.right-side -->
+    
+        </div><!-- ./wrapper -->
+
+        <!-- add new calendar event modal -->
+
+{% include 'include/admin/scripts.html' %}
+        
+    </body>
+</html>

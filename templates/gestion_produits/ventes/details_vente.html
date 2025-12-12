@@ -1,0 +1,25 @@
+{% extends 'admin.html' %}
+{% block contents %}
+<h2>Détails Vente : {{ vente.code }}</h2>
+<p>Date : {{ vente.date_vente }}</p>
+<hr>
+
+<table class="table table-bordered">
+  <thead><tr><th>Produit</th><th>PU</th><th>Quantité</th><th>Sous-total</th></tr></thead>
+  <tbody>
+    {% for l in lignes %}
+    <tr>
+      <td>{{ l.produit.desgprod }}</td>
+      <td>{{ l.prix }}</td>
+      <td>{{ l.quantite }}</td>
+      <td>{{ l.sous_total }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h4>Total : {{ vente.total }} GNF</h4>
+
+<a href="{% url 'produits:imprimer_ticket' vente.id %}" class="btn btn-primary">Afficher / Imprimer le ticket</a>
+<a href="{% url 'produits:listes_des_ventes' %}" class="btn btn-default">Retour</a>
+{% endblock %}

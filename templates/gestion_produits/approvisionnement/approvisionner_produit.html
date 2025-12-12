@@ -1,0 +1,22 @@
+{% extends 'admin.html' %}
+
+{% block contents %}
+<h2>Approvisionnement</h2>
+<hr>
+
+<form method="post">
+  {% csrf_token %}
+
+  <p><strong>Produit :</strong> {{ produit.desgprod }}</p>
+  <p><strong>Stock actuel :</strong> {{ produit.qtestock }}</p>
+
+  <div class="form-group">
+    <label>Quantité à ajouter</label>
+    <input type="number" name="quantite" class="form-control" min="1" required>
+  </div>
+
+  <button class="btn btn-primary">Valider</button>
+  <a href="{% url 'produits:vendre_produit' %}" class="btn btn-secondary">Retour</a>
+</form>
+
+{% endblock %}

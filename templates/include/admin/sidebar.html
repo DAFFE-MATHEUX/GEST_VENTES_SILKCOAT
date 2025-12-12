@@ -1,0 +1,157 @@
+{% load static %}
+
+<aside class="left-side sidebar-offcanvas">
+    {% if user.is_authenticated %}
+    <section class="sidebar">
+        <!-- Sidebar user panel -->
+        <div class="user-panel">
+            <div class="pull-left image">
+                {% if user.photo_utilisateur %}
+                    <img src="{{ user.photo_utilisateur.url }}" class="img-circle" alt="User Image" />
+                {% else %}
+                    <img src="{% static 'img/avatar3.png' %}" class="img-circle" alt="User Image" />
+                {% endif %}
+            </div>
+            <div class="pull-left info">
+                <p>{{ user.get_full_name|default:user.username }}</p>
+                <a href="#"><i class="fa fa-circle text-success"></i> En ligne</a>
+            </div>
+        </div>
+
+        <!-- sidebar menu -->
+        <ul class="sidebar-menu">
+            <li class="active">
+                <a href="{% url 'gestionUtilisateur:tableau_bord' %}">
+                    <i class="fa fa-tachometer-alt"></i> <span>Tableau de Bord</span>
+                </a>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-building"></i>
+                    <span>Gestion des Ventes</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'produits:listes_des_ventes' %}"><i class="fa fa-list"></i> Listes des Ventes</a></li>
+                    <li><a href="{% url 'produits:vendre_produit' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
+                    <li><a href="{% url 'produits:vendre_produit' %}"><i class="fa fa-list"></i> Nouvelle Vente</a></li>
+                </ul>
+            </li>
+
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-building"></i>
+                    <span>Gestion Fournisseurs</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="#"><i class="fa fa-list"></i> Nouveau Fournisseur</a></li>
+                    <li><a href="#"><i class="fa fa-list"></i> Listes Fournisseur</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-users"></i>
+                    <span>Gestion des Clients</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'listes_clients' %}"><i class="fa fa-list"></i>Listes des Clients</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-users"></i>
+                    <span>Paramètres</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'liste_entreprise' %}"><i class="fa fa-list"></i>Informations Personnelles</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-users"></i>
+                    <span>Gestion des Produits</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'produits:listes_categorie' %}"><i class="fa fa-user-plus"></i> Gestion des Catégories</a></li>
+                    <li><a href="{% url 'produits:nouveau_produit' %}"><i class="fa fa-user-plus"></i> Nouveau Produits</a></li>
+                    <li><a href="{% url 'produits:listes_produits' %}"><i class="fa fa-list"></i>Listes des Produits</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-file-alt"></i>
+                    <span>Gestion des Rapports</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'rapports:liste_rapports' %}"><i class="fa fa-list"></i> Listes des Rapports</a></li>
+                    <li><a href="{% url 'rapports:creer_rapport' %}"><i class="fa fa-list"></i> Générer des Rapports</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-user-cog"></i>
+                    <span>Gestion des Utilisateurs</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'gestionUtilisateur:liste_utilisateur' %}"><i class="fa fa-list"></i>Listes Utilisateurs</a></li>
+                    <li><a href="{% url 'gestionUtilisateur:deconnexion_utilisateur' %}"><i class="fa fa-sign-out-alt"></i> Déconnexion</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-file-alt"></i>
+                    <span>Gestion des AuditLog</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'audit:liste_audit' %}"><i class="fa fa-list"></i> Listes des AuditLog</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-file-alt"></i>
+                    <span>Exporter des Données</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'produits:exportation_donnees_excel' %}"><i class="fa fa-list"></i> Listes des Ventes</a></li>
+                    <li><a href="#"><i class="fa fa-list"></i> Listes des Produits</a></li>
+                    <li><a href="#"><i class="fa fa-list"></i> Listes des Fournisseurs</a></li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="{% url 'calendar' %}">
+                    <i class="fa fa-calendar"></i> <span>Calendar</span>
+                    <small class="badge pull-right bg-red">3</small>
+                </a>
+            </li>
+
+            <li>
+                <a href="{% url 'mailbox' %}">
+                    <i class="fa fa-envelope"></i> <span>Mailbox</span>
+                    <small class="badge pull-right bg-yellow">12</small>
+                </a>
+            </li>
+
+        </ul>
+    </section>
+    {% endif %}
+</aside>
+<!-- End of file: templates/include/admin/sidebar.html -->
+ 

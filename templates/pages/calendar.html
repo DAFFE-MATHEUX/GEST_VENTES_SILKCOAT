@@ -1,0 +1,138 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Scanner Badge & Calendrier</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <!-- Bootstrap -->
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="{% static 'css/font-awesome.min.css' %}" rel="stylesheet">
+    <!-- FullCalendar -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+
+    <!-- AdminLTE -->
+    <link href="{% static 'css/AdminLTE.css' %}" rel="stylesheet">
+    <style>
+        #reader { width: 400px; margin:auto; border: 2px solid #007bff; border-radius: 10px; }
+        #message { margin-top: 20px; font-weight: bold; text-align: center; }
+    </style>
+</head>
+
+<body class="skin-black">
+    <!-- HEADER -->
+    <header class="header">
+        <a href="{% url 'gestionUtilisateur:tableau_bord' %}" class="logo">GEST_PRESENCE</a>
+    </header>
+
+    <div class="wrapper row-offcanvas row-offcanvas-left">
+        <!-- SIDEBAR -->
+        <aside class="left-side sidebar-offcanvas">
+            <section class="sidebar">
+                <ul class="sidebar-menu">
+                    <li><a href="{% url 'gestionUtilisateur:tableau_bord' %}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+                    <li class="active"><a href="#"><i class="fa fa-calendar"></i> Calendrier & Scan</a></li>
+                </ul>
+            </section>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <aside class="right-side">
+            <section class="content-header">
+                <h1>Scanner Badge & Calendrier <small>Panel de contrôle</small></h1>
+            </section>
+
+            <section class="content">
+                <div class="row">
+                    <!-- SCANNER QR -->
+                    <div class="col-md-4">
+                        <div class="box box-primary text-center p-3">
+                            <h4>🎯 Scanner le badge d’un employé</h4>
+                            <div id="reader"></div>
+                            <div id="message"></div>
+
+                            <form id="form_pointage" method="POST" action="{% url 'pointages:pointer_now_classic' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="matricule" id="matricule">
+                                <input type="hidden" name="type" value="Entrée">
+                                <button type="submit" id="btn_submit" hidden></button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- CALENDAR -->
+                    <div class="col-md-8">
+                        <div class="box box-primary">
+                            <div class="box-body no-padding">
+                                <div id="calendar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/AdminLTE/app.js' %}"></script>
+    <!-- FullCalendar -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.8/locales/fr.global.min.js"></script>
+    <!-- HTML5 QR Code -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <!-- INIT QR SCANNER -->
+    <script>
+        const messageDiv = document.getElementById("message");
+        const html5QrCode = new Html5Qrcode("reader");
+
+        function showMessage(text, color="green") {
+            messageDiv.style.color = color;
+            messageDiv.innerText = text;
+        }
+
+        function onScanSuccess(decodedText) {
+            showMessage(`✅ Matricule détecté : ${decodedText}`, "green");
+            document.getElementById("matricule").value = decodedText;
+            document.getElementById("btn_submit").click();
+        }
+
+        Html5Qrcode.getCameras().then(cameras => {
+            if (cameras.length === 0) { showMessage("❌ Aucune caméra détectée.", "red"); return; }
+            const camera = cameras.find(cam => cam.label.toLowerCase().includes('back')) || cameras[0];
+            html5QrCode.start(camera.id, { fps: 10, qrbox: { width: 300, height: 300 } }, onScanSuccess);
+            showMessage("📷 Caméra activée, scannez un badge...");
+        }).catch(err => { showMessage("Impossible d’accéder à la caméra.", "red"); console.error(err); });
+    </script>
+
+    <!-- INIT FULLCALENDAR -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'fr',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                buttonText: { today: "Aujourd'hui", month: "Mois", week: "Semaine", day: "Jour", list: "Liste" },
+                weekText: "Semaine",
+                allDayText: "Toute la journée",
+                moreLinkText: "en plus",
+                noEventsText: "Aucun événement à afficher",
+                editable: true,
+                droppable: true,
+                events: [
+                    { title: 'Réunion équipe', start: '2025-10-10T09:00:00', end: '2025-10-10T10:00:00' },
+                    { title: 'Visite client', start: '2025-10-12T14:00:00' },
+                    { title: 'Déjeuner', start: '2025-10-15T12:00:00', end: '2025-10-15T13:00:00' }
+                ]
+            });
+            calendar.render();
+        });
+    </script>
+</body>
+</html>

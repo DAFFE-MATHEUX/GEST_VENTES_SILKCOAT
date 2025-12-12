@@ -1,0 +1,94 @@
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
+<div id="page-wrapper">
+    <div id="page-inner">
+
+        <div class="row">
+            <div class="col-md-12">
+                <h2>INFORMATION DU PRODUIT</h2>
+            </div>
+        </div>
+
+        <br>
+
+        <div class="row">
+            <div class="col-md-12">
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                       INFORMATIONS DÉTAILLÉES DU PRODUIT
+                    </div>
+
+                    <div class="panel-body">
+                        <div class="row">
+
+                            <!-- COLONNE GAUCHE -->
+                            <div class="col-md-6">
+                                <h3>INFORMATIONS DE BASE</h3>
+
+                                <div class="form-group">
+                                    <label>Code Produit</label>
+                                    <p class="form-control-static">{{ produit.refprod }}</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Désignation</label>
+                                    <p class="form-control-static">{{ produit.desgprod }}</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Prix Unitaire</label>
+                                    <p class="form-control-static">{{ produit.pu }} GNF</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Quantité en Stock</label>
+                                    <p class="form-control-static">{{ produit.qtestock }}</p>
+                                </div>
+
+                                <div class="form-group">
+                                    {% if produit.photoprod %}
+                                        <img src="{{ produit.photoprod.url }}" alt="Photo produit" width="100px" height="100px">
+                                    {% else %}
+                                        <small>Aucune image disponible</small>
+                                    {% endif %}
+                                </div>
+
+                                <a class="btn btn-primary" href="{% url 'produits:listes_produits' %}">
+                                    <i class="fa fa-arrow-left"></i> Retour
+                                </a>
+                            </div>
+
+                            <!-- COLONNE DROITE -->
+                            <div class="col-md-6">
+                                <h3>INFORMATIONS SUPPLÉMENTAIRES</h3>
+
+                                <div class="form-group">
+                                    <label>Catégorie Produit</label>
+                                    <p class="form-control-static">
+                                        {{ produit.categorie.desgcategorie }}
+                                    </p>
+                                </div>
+
+                                
+                                <div class="form-group">
+                                    <label>Date d’ajout</label>
+                                    <p class="form-control-static">
+                                        {{ produit.date_maj }}
+                                    </p>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

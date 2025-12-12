@@ -1,0 +1,196 @@
+{% extends "admin.html" %}
+{% load static %}
+
+{% block contents %}
+
+<!-- ===========================
+     PAGE D'ACCUEIL ADMINISTRATION
+     =========================== -->
+<section class="content-header">
+    <h1>
+        BIENVENUE DANS LE TABLEAU DE BORD D'ADMINISTRATION
+    </h1>
+    <ol class="breadcrumb">
+        <li><a href="{% url 'gestionUtilisateur:tableau_bord' %}"><i class="fa fa-dashboard"></i> Home</a></li>
+        <li class="active">Dashboard</li>
+    </ol>
+</section>
+
+<!-- ===========================
+     CONTENU PRINCIPAL
+     =========================== -->
+<section class="content">
+
+    <!-- =====================
+         BOÎTES DE STATISTIQUES
+         ===================== -->
+    <div class="row">
+
+        <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-aqua">
+                <div class="inner">
+                    <h3>{{ total_produits }}</h3>
+                    <p>Total Produits</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-cube"></i>
+                </div>
+                <a href="{% url 'produits:listes_produits' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-green">
+                <div class="inner">
+                    <h3>{{ total_categories }}</h3>
+                    <p>Total Catégories</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-pricetags"></i>
+                </div>
+                <a href="{% url 'produits:listes_categorie' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-yellow">
+                <div class="inner">
+                    <h3>{{ total_commandes }}</h3>
+                    <p>Total Commandes</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-bag"></i>
+                </div>
+                <a href="" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-red">
+                <div class="inner">
+                    <h3>{{ total_ventes }}</h3>
+                    <p>Total Ventes</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-cash"></i>
+                </div>
+                <a href="{% url 'produits:listes_des_ventes' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- =====================
+         DERNIERS VENTES
+         ===================== -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-info">
+                <div class="box-header with-border"><h3 class="box-title">5 Dernières Ventes</h3></div>
+                <div class="box-body table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Code Vente</th><th>Date</th><th>Total</th><th>Nombre de Produits</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in dernieres_ventes %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ v.code }}</td>
+                                <td>{{ v.date_vente|date:"d/m/Y H:i" }}</td>
+                                <td>{{ v.total|floatformat:0 }} GNF</td>
+                                <td>{{ v.lignes.count }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center">Aucune vente récente.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================
+         DERNIERS AUDITS
+         ===================== -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-info">
+                <div class="box-header with-border"><h3 class="box-title">5 Derniers Audits</h3></div>
+                <div class="box-body table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Utilisateur</th><th>Action</th><th>Table concernée</th><th>Ancienne valeur</th><th>Nouvelle valeur</th><th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in derniers_audits %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{% if a.utilisateur %}{{ a.utilisateur.username }}{% else %}Utilisateur supprimé{% endif %}</td>
+                                <td>{{ a.action }}</td>
+                                <td>{{ a.table_modifiee }}</td>
+                                <td><pre>{{ a.ancienne_valeur|default:"-" }}</pre></td>
+                                <td><pre>{{ a.nouvelle_valeur|default:"-" }}</pre></td>
+                                <td>{{ a.date_action|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center">Aucune action enregistrée pour le moment.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================
+         DERNIÈRES NOTIFICATIONS
+         ===================== -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-info">
+                <div class="box-header with-border"><h3 class="box-title">5 Dernières Notifications</h3></div>
+                <div class="box-body table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Destinataire</th><th>Email</th><th>Titre</th><th>Message</th><th>Lu</th><th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for n in dernieeres_notification %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ n.destinataire }}</td>
+                                <td>{{ n.destinataire_email }}</td>
+                                <td>{{ n.titre }}</td>
+                                <td>{{ n.message }}</td>
+                                <td>{{ n.lu|yesno:"Oui,Non" }}</td>
+                                <td>{{ n.date|date:"d/m/Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center">Aucune notification récente.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+{% endblock %}

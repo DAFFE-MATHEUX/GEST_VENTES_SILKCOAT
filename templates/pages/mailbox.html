@@ -1,0 +1,163 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Messagerie</title>
+    <meta content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' name='viewport'>
+
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'css/font-awesome.min.css' %}" rel="stylesheet" type="text/css" />
+    <link href="{% static 'css/AdminLTE.css' %}" rel="stylesheet" type="text/css" />
+
+    <style>
+        .unread { font-weight: bold; }
+        .small-col { width: 30px; text-align: center; }
+        .fa-star, .fa-star-o { cursor: pointer; }
+        th { cursor: pointer; }
+    </style>
+</head>
+
+<body class="skin-black">
+
+<header class="header">
+    <a href="{% url 'gestionUtilisateur:tableau_bord' %}" class="logo">GEST_PRESENCE</a>
+</header>
+
+<div class="wrapper row-offcanvas row-offcanvas-left">
+
+    <aside class="left-side sidebar-offcanvas">
+        <section class="sidebar">
+            <ul class="sidebar-menu">
+                <li class="active"><a href="#"><i class="fa fa-inbox"></i> Boîte de réception</a></li>
+                <li><a href="#"><i class="fa fa-pencil-square-o"></i> Brouillons</a></li>
+                <li><a href="#"><i class="fa fa-mail-forward"></i> Envoyés</a></li>
+            </ul>
+        </section>
+    </aside>
+
+    <aside class="right-side">
+        <section class="content-header no-margin">
+            <h1 class="text-center">Messagerie</h1>
+        </section>
+
+        <section class="content">
+            <div class="mailbox row">
+                <div class="col-xs-12">
+                    <div class="box box-solid">
+                        <div class="box-body">
+                            <div class="row">
+                                <div class="col-md-9 col-sm-8">
+                                    <div class="table-responsive">
+                                        <table id="mailTable" class="table table-mailbox">
+                                            <thead>
+                                                <tr>
+                                                    <th><input type="checkbox" id="check-all"></th>
+                                                    <th></th>
+                                                    <th data-sort="expediteur">Expéditeur <i class="fa fa-sort"></i></th>
+                                                    <th data-sort="objet">Objet <i class="fa fa-sort"></i></th>
+                                                    <th data-sort="heure">Heure <i class="fa fa-sort"></i></th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Les mails seront insérés ici par JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </aside>
+</div>
+
+<script>
+    let mails = [
+        {expediteur: "Jean Dupont", objet: "Important ! Veuillez lire", heure: "12:30", lu: false, starred: true},
+        {expediteur: "Marie Martin", objet: "Réunion demain", heure: "09:15", lu: true, starred: false},
+        {expediteur: "Support", objet: "Nouvelle mise à jour disponible", heure: "14:45", lu: false, starred: false},
+        {expediteur: "Admin", objet: "Mot de passe expiré", heure: "08:00", lu: true, starred: true}
+    ];
+
+    let sortOrder = {expediteur: 1, objet: 1, heure: 1}; // 1 = asc, -1 = desc
+
+    function renderMails() {
+        const tbody = document.querySelector("#mailTable tbody");
+        tbody.innerHTML = "";
+
+        mails.forEach((mail, index) => {
+            const tr = document.createElement("tr");
+            tr.className = mail.lu ? "" : "unread";
+
+            tr.innerHTML = `
+                <td class="small-col"><input type="checkbox" data-index="${index}"></td>
+                <td class="small-col"><i class="fa ${mail.starred ? "fa-star" : "fa-star-o"}" data-index="${index}"></i></td>
+                <td class="name"><a href="#">${mail.expediteur}</a></td>
+                <td class="subject"><a href="#">${mail.objet}</a></td>
+                <td class="time">${mail.heure}</td>
+                <td>
+                    <button class="btn btn-xs btn-info" data-action="toggleRead" data-index="${index}">${mail.lu ? "Marquer non lu" : "Marquer lu"}</button>
+                    <button class="btn btn-xs btn-danger" data-action="delete" data-index="${index}">Supprimer</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Étoiles
+        document.querySelectorAll(".fa-star, .fa-star-o").forEach(icon => {
+            icon.addEventListener("click", function() {
+                const i = this.dataset.index;
+                mails[i].starred = !mails[i].starred;
+                renderMails();
+            });
+        });
+
+        // Actions
+        document.querySelectorAll('button[data-action]').forEach(btn => {
+            btn.addEventListener("click", function() {
+                const i = this.dataset.index;
+                const action = this.dataset.action;
+
+                if(action === "toggleRead") mails[i].lu = !mails[i].lu;
+                if(action === "delete") mails.splice(i, 1);
+                renderMails();
+            });
+        });
+
+        // Check all
+        document.getElementById("check-all").addEventListener("change", function() {
+            const checked = this.checked;
+            document.querySelectorAll("#mailTable tbody input[type='checkbox']").forEach(cb => cb.checked = checked);
+        });
+    }
+
+    function sortMails(key) {
+        mails.sort((a, b) => {
+            if(key === "heure") {
+                return (a[key].localeCompare(b[key])) * sortOrder[key];
+            } else {
+                return a[key].localeCompare(b[key]) * sortOrder[key];
+            }
+        });
+        sortOrder[key] *= -1; // inverser l'ordre pour le prochain clic
+        renderMails();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        renderMails();
+        // Tri par colonne
+        document.querySelectorAll("th[data-sort]").forEach(th => {
+            th.addEventListener("click", () => {
+                const key = th.dataset.sort;
+                sortMails(key);
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

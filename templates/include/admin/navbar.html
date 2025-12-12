@@ -1,0 +1,156 @@
+{% load static %}
+{% load custom_filters %}
+
+<nav class="navbar navbar-static-top" role="navigation">
+    <a href="#" class="navbar-btn sidebar-toggle" data-toggle="offcanvas" role="button">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+    </a>
+
+    <div class="navbar-right">
+        <ul class="nav navbar-nav">
+
+            <!-- Messages -->
+            <li class="dropdown messages-menu">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    <i class="fa fa-envelope"></i>
+                    {% if messages_list %}<span class="label label-success">{{ messages_list|length }}</span>{% endif %}
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="header">
+                        {% if messages_list %}Vous avez {{ messages_list|length }} messages{% else %}Aucun message{% endif %}
+                    </li>
+                    <li>
+                        <ul class="menu">
+                            {% for msg in messages_list %}
+                                <li>
+                                    <a href="{{ msg.link|default:'#' }}">
+                                        <div class="pull-left">
+                                            <img src="{{ msg.avatar }}" class="img-circle" alt="User Image"/>
+                                        </div>
+                                        <h4>
+                                            {{ msg.sender|default:"Inconnu" }}
+                                            <small><i class="fa fa-clock-o"></i> {{ msg.date|default:"-" }}</small>
+                                        </h4>
+                                        <p>{{ msg.content|truncatechars:50|default:"-" }}</p>
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li><a>Aucun message</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    <li class="footer"><a href="#">Voir tous les messages</a></li>
+                </ul>
+            </li>
+
+            <!-- Notifications -->
+            <li class="dropdown notifications-menu">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    <i class="fa fa-bell"></i>
+                    {% if notifications %}
+                        {% with notifications|dictsort:"lu"|length as non_lues %}
+                            <span class="label label-warning">{{ non_lues }}</span>
+                        {% endwith %}
+                    {% endif %}
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="header">
+                        {% if notifications %}Vous avez {{ notifications|length }} notifications{% else %}Aucune notification{% endif %}
+                    </li>
+                    <li>
+                        <ul class="menu">
+                            {% for notif in notifications %}
+                                <li class="{% if not notif.lu %}bg-light{% endif %}">
+                                    <a href="{% if request.user|has_attr:'employer' %}{% url 'notifications:marquer_lue' notif.id %}{% else %}#{% endif %}">
+                                        <i class="fa fa-info-circle text-info"></i>
+                                        {{ notif.message|truncatechars:50|default:"-" }}
+                                        <br>
+                                        <small class="text-muted">{{ notif.date_notification|date:"d/m/Y H:i"|default:"-" }}</small>
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li><a>Aucune notification</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% if request.user|has_attr:"employer" %}
+                        <li class="footer">
+                            <a href="{% url 'notifications:liste_notifications' request.user.employer.id %}">Voir toutes</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </li>
+
+            <!-- Tasks -->
+            <li class="dropdown tasks-menu">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    <i class="fa fa-tasks"></i>
+                    {% if tasks_list %}<span class="label label-danger">{{ tasks_list|length }}</span>{% endif %}
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="header">
+                        {% if tasks_list %}Vous avez {{ tasks_list|length }} tâches{% else %}Aucune tâche{% endif %}
+                    </li>
+                    <li>
+                        <ul class="menu">
+                            {% for task in tasks_list %}
+                                <li>
+                                    <a href="{{ task.link|default:'#' }}">
+                                        <h3>
+                                            {{ task.title|default:"Sans titre" }}
+                                            <small class="pull-right">{{ task.progress|default:0 }}%</small>
+                                        </h3>
+                                        <div class="progress xs">
+                                            <div class="progress-bar {{ task.color|default:'progress-bar-aqua' }}" style="width: {{ task.progress|default:0 }}%" role="progressbar">
+                                                <span class="sr-only">{{ task.progress|default:0 }}% Complete</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                            {% empty %}
+                                <li><a>Aucune tâche</a></li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    <li class="footer"><a href="#">Voir toutes les tâches</a></li>
+                </ul>
+            </li>
+
+            <!-- User Account -->
+            <li class="dropdown user user-menu">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                    <i class="glyphicon glyphicon-user"></i>
+                    <span>{{ request.user.get_full_name|default:request.user.username }} <i class="caret"></i></span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li class="user-header bg-light-blue">
+                                        {% if user.photo_utilisateur %}
+                                    <img src="{{ user.photo_utilisateur.url }}" class="img-circle" alt="User Image" />
+                                {% else %}
+                                    <img src="{% static 'img/avatar3.png' %}" class="img-circle" alt="User Image" />
+                                {% endif %}
+                        <p>
+                            {{ request.user.get_full_name|default:request.user.username }}
+                            {% if request.user|has_attr:"profile" %}
+                                - {{ request.user.profile.role|default:"Utilisateur" }}
+                            {% endif %}
+                            <small>Membre depuis {{ request.user.date_joined|date:"M. Y" }}</small>
+                        </p>
+                    </li>
+                    <li class="user-footer">
+                        <div class="pull-left">
+                            <a href="#" class="btn btn-default btn-flat">Profile</a>
+                        </div>
+                        <div class="pull-right">
+                            <a href="{% url 'gestionUtilisateur:deconnexion_utilisateur' %}" class="btn btn-default btn-flat">Déconnexion</a>
+                        </div>
+                    </li>
+                </ul>
+            </li>
+
+        </ul>
+    </div>
+</nav>

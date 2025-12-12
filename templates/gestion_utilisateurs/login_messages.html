@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>
+    </title>
+    <meta charset="utf-8">
+</head>
+<body>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <div class="container-fluid p-0">
+            <div class="alert {{ message.tags }} alert-dismissible" role="alert" id="msg">
+                <button type="button" class="close" data-dismiss="alert" aria-label="close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                {{ message }}
+            </div>
+        </div>
+       {% endfor %}
+    </ul>
+    {% endif %}
+
+
+    <script>
+        // Cette fonction permet de masquer le message après un delai de 5s soit 5000ms
+        setTimeout(function(){
+
+            if ($("#msg").length>0){
+                $("#msg").remove();
+            }
+
+        }, 5000)
+    </script>
+
+</body>
+</html>

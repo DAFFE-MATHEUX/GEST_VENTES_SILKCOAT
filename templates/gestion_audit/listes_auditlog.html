@@ -1,0 +1,231 @@
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
+
+<style>
+  .table-responsive { overflow-x: auto; width: 100%; }
+  .table td, .table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
+  body { overflow-x: hidden; }
+  .mb-3 { margin-bottom: 15px; }
+</style>
+
+<div id="page-wrapper">
+  <div id="page-inner">
+    <div class="row">
+      <div class="col-md-12">
+        <h2>JOURNAL D’AUDIT DU SYSTÈME</h2>
+        <p>Historique des actions effectuées par les utilisateurs.</p>
+      </div>
+    </div>
+    <br>
+
+    {% if messages %}
+      {% for mgs in messages %}
+        <div class="alert {% if mgs.tags == 'success' %} alert-success {% elif mgs.tags == 'error' %} alert-danger {% else %} alert-info {% endif %}">
+          {{ mgs }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- FILTRES -->
+<form method="get" class="mb-3 row">
+  <div class="col-md-3">
+    <label>Date :</label>
+    <input type="date" name="date_filtre" value="{{ date_filtre }}" class="form-control">
+  </div>
+  <div class="col-md-4">
+    <label>Utilisateur :</label>
+    <select name="utilisateur_filtre" class="form-control">
+      <option value="">-- Tous les Utilisateurs --</option>
+      {% for elems in liste_utilisateur %}
+        <option value="{{ elems.id }}" {% if elems.id|stringformat:"s" == utilisateur_filtre %}selected{% endif %}>
+          {{ elems.get_full_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-5 d-flex align-items-end">
+    <button type="submit" class="btn btn-primary mr-2"><i class="fa fa-filter"></i> Filtrer</button>
+    <a href="?aujourdhui=1" class="btn btn-success mr-2"><i class="fa fa-calendar"></i> Audit du jour</a>
+    <a href="{% url 'audit:liste_audit' %}" class="btn btn-default"><i class="fa fa-refresh"></i> Réinitialiser</a>
+  </div>
+  
+</form>
+
+
+    <div class="panel panel-default">
+      <div class="panel-heading">LISTES DES ACTIONS ENREGISTRÉES</div>
+      <div class="panel-body">
+
+           <div class="row align-items-center mb-3">
+                <!-- Total à gauche -->
+                <div class="col-md-6 col-sm-12">
+                    <small class="text-muted" style="font-size: 20px; font-weight: bold;">
+                        <i class="fa fa-users text-primary me-1"></i>
+                        Total Audit :
+                        <strong>{{ total_audit }}</strong>
+                    </small>
+                </div>
+
+                  <!-- Recherche à droite -->
+                  <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
+                      <div class="input-group" style="max-width: 400px; margin-left: auto;">
+                          <input type="text" class="form-control" placeholder="Rechercher une information..." name="rechercher_informations" id="rechercher_informations">
+
+                      </div>
+                  </div>
+              </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Table concernée</th>
+                <th>Ancienne valeur</th>
+                <th>Nouvelle valeur</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="my_table">
+              {% for a in liste_audit %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>
+                  {% if a.utilisateur %}
+                    {{ a.utilisateur.username }}
+                  {% else %}
+                    Utilisateur supprimé
+                  {% endif %}
+                </td>
+                <td>{{ a.action }}</td>
+                <td>{{ a.table_modifiee }}</td>
+                <td><pre>{{ a.ancienne_valeur|default:"-" }}</pre></td>
+                <td><pre>{{ a.nouvelle_valeur|default:"-" }}</pre></td>
+                <td>{{ a.date_action|date:"d/m/Y H:i" }}</td>
+                <td>
+                                  <!-- Supprimer -->
+                <button type="button" class="btn btn-danger btn-sm btn-audit-sup" data-toggle="modal" data-target="#supprimer_audit"
+                    data-id="{{ a.id }}">
+                    <i class="fa fa-trash"></i>
+                </button>
+
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" class="text-center">Aucune action enregistrée pour le moment.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+                           <!-- PAGINATION -->
+  <div class="row mt-4">
+
+    <div class="col-md-8 offset-md-2">
+
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+          {% if liste_audit.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?pages=1">&laquo; Première</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?pages={{ liste_audit.previous_page_number }}">Précédent</a>
+            </li>
+          {% endif %}
+
+          <li class="page-item active">
+            <span class="page-link">Page {{ liste_audit.number }} / {{ liste_audit.paginator.num_pages }}</span>
+          </li>
+
+          {% if liste_audit.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?pages={{ liste_audit.next_page_number }}">Suivant</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?pages={{ liste_audit.paginator.num_pages }}">Dernière &raquo;</a>
+            </li>
+          {% endif %}
+
+        </ul>
+      </nav>
+
+    </div>
+
+          
+  </div> 
+  <!-- fin Pagination-->
+
+    <!-- Modal Suppression -->
+  <div class="modal fade" id="supprimer_audit" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">SUPPRESSION DE CET AUDIT </h4>
+        </div>
+        <form method="POST" action="">
+          {% csrf_token %}
+          <div class="modal-body">
+            <input type="hidden" name="id_supprimer" id="id_supprimer">
+            <p>Êtes-vous sûr de vouloir supprimer définitivement cette ligne ?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-danger">Supprimer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+<!-- fin Modal -->
+
+  </div>
+</div>
+
+<script>
+
+    // --- MODAL SUPPRIMER ---
+
+  document.querySelectorAll('.btn-audit-sup').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
+    });
+  });
+
+setTimeout(() => {
+  document.querySelectorAll('.alert').forEach(el => {
+    el.style.transition = "opacity 0.5s";
+    el.style.opacity = "0";
+    setTimeout(() => el.remove(), 500);
+  });
+}, 4000);
+
+// ==============================Recherche Informations dans la table  =====================================
+
+  const search = document.querySelector("#rechercher_informations");
+  const my_table = document.querySelectorAll("#my_table tr");
+  window.addEventListener("load", function () {
+    search.addEventListener("keyup", function () {
+      var value_input = search.value.toLowerCase();
+      my_table.forEach(function (ligne) {
+        ligne.classList.toggle(
+          "hidden",
+          ligne.textContent.toLowerCase().indexOf(value_input) === -1
+        );
+      }); // Fin de la boucle
+    }); // Fin de la fonction addEventListener keyup
+  }); // Fin de load
+
+</script>
+
+{% endblock %}

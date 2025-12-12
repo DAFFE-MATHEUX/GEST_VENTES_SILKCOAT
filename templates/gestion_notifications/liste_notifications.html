@@ -1,0 +1,46 @@
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
+
+<h2>Notifications de {{ employe.nom }} {{ employe.prenom }}</h2>
+
+{% if messages %}
+  {% for mgs in messages %}
+    <div class="alert {% if mgs.tags == 'success' %}alert-success{% elif mgs.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}">
+      {{ mgs }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>Message</th>
+      <th>Lu ?</th>
+      <th>Date</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for notif in notifications %}
+      <tr class="{% if not notif.lu %}table-warning{% endif %}">
+        <td>{{ notif.message }}</td>
+        <td>{{ notif.lu|yesno:"Oui,Non" }}</td>
+        <td>{{ notif.date_notification|date:"d/m/Y H:i" }}</td>
+        <td>
+          {% if not notif.lu %}
+            <a href="{% url 'notifications:marquer_lue' notif.id %}" class="btn btn-sm btn-success">Marquer comme lue</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4">Aucune notification</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="#" class="btn btn-secondary mt-3">Retour</a>
+
+{% endblock %}

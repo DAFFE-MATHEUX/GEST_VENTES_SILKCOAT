@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erreur Serveur</title>
+
+    <style>
+        body {
+            font-family: "Poppins", Arial, sans-serif;
+            background: #eef2f7;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+        .error-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .error-box svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 15px;
+            fill: #ffbb00;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 17px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .btn {
+            padding: 12px 24px;
+            background: #ffbb00;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .btn:hover { background: #e7a900; }
+    </style>
+</head>
+
+<body>
+    <div class="error-box">
+        <svg viewBox="0 0 24 24">
+            <path d="M4 6h16M4 10h16M4 
+            14h16M4 18h16"/>
+        </svg>
+
+        <h1>Erreur 500</h1>
+        <p>Une erreur inattendue s'est produite.<br>  
+        Détails : {{ message }}</p>
+
+        <a href="/" class="btn">🏠 Retour à l'accueil</a>
+    </div>
+</body>
+</html>
