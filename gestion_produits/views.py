@@ -22,7 +22,7 @@ from datetime import datetime
 from .models import Produits, CategorieProduit
 from django.core.mail import EmailMessage
 from django.utils import timezone
-from .models import Produits, VenteProduit, LigneVente
+from .models import Produits, VenteProduit, LigneVente, Commandes, Livraisons
 from django.conf import settings
 @login_required
 def ajouter_categorie(request):
@@ -165,6 +165,85 @@ def vendre_produit(request):
 
     return render(request, "gestion_produits/ventes/nouvelle_vente.html", {"produits": produits})
 
+
+
+
+
+def nouvelle_commande(request):
+    produits = Produits.objects.all()
+
+    if request.method == "POST":
+        ids = request.POST.getlist("produit_id[]")
+        quantites = request.POST.getlist("quantite[]")
+        nom_complet_client = request.POST.get("nom_complet_client")
+        telephone_client = request.POST.get("telephone_client")
+        adresse_client = request.POST.get("adresse_client")
+
+        # Validation des produits et quantités
+        if not ids or not quantites:
+            messages.error(request, "Aucun produit sélectionné.")
+            return redirect("produits:nouvelle_commande")
+
+        lignes = []
+        total_general = 0
+
+        for i in range(len(ids)):
+            try:
+                prod = Produits.objects.get(id=ids[i])
+                qte = int(quantites[i])
+            except Produits.DoesNotExist:
+                messages.error(request, "Produit introuvable.")
+                return redirect("produits:nouvelle_commande")
+            except ValueError:
+                messages.error(request, f"Quantité invalide pour {prod.desgprod}.")
+                return redirect("produits:nouvelle_commande")
+
+            if qte <= 0:
+                continue  # Ignorer les produits avec 0 quantité
+
+            # Créer la commande
+            cmd = Commandes.objects.create(
+                numcmd=f"C{timezone.now().strftime('%Y%m%d%H%M%S')}",
+                qtecmd=qte,
+                produits=prod
+            )
+
+            lignes.append((prod, qte))
+            total_general += prod.pu * qte  # Total en fonction du prix unitaire
+
+        # Email à l'admin
+        try:
+            sujet = f"Nouvelle commande enregistrée - Client {nom_complet_client}"
+            contenu = f"""
+Nouvelle commande effectuée.
+
+Téléphone : {telephone_client}
+Adresse : {adresse_client}
+
+Total estimé : {total_general:,} GNF
+
+Détails :
+"""
+            for p, q in lignes:
+                contenu += f"- {p.desgprod} | Qté : {q} | PU : {p.pu} | Sous-total : {p.pu * q}\n"
+
+            email = EmailMessage(
+                sujet,
+                contenu,
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.ADMIN_EMAIL],
+            )
+            email.send()
+        except Exception as e:
+            messages.warning(request, f"Commande enregistrée mais email non envoyé : {str(e)}")
+
+        messages.success(request, "Commande(s) enregistrée(s) avec succès !")
+        return redirect("produits:listes_commandes")
+
+    return render(request, "gestion_produits/commandes/nouvelle_commande.html", {
+        "produits": produits,
+    })
+
 @login_required
 def details_vente(request, id):
     vente = get_object_or_404(VenteProduit, id=id)
@@ -193,7 +272,7 @@ def imprimer_ticket(request, id):
 # Fonction pour gérer les réçu Global de Paiement
 #=============================================================================================
 
-
+@login_required
 def recu_vente_global(request, vente_code):
     try:
         vente = VenteProduit.objects.get(code=vente_code)
@@ -374,6 +453,56 @@ def supprimer_produits(request):
 
         return redirect('produits:listes_produits')
 
+
+@login_required
+
+def supprimer_commandes(request):
+    if request.method == 'POST':
+        prod_id = request.POST.get('id_supprimer')
+
+        try:
+            produit = Commandes.objects.get(id=prod_id)
+
+            # Vérifier si le produit est lié à des commandes
+            if Produits.objects.filter(produit=produit).exists():
+                messages.warning(
+                    request,
+                    "Impossible de supprimer cette commande car il est déjà utilisé dans une commande. "
+                    "Veuillez d'abord supprimer les commandes associées."
+                )
+                return redirect('produits:listes_des_commandes')
+
+            # ----- Ancienne valeur pour l'audit -----
+            ancienne_valeur = {
+                "id": produit.id,
+                "refprod": produit.refprod if hasattr(produit, "refprod") else "",
+                "desgprod": produit.desgprod,
+                "pu": float(produit.pu),
+                "qtestock": produit.qtestock,
+                "categorie": str(produit.categorie) if produit.categorie else None,
+            }
+
+            # ----- Suppression -----
+            produit.delete()
+
+            # ----- Audit -----
+            enregistrer_audit(
+                utilisateur=request.user,
+                action="Suppression produit",
+                table="Produits",
+                ancienne_valeur=ancienne_valeur,
+                nouvelle_valeur=None
+            )
+
+            messages.success(request, "Produit supprimé avec succès !")
+
+        except Produits.DoesNotExist:
+            messages.error(request, "Produit introuvable.")
+        except Exception as ex:
+            messages.error(request, f"Erreur lors de la suppression : {str(ex)}")
+
+        return redirect('produits:listes_produits')
+
 @login_required
 def supprimer_ventes(request):
     if request.method == 'POST':
@@ -427,6 +556,25 @@ def listes_des_ventes(request):
     }
     return render(request, "gestion_produits/ventes/listes_ventes.html", context)
 
+@login_required
+def listes_des_commandes(request):
+    listes_commandes = []
+    total_commandes = None
+    try:
+        listes_commandes = Commandes.objects.all().order_by('-id')
+        total_commandes = listes_commandes.count()
+        
+        listes_commandes = pagination_lis(request,listes_commandes)
+    except Exception as ex :
+        return messages.warning(request, f"Erreur de récupération des commandes {str(ex)} !")
+    except ValueError as ve:
+        return messages.warning(request, f"Erreur de valeur {str(ve)} !")
+        
+    context = {
+        'listes_commandes' : listes_commandes,
+        'total_commandes' : total_commandes
+    }
+    return render(request, "gestion_produits/commandes/listes_commandes.html", context)
 
 
 @login_required

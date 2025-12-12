@@ -91,35 +91,46 @@
     <!-- =====================
          DERNIERS VENTES
          ===================== -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="box box-info">
-                <div class="box-header with-border"><h3 class="box-title">5 Dernières Ventes</h3></div>
-                <div class="box-body table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
+   <div class="row">
+    <div class="col-md-12">
+        <div class="box box-info">
+            <div class="box-header with-border"><h3 class="box-title">5 Dernières Ventes</h3></div>
+            <div class="box-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Code Vente</th>
+                            <th>Référence Produit</th>
+                            <th>Date</th>
+                            <th>Total</th>
+                            <th>Produit</th>
+                            <th>Quantité Vendue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vente in dernieres_ventes %}
+                            {% for ligne in vente.lignes.all %}
                             <tr>
-                                <th>#</th><th>Code Vente</th><th>Date</th><th>Total</th><th>Nombre de Produits</th>
+                                <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
+                                <td>{{ vente.code }}</td>
+                                <td>{{ ligne.produit.refprod }}</td>
+                                <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
+                                <td>{{ vente.total|floatformat:0 }} GNF</td>
+                                <td>{{ ligne.produit.desgprod }}</td>
+                                <td>{{ ligne.quantite }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for v in dernieres_ventes %}
-                            <tr>
-                                <td>{{ forloop.counter }}</td>
-                                <td>{{ v.code }}</td>
-                                <td>{{ v.date_vente|date:"d/m/Y H:i" }}</td>
-                                <td>{{ v.total|floatformat:0 }} GNF</td>
-                                <td>{{ v.lignes.count }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="5" class="text-center">Aucune vente récente.</td></tr>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center">Aucune vente récente.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+</div>
+
 
     <!-- =====================
          DERNIERS AUDITS

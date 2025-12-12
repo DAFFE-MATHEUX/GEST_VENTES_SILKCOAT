@@ -27,6 +27,12 @@ urlpatterns = [
     path('vente/recu_vente_global/<str:vente_code>/', recu_vente_global, name='recu_vente_global'),
         
     #=============================================================================
+    # Gestion des Commandes
+    path('commandes/listes_des_commandes/', listes_des_commandes, name='listes_des_commandes'),
+    path('commandes/nouvelle_commande/', nouvelle_commande, name='nouvelle_commande'),
+    path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
+    
+    #=============================================================================
     path('approv/approvisionner_produit/<int:id>/', approvisionner_produit, name='approvisionner_produit'),
     
     

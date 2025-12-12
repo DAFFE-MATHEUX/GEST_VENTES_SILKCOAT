@@ -42,11 +42,10 @@ class Commandes(models.Model):
     numcmd = models.CharField(max_length = 60)
     qtecmd = models.IntegerField(default = 0)
     datecmd = models.DateField(auto_now = True)
-    client = models.ForeignKey(Clients, on_delete = models.CASCADE)
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
     
     def __str__(self):
-        return f"Client : {self.client} Quantite : {self.qtecmd}"
+        return f"Quantite : {self.qtecmd}"
     
 #==================================================================================
 # Classe Livraisons
@@ -77,7 +76,7 @@ class VenteProduit(models.Model):
 
 class LigneVente(models.Model):
     vente = models.ForeignKey(VenteProduit, on_delete=models.CASCADE, related_name='lignes')
-    produit = models.ForeignKey(Produits, on_delete=models.CASCADE)
+    produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='lignes')
     quantite = models.IntegerField(default=0)
     prix = models.IntegerField(default=0)  # Prix unitaire
     sous_total = models.IntegerField(default=0)

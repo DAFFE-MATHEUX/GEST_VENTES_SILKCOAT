@@ -1,0 +1,81 @@
+{% extends 'admin.html' %}
+{% block contents %}
+
+<h2>GESTION DES COMMANDES</h2>
+<hr>
+
+{% if messages %}
+  {% for m in messages %}
+    <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+  {% endfor %}
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+
+ <div class="form-group">
+    <label for="" class="form-control">Nom Complet du Client</label>
+    <input type="text" class="form-control" placeholder="Entrer le nom complet" name="nom_complet_client[]">
+  </div>
+
+<div class="form-group">
+    <label for="" class="form-control">Téléphone du Client</label>
+    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="telephone_client[]">
+  </div>
+
+  <div class="form-group">
+    <label for="" class="form-control">Adresse du Client</label>
+    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="adresse_client[]">
+  </div>
+
+  <div class="mb-3">
+    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)...">
+  </div>
+<br>
+  <table class="table table-bordered" id="table-produits">
+    <thead>
+      <tr>
+        <th>Produit</th>
+        <th>Stock</th>
+        <th>Quantité à commander</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for p in produits %}
+      <tr class="produit-row">
+        <td>
+          <strong>{{ p.desgprod }}</strong><br>
+          <small>{{ p.categorie.desgcategorie }}</small>
+          <input type="hidden" name="produit_id[]" value="{{ p.id }}">
+        </td>
+
+        <td>{{ p.qtestock }}</td>
+
+        <td>
+          <input type="number" 
+                 name="quantite[]" 
+                 class="form-control qte" 
+                 min="0" 
+                 max="{{ p.qtestock }}" 
+                 value="0">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <button class="btn btn-success mt-3">Valider la commande</button>
+</form>
+
+<script>
+  // ----- RECHERCHE PRODUIT -----
+  document.getElementById("search").addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll(".produit-row").forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
+    });
+  });
+</script>
+
+{% endblock %}

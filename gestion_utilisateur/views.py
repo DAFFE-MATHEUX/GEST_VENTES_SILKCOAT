@@ -44,6 +44,11 @@ def home(request):
     audits = AuditLog.objects.order_by('-date_action')[:5]
 
     # -------------------
+    # Ventes récentes (dernières ventes)
+    # -------------------
+    dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
+
+    # -------------------
     # Statistiques principales
     # -------------------
     total_produits = Produits.objects.count()
@@ -60,6 +65,7 @@ def home(request):
         'non_lues': non_lues,
         'lues': lues,
         'derniers_audits': audits,
+        'dernieres_ventes': dernieres_ventes,
         'dernieeres_notification': notifications[:5],
         'total_produits': total_produits,
         'total_categories': total_categories,
