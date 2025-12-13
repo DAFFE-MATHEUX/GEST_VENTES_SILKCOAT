@@ -3,34 +3,138 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Reçu Vente - {{ entreprise.nom_entrepriese }}</title>
+    <title>Reçu Vente - {{ entreprise.nom_entreprise }}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+
     <style>
-        body { background: #f8f9fa; font-family: "Poppins", sans-serif; color: #222; }
-        .recu-container { background: white; max-width: 900px; margin: 40px auto; padding: 30px 40px; border: 1px solid #ccc; border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .header-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-        .header-left, .header-right { font-size: 14px; line-height: 1.5; }
-        .header-center { text-align: center; flex: 1; }
-        .header-center h2 { font-weight: bold; color: #003366; text-transform: uppercase; margin-bottom: 5px; }
-        .header-center p { margin: 0; font-size: 13px; }
-        .logo { width: 80px; height: 80px; }
-        .section-title { text-align: center; background-color: #003366; color: white; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 15px; text-transform: uppercase; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 10px; border: 1px solid #ccc; font-size: 14px; }
-        th { background-color: #f1f5f9; color: #003366; }
-        .signature-section { margin-top: 40px; display: flex; justify-content: flex-end; }
-        .signature-box { border-top: 2px solid #003366; width: 250px; text-align: center; padding-top: 10px; }
-        .footer { text-align: center; border-top: 2px solid #003366; margin-top: 25px; padding-top: 10px; font-size: 13px; color: #555; }
+        body { 
+            background: #f8f9fa;
+            font-family: "Poppins", sans-serif;
+            color: #222;
+        }
+
+        .recu-container {
+            background: white;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px 40px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .header-left, .header-right {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .header-center { 
+            text-align: center;
+            flex: 1;
+        }
+
+        .header-center h2 {
+            font-weight: bold;
+            color: #003366;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .header-center p {
+            margin: 0;
+            font-size: 13px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+        }
+
+        .section-title {
+            text-align: center;
+            background-color: #003366;
+            color: white;
+            font-weight: bold;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #003366;
+        }
+
+        .signature-section {
+            margin-top: 40px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .signature-box {
+            border-top: 2px solid #003366;
+            width: 250px;
+            text-align: center;
+            padding-top: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            border-top: 2px solid #003366;
+            margin-top: 25px;
+            padding-top: 10px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* 🔵 Correction pour imprimer les couleurs */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+            }
+
+            .recu-container {
+                box-shadow: none !important;
+            }
+        }
     </style>
 </head>
+
 <body>
 
 <div class="recu-container">
 
-    <!-- ENTÊTE -->
+    <!-- 🔵 ENTÊTE -->
     <div class="header-top">
+
         <div class="header-left">
-            <strong>Nom :</strong> {{ entreprise.nom_entrepriese }} <br>
+            <strong>Nom :</strong> {{ entreprise.nom_entrepriese|upper }} <br>
             <strong>Contact :</strong> {{ entreprise.contact1|default:"-" }} <br>
             <strong>Adresse :</strong> {{ entreprise.adresse|default:"-" }} <br>
             <strong>Email :</strong> {{ entreprise.email|default:"-" }}
@@ -40,46 +144,49 @@
             {% if entreprise.logo %}
                 <img src="{{ entreprise.logo.url }}" class="logo"><br>
             {% endif %}
-            <h2>{{ entreprise.nom_entrepriese|upper }}</h2>
-            <p>Reçu officiel de vente</p>
+            <h2>{{ entreprise.nom_entreprise|upper }}</h2>
+            <p>Reçu Officiel de Vente</p>
         </div>
 
         <div class="header-right">
             {% if qr_code_base64 %}
-                <img src="data:image/png;base64,{{ qr_code_base64 }}" width="85" height="85" alt="QR">
+                <img src="data:image/png;base64,{{ qr_code_base64 }}" 
+                     width="85" height="85" alt="QR Code">
             {% endif %}
         </div>
     </div>
 
     <h4 class="section-title">Reçu de Vente</h4>
 
-    <!-- INFOS VENTE -->
+    <!-- 🔵 INFOS VENTE -->
     <table>
-        <tr><th>Références de la Vente</th><td>{{ vente.code }}</td></tr>
+        <tr><th>Référence de la Vente</th><td>{{ vente.code }}</td></tr>
         <tr><th>Vendu Par</th><td>{{ vente.utilisateur }}</td></tr>
         <tr><th>Date de la Vente</th><td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td></tr>
     </table>
 
-    <!-- INFOS CLIENT -->
+    <!-- 🔵 INFOS CLIENT -->
     <h5 class="section-title">Informations Client</h5>
     <table>
-        <tr><th>Noms complet</th><td>{{ ligne.nom_complet_client }}</td></tr>
+        <tr><th>Nom complet</th><td>{{ ligne.nom_complet_client }}</td></tr>
         <tr><th>Adresse</th><td>{{ ligne.adresseclt_client|default:"-" }}</td></tr>
         <tr><th>Téléphone</th><td>{{ ligne.telclt_client|default:"-" }}</td></tr>
     </table>
 
-    <h5 class="section-title">Détails des produits achetés</h5>
+    <h5 class="section-title">Détails des Produits Achetés</h5>
+
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Catégories</th>
+                <th>Catégorie</th>
                 <th>Produit</th>
                 <th>Quantité</th>
-                <th>Prix unitaire (GNF)</th>
+                <th>Prix Unitaire (GNF)</th>
                 <th>Sous-total (GNF)</th>
             </tr>
         </thead>
+
         <tbody>
             {% for l in lignes %}
             <tr>
@@ -91,17 +198,21 @@
                 <td>{{ l.sous_total|floatformat:"0" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" style="text-align:center;">Aucun produit trouvé</td></tr>
+            <tr><td colspan="6" style="text-align:center;">Aucun produit trouvé</td></tr>
             {% endfor %}
         </tbody>
     </table>
 
     <br>
+
     <table>
-        <tr><th>Total Global :</th><td><strong>{{ total|floatformat:"0" }} GNF</strong></td></tr>
+        <tr>
+            <th>Total Global :</th>
+            <td><strong>{{ total|floatformat:"0" }} GNF</strong></td>
+        </tr>
     </table>
 
-    <!-- SIGNATURE -->
+    <!-- 🔵 SIGNATURE -->
     <div class="signature-section">
         <div class="signature-box">
             <p><strong>Le Responsable</strong></p>
@@ -109,8 +220,9 @@
         </div>
     </div>
 
+    <!-- 🔵 PIED DE PAGE -->
     <div class="footer">
-        <p>Ce reçu est généré automatiquement — {{ entreprise.nom_entrepriese|upper }}</p>
+        <p>Document généré automatiquement — {{ entreprise.nom_entrepriese|upper }}</p>
     </div>
 
 </div>

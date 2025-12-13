@@ -18,6 +18,7 @@ from django.core.mail import EmailMessage
 from django.utils import timezone
 from django.conf import settings
 from django.http import HttpResponse
+from django.db.models import Sum, F
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit
 #================================================================================================
@@ -92,26 +93,31 @@ def vendre_produit(request):
             prod = Produits.objects.get(id=ids[i])
             qte = int(quantites[i])
 
-            if qte <= 0:
-                messages.error(request, f"Quantité invalide pour {prod.desgprod}.")
+            if qte < 0:
+                messages.error(request, f"La Quantité invalide inférieur à 0 pour {prod.desgprod}.")
                 return redirect("produits:vendre_produit")
 
             if qte > prod.qtestock:
-                messages.error(request, f"Stock insuffisant pour {prod.desgprod}. Disponible : {prod.qtestock}")
+                messages.error(request, f"Le Stock insuffisant pour {prod.desgprod}. Disponible : {prod.qtestock}")
                 return redirect("produits:vendre_produit")
 
+            if prod.qtestock == 0:
+                messages.error(request, f"Le Stock est nulle pour {prod.desgprod}. Disponible : {prod.qtestock}")
+                return redirect("produits:vendre_produit")
+            
             sous_total = qte * prod.pu
             total_general += sous_total
-
-            lignes.append((prod, qte, prod.pu, sous_total))
+            
+            if not qte == 0:
+                lignes.append((prod, qte, prod.pu, sous_total))
 
         # Génération du code de vente
         code = f"V{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
         # Création de la vente globale
         vente = VenteProduit.objects.create(
-            code=code,
-            total=total_general,
+            code = code,
+            total = total_general,
             utilisateur = request.user,
         )
 
@@ -168,6 +174,38 @@ def vendre_produit(request):
         return redirect("produits:recu_vente_global", vente_code=vente.code)
 
     return render(request, "gestion_produits/ventes/nouvelle_vente.html", {"produits": produits})
+
+
+#================================================================================================
+# Fonction pour afficher l'historique des ventes
+#================================================================================================
+@login_required
+def historique_ventes(request):
+
+    # Récupérer toutes les ventes (la plus récente d'abord)
+    ventes = VenteProduit.objects.all().order_by('-date_vente')
+
+    # Ajouter les infos client (depuis LigneVente)
+    for vente in ventes:
+        ligne = vente.lignes.first()  # 1 vente = toujours au moins une ligne
+        if ligne:
+            vente.client_nom = ligne.nom_complet_client
+            vente.client_telephone = ligne.telclt_client
+        else:
+            vente.client_nom = None
+            vente.client_telephone = None
+
+        # Si tu veux gérer un statut "payé", sinon supprime ceci :
+        vente.paye = getattr(vente, "paye", True)  # Par défaut "Payé"
+
+    # Total général des ventes
+    total_general = ventes.aggregate(total=Sum('total'))['total'] or 0
+
+    context = {
+        'ventes': ventes,
+        'total_general': total_general
+    }
+    return render(request, "gestion_produits/ventes/historisque_ventes.html", context)
 
 
 #================================================================================================
@@ -361,7 +399,6 @@ def modifier_categorie(request):
 #================================================================================================
 # Fonction pour supprimer une catégorie de produit
 #================================================================================================
-
 @login_required
 def supprimer_categorie(request):
     if request.method == 'POST':
@@ -517,7 +554,6 @@ def supprimer_commandes(request):
 #================================================================================================
 # Fonction pour supprimer une vente donnée
 #================================================================================================
-
 @login_required
 def supprimer_ventes(request):
     if request.method == 'POST':

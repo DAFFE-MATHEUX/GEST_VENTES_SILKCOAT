@@ -34,7 +34,7 @@
                 </a>
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_des_ventes' %}"><i class="fa fa-list"></i> Listes des Ventes</a></li>
-                    <li><a href="{% url 'produits:vendre_produit' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
+                    <li><a href="{% url 'produits:historique_ventes' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
                 </ul>
             </li>
 
@@ -59,17 +59,6 @@
                 </a>
                 <ul class="treeview-menu">
                     <li><a href="{% url 'listes_des_fournisseurs' %}"><i class="fa fa-list"></i> Listes Fournisseur</a></li>
-                </ul>
-            </li>
-
-            <li class="treeview">
-                <a href="#">
-                    <i class="fa fa-users"></i>
-                    <span>Paramètres</span>
-                    <i class="fa fa-angle-left pull-right"></i>
-                </a>
-                <ul class="treeview-menu">
-                    <li><a href="{% url 'liste_entreprise' %}"><i class="fa fa-list"></i>Informations Personnelles</a></li>
                 </ul>
             </li>
 
@@ -106,6 +95,17 @@
                 <ul class="treeview-menu">
                     <li><a href="{% url 'gestionUtilisateur:liste_utilisateur' %}"><i class="fa fa-list"></i>Listes Utilisateurs</a></li>
                     <li><a href="{% url 'gestionUtilisateur:deconnexion_utilisateur' %}"><i class="fa fa-sign-out-alt"></i> Déconnexion</a></li>
+                </ul>
+            </li>
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-users"></i>
+                    <span>Paramètres</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'liste_entreprise' %}"><i class="fa fa-list"></i>Informations Personnelles</a></li>
                 </ul>
             </li>
 

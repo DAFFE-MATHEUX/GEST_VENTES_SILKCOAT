@@ -185,10 +185,9 @@
                 <i class="fa fa-user-tag"></i>
                 <select name="type_utilisateur" required>
                     <option disabled selected>-- Sélectionner un type --</option>
-                    <option value="Admin">Admin</option>
-                    <option value="DG">Directeur Général</option>
-                    <option value="DE">Directeur des Études</option>
-                    <option value="Comptable">Comptable</option>
+                    {% for value, key in choix_utilisateur %}
+                    <option value="{{ value }}">{{key}}</option>
+                    {% endfor %}
                 </select>
             </div>
 

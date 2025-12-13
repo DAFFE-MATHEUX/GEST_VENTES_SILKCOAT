@@ -46,7 +46,7 @@ def home(request):
     # -------------------
     # Ventes récentes (dernières ventes)
     # -------------------
-    dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
+    dernieres_ventes = VenteProduit.objects.order_by('-date_vente')
 
     # -------------------
     # Statistiques principales
@@ -65,7 +65,7 @@ def home(request):
         'non_lues': non_lues,
         'lues': lues,
         'derniers_audits': audits,
-        'dernieres_ventes': dernieres_ventes,
+        'dernieres_ventes': dernieres_ventes[:5],
         'dernieeres_notification': notifications[:5],
         'total_produits': total_produits,
         'total_categories': total_categories,
@@ -116,6 +116,7 @@ def Logoutuser(request):
 # Inscription
 # ===============================================
 def inscriptionutilisateur(request):
+    choix_utilisateur = Utilisateur.ROLE_CHOICES
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -148,7 +149,7 @@ def inscriptionutilisateur(request):
             return redirect('gestionUtilisateur:inscription_utilisateur')
 
         try:
-            utilisateur = Utilisateur.objects.create_user(
+            Utilisateur.objects.create_user(
                 username=username,
                 email=email,
                 password=password1,
@@ -161,8 +162,10 @@ def inscriptionutilisateur(request):
             return redirect('gestionUtilisateur:tableau_bord')
         except Exception as e:
             messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
-
-    return render(request, 'gestion_utilisateurs/inscription_utilisateur.html')
+    context = {
+        'choix_utilisateur' : choix_utilisateur,
+    }
+    return render(request, 'gestion_utilisateurs/inscription_utilisateur.html', context)
 
 
 # ===============================================

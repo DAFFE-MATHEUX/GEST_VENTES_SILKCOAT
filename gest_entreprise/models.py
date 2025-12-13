@@ -7,7 +7,7 @@ class Entreprise(models.Model):
     contact2 = models.CharField(max_length=30)
     adresse = models.CharField(max_length=30)
     email = models.EmailField(null=True)
-    logo = models.ImageField(upload_to='logos/', null=True, blank=True)
+    logo = models.FileField(upload_to='Entreprise/', null=True, blank=True)
     date_maj = models.DateField(auto_now=True)
     
     def __str__(self):
