@@ -7,13 +7,20 @@ def dashboard(request):
     return render(request, 'dashboard.html')
 
 #========================================================
+def handler404(request, exception):
+    """ Error Handler 404 - Page Not Found """
+    return render(request, "pages_errors/erreur404.html", status=404) 
 
-def calendar(request):
-    return render(request, 'calendar.html')
+# ========================================================================
 
-#========================================================
+def handler403(request, exception):
+    """ Error Handler 403 - No access """
+    return render(request, "pages_errors/erreur403.html", status=403)
 
-def mailbox(request):
-    return render(request, 'mailbox.html')
+# ====================================================================
 
-#========================================================
+def handler500(request):
+    """ Error Handler 500 - Server Error """
+    return render(request, "pages_errors/erreur500.html", status=500)
+
+# ====================================================================

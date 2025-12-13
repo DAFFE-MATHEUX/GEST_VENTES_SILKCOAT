@@ -19,13 +19,12 @@ from django.urls import path
 from django.urls import include
 from django.conf import settings
 from django.conf.urls.static import static
-from gest_commerce.views import dashboard, mailbox, calendar
+from gest_commerce.views import dashboard
+from .views import handler404,handler404, handler500 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
-    path('dashboard/', dashboard, name='dashboard'),
-    path('mailbox/', mailbox, name='mailbox'),
-    path('calendar/', calendar, name='calendar'),   
+    path('dashboard/', dashboard, name='dashboard'), 
      
     path('accounts/', include('allauth.urls')),  # Pour django allauth
     path('auth/', include('social_django.urls', namespace='social')),  # Pour social auth
@@ -38,3 +37,11 @@ urlpatterns = [
     path('audit/', include('gestion_audit.urls')),
     path('notifications/', include('gestion_notifications.urls')),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# ======================================================================================
+
+handler404 = 'gest_commerce.views.handler404'
+handler403 = 'gest_commerce.views.handler403'
+handler500 = 'gest_commerce.views.handler500'
+
+# =======================================================================================
