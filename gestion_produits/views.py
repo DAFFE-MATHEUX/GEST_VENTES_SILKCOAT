@@ -327,13 +327,16 @@ def recu_vente_global(request, vente_code):
         f"Date : {vente.date_vente}\n"
         f"Nombre d'articles : {lignes.count()}\n"
         f"Total : {total} GNF\n"
+        f"Nom du Client : {lignes.nomcomplets_client} GNF\n"
+        f"Téléphone du Client : {lignes.telephone_client} GNF\n"
+        f"Adresse du Client : {lignes.adresse_client} GNF\n"
     )
 
     qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
+        version = 1,
+        error_correction = qrcode.constants.ERROR_CORRECT_H,
+        box_size = 10,
+        border = 4,
     )
     qr.add_data(qr_data)
     qr.make(fit=True)

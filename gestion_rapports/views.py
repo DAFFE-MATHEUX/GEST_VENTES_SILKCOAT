@@ -4,9 +4,9 @@ from django.template.loader import get_template, TemplateDoesNotExist
 from django.http import HttpResponse
 from weasyprint import HTML
 
-from gestion_produits.models import LigneVente, Produits, VenteProduit
+from gestion_produits.models import Commandes, LigneVente, Produits, VenteProduit
 from .models import Rapport
-from .utils import pagination_liste
+from .utils import pagination_lis, pagination_liste
 from django.contrib.auth.decorators import login_required
 
 from io import BytesIO
@@ -18,12 +18,13 @@ from gestion_audit.views import enregistrer_audit
 
 from django.db.models import Sum
 from gest_entreprise.models import Entreprise
+from datetime import datetime as dt
 # ========================================================================
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur') #Empecher tant que l'utilisateur n'est pas connecté
 def liste_rapports(request):
     liste_rapports = Rapport.objects.select_related('genere_par').order_by('-date_generation')
     total_rapports = liste_rapports.count()
-    liste_rapports = pagination_liste(request, liste_rapports)
+    liste_rapports = pagination_lis(request, liste_rapports)
 
     context = {
         "liste_rapports": liste_rapports,
@@ -57,39 +58,44 @@ def generer_rapport(request):
         type_rapport = request.POST.get("type")
 
         nom_entreprise = Entreprise.objects.first()
-
+        
         if not (titre and type_rapport):
             messages.error(request, "Tous les champs obligatoires ne sont pas remplis.")
             return redirect("rapports:creer_rapport")
 
+        date_debut_conversion = dt.strptime(periode_debut, "%Y-%m-%d")
+        date_fin_conversion = dt.strptime(periode_fin, "%Y-%m-%d")
         # Création du rapport
         rapport = Rapport.objects.create(
-            titre=titre,
-            periode_debut=periode_debut,
-            periode_fin=periode_fin,
-            type=type_rapport,
-            genere_par=request.user
+        titre = titre.upper(),
+        periode_debut = date_debut_conversion,
+        periode_fin = date_fin_conversion,
+        type = type_rapport,
+        genere_par = request.user
         )
-
+        
         data_qs = []
         total_montant = None
         total_reste = None
 
         if type_rapport == "Produits":
-            data_qs = Produits.objects.all()
+            data_qs = Produits.objects.all().order_by('-desgprod')
 
         elif type_rapport == "Ventes":
-            data_qs = VenteProduit.objects.filter(
-                date_vente__range=[periode_debut, periode_fin]
-            )
-            total_montant = data_qs.aggregate(total=Sum('total'))['total'] or 0
-
-        elif type_rapport == "Commandes":
             data_qs = LigneVente.objects.filter(
-                vente__date_vente__range=[periode_debut, periode_fin]
+                vente__date_vente__range=[
+                    date_debut_conversion, date_fin_conversion
+                ]
             )
             total_montant = data_qs.aggregate(total=Sum('sous_total'))['total'] or 0
-
+                
+        elif type_rapport == "Commandes":
+            data_qs = Commandes.objects.filter(
+                datecmd__range = [
+                    date_debut_conversion, date_fin_conversion
+                    ]
+                )
+            total_montant = data_qs.aggregate(total=Sum('sous_total'))['total'] or 0
         else:
             messages.error(request, "Type de rapport invalide.")
             return redirect("rapports:creer_rapport")
@@ -102,7 +108,6 @@ def generer_rapport(request):
             'total_reste': total_reste,
             'entreprise': nom_entreprise,
         }
-
         # Génération du PDF
         template = get_template('gestion_rapports/rapport_pdf.html')
         html_content = template.render(context, request)
@@ -147,14 +152,15 @@ def suppression_rapport(request):
             "Période début": str(rapport.periode_debut),
             "Période fin": str(rapport.periode_fin),
             "Type": rapport.type,
+            'utilisateur' : str(request.user),
             "Généré par": rapport.genere_par.username if rapport.genere_par else ""
         }
         enregistrer_audit(
-            utilisateur=request.user,
-            action="Suppression",
+            utilisateur = str(request.user),
+            action = "Suppression",
             table="Rapport",
-            ancienne_valeur=ancienne_valeur,
-            nouvelle_valeur=None
+            ancienne_valeur = ancienne_valeur,
+            nouvelle_valeur = None
         )
 
         # --- Suppression effective ---

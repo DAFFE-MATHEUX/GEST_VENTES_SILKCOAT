@@ -22,7 +22,7 @@ def pagination_liste(request, listes):
 #=============2eme Méthode de la pagination en Django==========================
 def pagination_lis(request, liste):
     default_page = 1
-    pageformat = Paginator(liste, 6)
+    pageformat = Paginator(liste, 10)
     numero_page = request.GET.get('pages')
     try:
         items_page = pageformat.page(numero_page) # items_page est un dictionnaire de liste

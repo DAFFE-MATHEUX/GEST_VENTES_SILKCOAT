@@ -42,11 +42,6 @@
         </h2>
     </div>
 
-    <!-- République -->
-    <div style="font-size: 12px; text-align: right; line-height: 1.5;">
-        <strong>RÉPUBLIQUE DE GUINÉE</strong><br>
-        <em>Travail - Justice - Solidarité</em>
-    </div>
 </div>
 
 <!-- TITRE -->
@@ -66,13 +61,17 @@
     <table>
         <tr>
             <th>#</th>
+            <th>Références du produit</th>
             <th>Nom du produit</th>
+            <th>Catégorie du produit</th>
             <th>Prix unitaire</th>
             <th>Stock disponible</th>
         </tr>
         {% for item in data %}
             <tr>
                 <td>{{ forloop.counter }}</td>
+                <td>{{ item.refprod }}</td>
+                <td>{{ item.categorie.desgcategorie }}</td>
                 <td>{{ item.desgprod }}</td>
                 <td>{{ item.pu|floatformat:0 }} GNF</td>
                 <td>{{ item.qtestock }}</td>
@@ -85,14 +84,26 @@
 {% elif rapport.type == "Ventes" %}
     <h3>LISTE DES VENTES</h3>
     <table>
-        <tr><th>#</th><th>Code Vente</th><th>Date</th><th>Total</th><th>Nombre de produits</th></tr>
+        <tr>
+            <th>#</th>
+            <th>Catégories du Produit</th>
+            <th>Références du Produit</th>
+            <th>Désignation Produit</th>
+            <th>Quantités Vendues</th>
+            <th>Quantités Restantes</th>
+            <th>Date de la Vente</th>
+            <th>Total</th>
+        </tr>
         {% for item in data %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ item.code }}</td>
-                <td>{{ item.date_vente|date:"d/m/Y H:i" }}</td>
-                <td>{{ item.total|floatformat:0 }} GNF</td>
-                <td>{{ item.lignes.count }}</td>
+                <td>{{ item.vente.code }}</td>
+                <td>{{ item.produit.categorie.desgcategorie }}</td>
+                <td>{{ item.produit.desgprod }}</td>
+                <td>{{ item.quantite }}</td>
+                <td>{{ item.produit.qtestock }}</td>
+                <td>{{ item.vente.date_vente|date:"d/m/Y H:i" }}</td>
+                <td>{{ item.sous_total|floatformat:0 }} GNF</td>
             </tr>
         {% empty %}
             <tr><td colspan="5" class="empty">Aucune vente trouvée.</td></tr>
@@ -102,7 +113,7 @@
     {% if total_montant %}
     <div class="resume">
         <table>
-            <tr><td>Total encaissé :</td><td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td></tr>
+            <tr><td>Montant Total Vendu :</td><td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td></tr>
         </table>
     </div>
     {% endif %}
@@ -114,7 +125,7 @@
             <th>#</th>
             <th>Code Vente</th>
             <th>Produit</th>
-            <th>Quantité</th>
+            <th>Quantité Commandée</th>
             <th>Prix Unitaire</th>
             <th>Sous-total</th>
         </tr>
@@ -128,7 +139,7 @@
             <td>{{ item.sous_total|floatformat:0 }} GNF</td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="empty">Aucune commande trouvée.</td></tr>
+        <tr><td colspan="6" class="empty">Aucune commande trouvée ou effectuée.</td></tr>
         {% endfor %}
     </table>
 

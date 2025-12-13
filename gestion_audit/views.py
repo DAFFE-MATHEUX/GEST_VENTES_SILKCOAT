@@ -4,7 +4,7 @@ from .models import AuditLog
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
-from .utils import pagination_liste
+from .utils import pagination_lis, pagination_liste
 from django.contrib.auth.decorators import login_required
 from datetime import date
 from gestion_utilisateur.models import Utilisateur
@@ -39,7 +39,7 @@ def liste_audit(request):
         liste_audit = liste_audit.filter(utilisateur_id=utilisateur_filtre)
 
     # Pagination
-    liste_audit = pagination_liste(request, liste_audit)
+    liste_audit = pagination_lis(request, liste_audit)
 
     context = {
         "liste_audit": liste_audit,

@@ -43,22 +43,30 @@ def home(request):
     # -------------------
     audits = AuditLog.objects.order_by('-date_action')[:5]
 
-    # -------------------
+    # ---------------------------------------
     # Ventes récentes (dernières ventes)
-    # -------------------
+    # ---------------------------------------
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')
 
-    # -------------------
+    # ----------------------------------------------
+    # Les produits les plus vendus dans la semaine
+    # ----------------------------------------------
+    produits_plus_vendus = LigneVente.objects.filter(
+        quantite = 100
+        ).order_by('-vente__date_vente')
+
+    # ----------------------------------------
     # Statistiques principales
-    # -------------------
+    # ----------------------------------------
+    
     total_produits = Produits.objects.count()
     total_categories = CategorieProduit.objects.count()
     total_commandes = Commandes.objects.count()
     total_ventes = VenteProduit.objects.count()
 
-    # -------------------
+    # -------------------------------------
     # Contexte pour le template
-    # -------------------
+    # -------------------------------------
     context = {
         'profil': profil,
         'notifications': notifications,

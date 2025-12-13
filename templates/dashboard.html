@@ -131,6 +131,48 @@
     </div>
 </div>
 
+    <!-- ==============================================
+         LES PRODUITS LES PLUS VENDUS CETTE SEMEMAINE
+         ===================== ========================-->
+   <div class="row">
+    <div class="col-md-12">
+        <div class="box box-info">
+            <div class="box-header with-border"><h3 class="box-title">LES PRODUITS LES PLUS VENDUS CETTE SEMEMAINE</h3></div>
+            <div class="box-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Code Vente</th>
+                            <th>Référence Produit</th>
+                            <th>Date</th>
+                            <th>Total</th>
+                            <th>Produit</th>
+                            <th>Quantité Vendue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vente in produits_plus_vendus %}
+                            {% for ligne in vente.lignes.all %}
+                            <tr>
+                                <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
+                                <td>{{ vente.code }}</td>
+                                <td>{{ ligne.produit.refprod }}</td>
+                                <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
+                                <td>{{ vente.total|floatformat:0 }} GNF</td>
+                                <td>{{ ligne.produit.desgprod }}</td>
+                                <td>{{ ligne.quantite }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center">Aucune vente récentement faite cette semaine.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- =====================
          DERNIERS AUDITS
