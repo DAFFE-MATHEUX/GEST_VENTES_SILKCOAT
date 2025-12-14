@@ -8,7 +8,7 @@
      =========================== -->
 <section class="content-header">
     <h1>
-        BIENVENUE DANS LE TABLEAU DE BORD D'ADMINISTRATION
+        TABLEAU DE BORD D'ADMINISTRATION
     </h1>
     <ol class="breadcrumb">
         <li><a href="{% url 'gestionUtilisateur:tableau_bord' %}"><i class="fa fa-dashboard"></i> Home</a></li>
@@ -41,6 +41,21 @@
             </div>
         </div>
 
+           <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-red">
+                <div class="inner">
+                    <h3>{{ total_stock }}</h3>
+                    <p>Total Stock</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-cash"></i>
+                </div>
+                <a href="{% url 'produits:listes_produits' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
         <div class="col-lg-3 col-xs-6">
             <div class="small-box bg-green">
                 <div class="inner">
@@ -65,6 +80,26 @@
                 <div class="icon">
                     <i class="ion ion-bag"></i>
                 </div>
+                <a href="{% url 'produits:listes_des_commandes' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+
+    </div>
+
+        <div class="row">
+
+               <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-yellow">
+                <div class="inner">
+                    <h3>{{ total_livraisons }}</h3>
+                    <p>Total Livraison</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-bag"></i>
+                </div>
                 <a href="" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
@@ -81,6 +116,21 @@
                     <i class="ion ion-cash"></i>
                 </div>
                 <a href="{% url 'produits:listes_des_ventes' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+          <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-red">
+                <div class="inner">
+                    <h3>{{ total_audit }}</h3>
+                    <p>Total Audits</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-cash"></i>
+                </div>
+                <a href="{% url 'audit:liste_audit' %}" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
             </div>
@@ -151,7 +201,7 @@
                             <th>Quantité Vendue</th>
                         </tr>
                     </thead>
-                    <tbody>
+                  <tbody>
                         {% for vente in produits_plus_vendus %}
                             {% for ligne in vente.lignes.all %}
                             <tr>
@@ -161,13 +211,18 @@
                                 <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
                                 <td>{{ vente.total|floatformat:0 }} GNF</td>
                                 <td>{{ ligne.produit.desgprod }}</td>
-                                <td>{{ ligne.quantite }}</td>
+                                <td><strong>{{ ligne.quantite }}</strong></td>
                             </tr>
                             {% endfor %}
                         {% empty %}
-                        <tr><td colspan="7" class="text-center">Aucune vente récentement faite cette semaine.</td></tr>
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    Aucune vente enregistrée cette semaine.
+                                </td>
+                            </tr>
                         {% endfor %}
                     </tbody>
+
                 </table>
             </div>
         </div>

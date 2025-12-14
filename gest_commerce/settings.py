@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     'gestion_utilisateur',
     'gestion_audit',
     'gestion_notifications',
-    'gestion_fournisseurs',
     'gestion_produits',
     'gest_entreprise',
     'gestion_rapports',

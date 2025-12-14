@@ -1,0 +1,38 @@
+{% extends 'admin.html' %}
+{% block contents %}
+<h2>RECEPTION DES COMMANDES</h2>
+<hr>
+
+<form method="post">
+  {% csrf_token %}
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Numéro commande</th>
+        <th>Produit</th>
+        <th>Fournisseur</th>
+        <th>Quantité commandée</th>
+        <th>Quantité à livrer</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cmd in commandes %}
+      <tr>
+        <td>{{ cmd.numcmd }}</td>
+        <td>{{ cmd.produits.desgprod }}</td>
+        <td>{{ cmd.nom_complet_fournisseur }}</td>
+        <td>{{ cmd.qtecmd }}</td>
+        <td>
+          <input type="hidden" name="commande_id[]" value="{{ cmd.id }}">
+          <input type="number" name="quantite_livree[]" min="0" max="{{ cmd.qtecmd }}" value="{{ cmd.qtecmd }}" class="form-control">
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center">Aucune commande à livrer.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <button class="btn btn-success mt-3">Enregistrer la livraison</button>
+</form>
+{% endblock %}

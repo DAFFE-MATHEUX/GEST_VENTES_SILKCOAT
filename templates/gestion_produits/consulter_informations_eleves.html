@@ -43,21 +43,16 @@
                                 </div>
 
                                 <div class="form-group">
+                                    <label>Prix Unitaire en Gros</label>
+                                    <p class="form-control-static">{{ produit.prix_en_gros }} GNF</p>
+                                </div>
+
+                                <div class="form-group">
                                     <label>Quantité en Stock</label>
                                     <p class="form-control-static">{{ produit.qtestock }}</p>
                                 </div>
 
-                                <div class="form-group">
-                                    {% if produit.photoprod %}
-                                        <img src="{{ produit.photoprod.url }}" alt="Photo produit" width="100px" height="100px">
-                                    {% else %}
-                                        <small>Aucune image disponible</small>
-                                    {% endif %}
-                                </div>
 
-                                <a class="btn btn-primary" href="{% url 'produits:listes_produits' %}">
-                                    <i class="fa fa-arrow-left"></i> Retour
-                                </a>
                             </div>
 
                             <!-- COLONNE DROITE -->
@@ -78,6 +73,18 @@
                                         {{ produit.date_maj }}
                                     </p>
                                 </div>
+
+                                <div class="form-group">
+                                    {% if produit.photoprod %}
+                                        <img src="{{ produit.photoprod.url }}" alt="Photo produit" width="100px" height="100px">
+                                    {% else %}
+                                        <small>Aucune image disponible</small>
+                                    {% endif %}
+                                </div>
+
+                                <a class="btn btn-primary" href="{% url 'produits:listes_produits' %}">
+                                    <i class="fa fa-arrow-left"></i> Retour
+                                </a>
 
                             </div>
 

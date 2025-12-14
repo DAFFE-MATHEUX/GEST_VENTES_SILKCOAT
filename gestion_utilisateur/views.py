@@ -1,6 +1,3 @@
-# ===============================================
-# Gestion des utilisateurs - views.py
-# ===============================================
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout, authenticate, get_user_model
@@ -19,6 +16,9 @@ from gestion_notifications.models import Notification
 
 from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmView
 from gestion_produits.models import *
+from django.db.models import Sum, F
+from django.utils import timezone
+from datetime import timedelta
 # ===============================================
 # Tableau de bord
 # ===============================================
@@ -31,6 +31,10 @@ def home(request):
     # Utilisateur connecté
     utilisateur = request.user
 
+    aujourdhui = timezone.now().date()
+    debut_semaine = aujourdhui - timedelta(days=aujourdhui.weekday())  # Lundi
+    fin_semaine = debut_semaine + timedelta(days=6)  # Dimanche
+    
     # -------------------
     # Notifications
     # -------------------
@@ -51,18 +55,79 @@ def home(request):
     # ----------------------------------------------
     # Les produits les plus vendus dans la semaine
     # ----------------------------------------------
-    produits_plus_vendus = LigneVente.objects.filter(
-        quantite = 100
-        ).order_by('-vente__date_vente')
+
+    produits_plus_vendus = (
+        VenteProduit.objects
+        .filter(date_vente__date__range=[debut_semaine, fin_semaine])
+        .prefetch_related('lignes', 'lignes__produit')
+        .annotate(qte_totale=Sum('lignes__quantite'))
+        .order_by('-qte_totale')
+    )
 
     # ----------------------------------------
-    # Statistiques principales
+    # Statistiques sur le total des produits
     # ----------------------------------------
-    
     total_produits = Produits.objects.count()
+    
+    # ---------------------------------------------------------
+    # Statistiques sur le total des stocks de tout les produits
+    # ----------------------------------------------------------
+    data_products = Produits.objects.all()
+    total_stock = data_products.aggregate(qtestock=Sum('qtestock'))['qtestock'] or 0
+
+    # ----------------------------------------
+    # Statistiques sur le total de catégorie
+    # ----------------------------------------
     total_categories = CategorieProduit.objects.count()
-    total_commandes = Commandes.objects.count()
-    total_ventes = VenteProduit.objects.count()
+    
+    # ----------------------------------------------
+    # Commandes de la semaine
+    # ----------------------------------------------
+    """ 
+    # Commande du jour
+    Commandes.objects.filter(
+            datecmd__gte=debut_semaine
+        ).values('datecmd').annotate(total=Count('id'))
+    """
+    
+    """ 
+    # 📌 Celle-ci compte les 7 derniers jours, pas exactement la semaine civile.
+    total_commandes = Commandes.objects.filter(
+    datecmd__gte=timezone.now().date() - timedelta(days=7)
+    ).count()
+    """
+    commandes_semaine = Commandes.objects.filter(
+        datecmd__range=[debut_semaine, fin_semaine]
+    )
+
+    total_commandes = commandes_semaine.count()
+    # ----------------------------------------------
+    # Total de Livraisons de la semaine
+    # ----------------------------------------------
+    livraisons_semaine = Livraisons.objects.filter(
+        datelivrer__range=[debut_semaine, fin_semaine]
+    )
+    total_livraisons = livraisons_semaine.count()
+
+    # ----------------------------------------------
+    # Total de vente éffectuée dans la semaine
+    # ----------------------------------------------
+    ventes_semaines = VenteProduit.objects.filter(
+        date_vente__range = [
+            debut_semaine, fin_semaine
+        ]
+    )
+    total_ventes = ventes_semaines.count()
+    
+    # ----------------------------------------------
+    # Total de audits éffectué dans la semaine
+    # ----------------------------------------------
+    audit_semaines = AuditLog.objects.filter(
+        date_action__range = [
+            debut_semaine, fin_semaine
+        ]
+    )
+    total_audit = audit_semaines.count()
 
     # -------------------------------------
     # Contexte pour le template
@@ -75,10 +140,14 @@ def home(request):
         'derniers_audits': audits,
         'dernieres_ventes': dernieres_ventes[:5],
         'dernieeres_notification': notifications[:5],
+        'produits_plus_vendus' : produits_plus_vendus,
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_commandes': total_commandes,
+        'total_livraisons': total_livraisons,
+        'total_audit' : total_audit,
         'total_ventes': total_ventes,
+        'total_stock' : total_stock,
         'now': date.today(),
     }
 

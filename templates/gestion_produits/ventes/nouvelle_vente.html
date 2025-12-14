@@ -13,34 +13,38 @@
 <form method="post">
   {% csrf_token %}
 
+  <!-- ================= CLIENT ================= -->
   <div class="form-group">
-    <label for="" class="form-control">Nom Complet du Client</label>
-    <input type="text" class="form-control" placeholder="Entrer le nom complet" name="nom_complet_client[]">
-  </div>
-
-<div class="form-group">
-    <label for="" class="form-control">Téléphone du Client</label>
-    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="telephone_client[]">
+    <label>Nom complet du client</label>
+    <input type="text" class="form-control" name="nom_complet_client" required>
   </div>
 
   <div class="form-group">
-    <label for="" class="form-control">Adresse du Client</label>
-    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="adresse_client[]">
+    <label>Téléphone du client</label>
+    <input type="text" class="form-control" name="telephone_client" required>
   </div>
 
+  <div class="form-group">
+    <label>Adresse du client</label>
+    <input type="text" class="form-control" name="adresse_client" required>
+  </div>
+
+  <!-- ================= RECHERCHE ================= -->
   <div class="mb-3">
-    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)...">
+    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)">
   </div>
-<br>
+
+  <!-- ================= TABLE PRODUITS ================= -->
   <table class="table table-bordered" id="table-produits">
-    <thead>
+    <thead class="table-dark">
       <tr>
         <th>Produit</th>
         <th>PU</th>
         <th>Stock</th>
-        <th>Quantité à vendre</th>
+        <th>Quantité</th>
+        <th>Réduction / unité</th>
         <th>Sous-total</th>
-        <th>Détail Produit</th>
+        <th>Détails</th>
       </tr>
     </thead>
 
@@ -48,98 +52,96 @@
       {% for p in produits %}
       <tr class="produit-row">
 
-        <!-- Produit -->
         <td>
           <strong>{{ p.desgprod }}</strong><br>
           <small>{{ p.categorie.desgcategorie }}</small>
-
           <input type="hidden" name="produit_id[]" value="{{ p.id }}">
         </td>
 
-        <!-- PU -->
         <td class="pu">{{ p.pu }}</td>
-
-        <!-- Stock -->
         <td class="stock">{{ p.qtestock }}</td>
 
-        <!-- Quantité de vente -->
+        <!-- Quantité -->
         <td>
-          <input type="number" 
-                 name="quantite[]" 
-                 class="form-control qte" 
-                 min="0" 
-                 max="{{ p.qtestock }}" 
-                 value="0" 
+          <input type="number"
+                 name="quantite[]"
+                 class="form-control qte"
+                 min="0"
+                 max="{{ p.qtestock }}"
+                 value="0"
                  data-pu="{{ p.pu }}">
+        </td>
+
+        <!-- Réduction -->
+        <td>
+          <input type="number"
+                 name="reduction[]"
+                 class="form-control reduction"
+                 min="0"
+                 value="0">
         </td>
 
         <!-- Sous-total -->
         <td class="sous-total">0</td>
 
-        <!-- APPRO BOUTON -->
-    <td>
-          <a href="{% url 'produits:details_vente' p.id %}" 
+        <!-- Détails -->
+        <td>
+          <a href="{% url 'produits:details_vente' p.id %}"
              class="btn btn-primary btn-sm">
-            <i class="fa fa-eye"></i> Details
+            <i class="fa fa-eye"></i>
           </a>
         </td>
-
 
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <div class="text-right">
-    <h4>Total Global: <span id="total-general">0</span> GNF</h4>
+  <!-- ================= TOTAL ================= -->
+  <div class="text-right mt-3">
+    <h4>Total Global : <span id="total-general">0</span> GNF</h4>
   </div>
 
   <button class="btn btn-success mt-3">Valider la vente</button>
 </form>
 
+<!-- ================= SCRIPT ================= -->
 <script>
-  // ----- CALCUL DES SOUS-TOTAUX -----
-  function recalc() {
-    let total = 0;
+function recalc() {
+  let total = 0;
 
-    document.querySelectorAll("tbody tr").forEach(row => {
-      const qtyInput = row.querySelector(".qte");
-      const qte = parseInt(qtyInput.value || 0);
-      const pu = parseInt(qtyInput.dataset.pu || 0);
+  document.querySelectorAll(".produit-row").forEach(row => {
 
-      const sousTotal = qte * pu;
-      row.querySelector(".sous-total").textContent = sousTotal;
+    const qte = parseInt(row.querySelector(".qte").value || 0);
+    const pu = parseInt(row.querySelector(".qte").dataset.pu || 0);
+    const reduction = parseInt(row.querySelector(".reduction").value || 0);
 
-      total += sousTotal;
-    });
+    let puFinal = pu - reduction;
+    if (puFinal < 0) puFinal = 0;
 
-    document.getElementById("total-general").textContent = total;
-  }
+    const sousTotal = qte * puFinal;
 
-  // Mise à jour dynamique
-  document.querySelectorAll(".qte").forEach(input => {
-    input.addEventListener("input", function () {
-      const max = parseInt(this.max);
-      let v = parseInt(this.value || 0);
-
-      if (v < 0) v = 0;
-      if (v > max) v = max;
-
-      this.value = v;
-      recalc();
-    });
+    row.querySelector(".sous-total").textContent = sousTotal;
+    total += sousTotal;
   });
 
-  // ----- RECHERCHE PRODUIT -----
-  document.getElementById("search").addEventListener("input", function () {
-    const q = this.value.toLowerCase();
+  document.getElementById("total-general").textContent = total;
+}
 
-    document.querySelectorAll(".produit-row").forEach(row => {
-      row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
-    });
+// Événements
+document.querySelectorAll(".qte, .reduction").forEach(input => {
+  input.addEventListener("input", recalc);
+});
+
+// Recherche produit
+document.getElementById("search").addEventListener("input", function () {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll(".produit-row").forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
   });
+});
 
-  recalc();
+recalc();
 </script>
 
 {% endblock %}

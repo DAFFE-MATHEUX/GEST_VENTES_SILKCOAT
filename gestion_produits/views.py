@@ -22,7 +22,6 @@ from django.db.models import Sum, F
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit
 #================================================================================================
-
 @login_required
 def ajouter_categorie(request):
     if request.method == 'POST':
@@ -43,7 +42,6 @@ def ajouter_categorie(request):
         return redirect('produits:listes_categorie')
 
     return render(request, 'gestion_produits/listes_categorie.html')
-
 
 #================================================================================================
 # Fonction pour éffectuer un approvisionnement
@@ -68,105 +66,89 @@ def approvisionner_produit(request, id):
 #================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
-
 @login_required
+
 def vendre_produit(request):
     produits = Produits.objects.all()
 
     if request.method == "POST":
         ids = request.POST.getlist("produit_id[]")
         quantites = request.POST.getlist("quantite[]")
+        reductions = request.POST.getlist("reduction[]")
 
-        nom_complet = request.POST.get("nom_complet_client[]")
-        telephone = request.POST.get("telephone_client[]")
-        adresse = request.POST.get("adresse_client[]")
+        nom_complet = request.POST.get("nom_complet_client")
+        telephone = request.POST.get("telephone_client")
+        adresse = request.POST.get("adresse_client")
 
         if not nom_complet or not telephone:
-            messages.error(request, "Veuillez renseigner le nom complet et le numéro de téléphone du client.")
+            messages.error(request, "Veuillez renseigner le nom complet et le téléphone du client.")
             return redirect("produits:vendre_produit")
 
         total_general = 0
         lignes = []
 
-        # Vérification des stocks
-        for i in range(len(ids)):
-            prod = Produits.objects.get(id=ids[i])
-            qte = int(quantites[i])
+        # Boucle sécurisée
+        for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
+            try:
+                prod = Produits.objects.get(id=prod_id)
+            except Produits.DoesNotExist:
+                continue
 
-            if qte < 0:
-                messages.error(request, f"La Quantité invalide inférieur à 0 pour {prod.desgprod}.")
-                return redirect("produits:vendre_produit")
+            qte = int(qte_str or 0)
+            reduction = int(red_str or 0)
+
+            if qte <= 0:
+                continue  # Ignorer si quantité nulle
 
             if qte > prod.qtestock:
-                messages.error(request, f"Le Stock insuffisant pour {prod.desgprod}. Disponible : {prod.qtestock}")
+                messages.error(request, f"Stock insuffisant pour {prod.desgprod}. Disponible : {prod.qtestock}")
                 return redirect("produits:vendre_produit")
 
-            if prod.qtestock == 0:
-                messages.error(request, f"Le Stock est nulle pour {prod.desgprod}. Disponible : {prod.qtestock}")
-                return redirect("produits:vendre_produit")
-            
-            sous_total = qte * prod.pu
+            sous_total = qte * max(prod.pu - reduction, 0)
             total_general += sous_total
-            
-            if not qte == 0:
-                lignes.append((prod, qte, prod.pu, sous_total))
 
-        # Génération du code de vente
-        code = f"V{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            lignes.append((prod, qte, prod.pu, reduction, sous_total))
 
-        # Création de la vente globale
+        if not lignes:
+            messages.error(request, "Aucun produit sélectionné pour la vente.")
+            return redirect("produits:vendre_produit")
+
+        # Code vente
+        code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
+
+        # Création vente globale
         vente = VenteProduit.objects.create(
-            code = code,
-            total = total_general,
-            utilisateur = request.user,
+            code=code,
+            total=total_general,
+            utilisateur=request.user,
+           
+            nom_complet_client=nom_complet,
+            telclt_client=telephone,
+            adresseclt_client=adresse
         )
 
-        # Lignes de vente
-        for prod, qte, pu, st in lignes:
+        # Création lignes et mise à jour stock
+        for prod, qte, pu, reduction, st in lignes:
             LigneVente.objects.create(
                 vente=vente,
                 produit=prod,
                 quantite=qte,
                 prix=pu,
                 sous_total=st,
-                
-                nom_complet_client = nom_complet,
-                telclt_client = telephone,
-                adresseclt_client = adresse,
+                montant_reduction=reduction,
             )
-
-            # Mise à jour stock
             prod.qtestock -= qte
             prod.save()
-            
 
-        # 🟦 ENVOI D'EMAIL À L'ADMIN
+        # Envoi email admin (optionnel)
         try:
-            sujet = f"Nouvelle vente enregistrée - Code {vente.code}"
-            contenu = f"""
-                Nouvelle vente effectuée.
-                Par l'utilisateur : {request.user}
-                Code vente : {vente.code}
-                Client : {nom_complet}
-                Téléphone : {telephone}
-                Adresse : {adresse}
+            sujet = f"Nouvelle vente - Code {vente.code}"
+            contenu = f"Vente par {request.user}\nClient : {nom_complet}\nTéléphone : {telephone}\nAdresse : {adresse}\nTotal : {total_general:,} GNF\nDétails :\n"
+            for prod, qte, pu, reduction, st in lignes:
+                contenu += f"- {prod.desgprod} | Qté : {qte} | PU : {pu} | Réduction : {reduction} | Sous-total : {st}\n"
 
-                Total : {total_general:,} GNF
-
-                Détails :
-            """
-
-            for (p, q, pu, st) in lignes:
-                contenu += f"- {p.desgprod} | Qté : {q} | Prix : {pu} | Sous-total : {st}\n"
-
-            email = EmailMessage(
-                sujet,
-                contenu,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.ADMIN_EMAIL],
-            )
+            email = EmailMessage(sujet, contenu, settings.DEFAULT_FROM_EMAIL, [settings.ADMIN_EMAIL])
             email.send()
-
         except Exception as e:
             messages.warning(request, f"Vente enregistrée mais email non envoyé : {str(e)}")
 
@@ -174,7 +156,6 @@ def vendre_produit(request):
         return redirect("produits:recu_vente_global", vente_code=vente.code)
 
     return render(request, "gestion_produits/ventes/nouvelle_vente.html", {"produits": produits})
-
 
 #================================================================================================
 # Fonction pour afficher l'historique des ventes
@@ -207,28 +188,29 @@ def historique_ventes(request):
     }
     return render(request, "gestion_produits/ventes/historisque_ventes.html", context)
 
-
 #================================================================================================
 # Fonction pour éffectuer une nouvelle commande
 #================================================================================================
 @login_required
 def nouvelle_commande(request):
     produits = Produits.objects.all()
-
+    
     if request.method == "POST":
         ids = request.POST.getlist("produit_id[]")
         quantites = request.POST.getlist("quantite[]")
-        nom_complet_client = request.POST.get("nom_complet_client")
-        telephone_client = request.POST.get("telephone_client")
-        adresse_client = request.POST.get("adresse_client")
+        
+        # Information du Fournisseur
+        nom_complet_fournisseur = request.POST.get("nom_complet_fournisseur")
+        telephone_fournisseur = request.POST.get("telephone_fournisseur")
+        adresse_fournisseur = request.POST.get("adresse_fournisseur")
 
-        # Validation des produits et quantités
         if not ids or not quantites:
             messages.error(request, "Aucun produit sélectionné.")
             return redirect("produits:nouvelle_commande")
 
         lignes = []
         total_general = 0
+        numcmd = f"CMD{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
         for i in range(len(ids)):
             try:
@@ -246,29 +228,33 @@ def nouvelle_commande(request):
 
             # Créer la commande
             cmd = Commandes.objects.create(
-                numcmd=f"C{timezone.now().strftime('%Y%m%d%H%M%S')}",
+                numcmd=numcmd,
                 qtecmd=qte,
-                produits=prod
+                produits=prod,
+                
+                nom_complet_fournisseur = nom_complet_fournisseur,
+                adresse_fournisseur = adresse_fournisseur,
+                telephone_fournisseur = telephone_fournisseur,
             )
 
             lignes.append((prod, qte))
-            total_general += prod.pu * qte  # Total en fonction du prix unitaire
+            total_general += prod.pu * qte
 
         # Email à l'admin
         try:
-            sujet = f"Nouvelle commande enregistrée - Client {nom_complet_client}"
+            sujet = f"Nouvelle commande enregistrée - Fournisseur {nom_complet_fournisseur}"
             contenu = f"""
-Nouvelle commande effectuée.
+            Nouvelle commande effectuée.
 
-Téléphone : {telephone_client}
-Adresse : {adresse_client}
+            Téléphone : {telephone_fournisseur}
+            Adresse : {adresse_fournisseur}
 
-Total estimé : {total_general:,} GNF
+            Total estimé : {total_general:,} GNF
 
-Détails :
-"""
-            for p, q in lignes:
-                contenu += f"- {p.desgprod} | Qté : {q} | PU : {p.pu} | Sous-total : {p.pu * q}\n"
+            Détails :
+            """
+            for p, q, f in lignes:
+                contenu += f"- {p.desgprod} | Qté : {q} | PU : {p.pu} | Fournisseur : {f.nomcomplets} | Sous-total : {p.pu*q}\n"
 
             email = EmailMessage(
                 sujet,
@@ -280,17 +266,67 @@ Détails :
         except Exception as e:
             messages.warning(request, f"Commande enregistrée mais email non envoyé : {str(e)}")
 
-        messages.success(request, "Commande(s) enregistrée(s) avec succès !")
-        return redirect("produits:listes_commandes")
+        messages.success(request, f"Commande {numcmd} enregistrée avec succès !")
+        return redirect("produits:listes_des_commandes")
 
-    return render(request, "gestion_produits/commandes/nouvelle_commande.html", {
-        "produits": produits,
-    })
+    context = {
+        'produits': produits,
+    }
+    return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
+
+@login_required
+def reception_livraison(request):
+    # Récupérer toutes les commandes non encore livrées
+    commandes = Commandes.objects.all().order_by('-datecmd')
+    
+    if request.method == "POST":
+        commande_ids = request.POST.getlist("commande_id[]")
+        quantites_livrees = request.POST.getlist("quantite_livree[]")
+        
+        if not commande_ids:
+            messages.error(request, "Aucune commande sélectionnée pour la livraison.")
+            return redirect("produits:reception_livraison")
+        
+        for i in range(len(commande_ids)):
+            try:
+                cmd = Commandes.objects.get(id=commande_ids[i])
+                qte_livree = int(quantites_livrees[i])
+            except Commandes.DoesNotExist:
+                messages.error(request, "Commande introuvable.")
+                continue
+            except ValueError:
+                messages.error(request, f"Quantité livrée invalide pour {cmd.produits.desgprod}.")
+                continue
+
+            if qte_livree <= 0:
+                continue  # Ignorer si rien reçu
+
+            # Créer l'enregistrement de livraison
+            Livraisons.objects.create(
+                produits=cmd.produits,
+                qtelivrer=qte_livree,
+                datelivrer=timezone.now().date()
+            )
+
+            # Mettre à jour le stock du produit
+            cmd.produits.qtestock += qte_livree
+            cmd.produits.save()
+
+            # Optionnel : marquer la commande comme reçue
+            # cmd.statut = "Livrée"
+            # cmd.save()
+
+        messages.success(request, "Livraisons enregistrées et stocks mis à jour avec succès !")
+        return redirect("produits:listes_des_commandes")
+
+    context = {
+        "commandes": commandes
+    }
+    return render(request, "gestion_produits/livraisons/reception_livraison.html", context)
 
 #================================================================================================
 # Fonction pour voir le details de produit lors de la vente
 #================================================================================================
-
 @login_required
 def details_vente(request, id):
     vente = get_object_or_404(VenteProduit, id=id)
@@ -301,7 +337,6 @@ def details_vente(request, id):
 #=============================================================================================
 # Fonction pour gérer les réçu Global de Paiement
 #=============================================================================================
-
 @login_required
 def recu_vente_global(request, vente_code):
     try:
@@ -327,9 +362,9 @@ def recu_vente_global(request, vente_code):
         f"Date : {vente.date_vente}\n"
         f"Nombre d'articles : {lignes.count()}\n"
         f"Total : {total} GNF\n"
-        f"Nom du Client : {lignes.nomcomplets_client} GNF\n"
-        f"Téléphone du Client : {lignes.telephone_client} GNF\n"
-        f"Adresse du Client : {lignes.adresse_client} GNF\n"
+        f"Nom du Client : {vente.nom_complet_client} GNF\n"
+        f"Téléphone du Client : {vente.telclt_client} GNF\n"
+        f"Adresse du Client : {vente.adresseclt_client} GNF\n"
     )
 
     qr = qrcode.QRCode(
@@ -359,7 +394,6 @@ def recu_vente_global(request, vente_code):
 #================================================================================================
 # Fonction pour afficher la listes des catégories
 #================================================================================================
-
 @login_required
 def listes_categorie(request):
     try:
@@ -379,7 +413,6 @@ def listes_categorie(request):
 #================================================================================================
 # Fonction pour modifier les informations d'une catégorie de produit
 #================================================================================================
-
 @login_required
 def modifier_categorie(request):
     if request.method == 'POST':
@@ -505,7 +538,6 @@ def supprimer_produits(request):
 #================================================================================================
 # Fonction pour supprimer une commande donnée
 #================================================================================================
-
 @login_required
 def supprimer_commandes(request):
     if request.method == 'POST':
@@ -612,7 +644,7 @@ def listes_des_livraisons(request):
         'listes_livraisons' : listes_livraisons,
         'total_livraison' : total_livraison
     }
-    return render(request, "gestion_produits/lites_produits.html", context)
+    return render(request, "gestion_produits/livraisons/listes_livraisons.html", context)
 
 #================================================================================================
 # Fonction pour afficher la liste des ventes
@@ -756,7 +788,7 @@ def modifier_produit(request, id):
         produit = Produits.objects.get(id=id)
     except Produits.DoesNotExist:
         messages.error(request, "Produit introuvable.")
-        return redirect('listes_produits')
+        return redirect('produits:editer_produit')
 
     categories = CategorieProduit.objects.all()
 
@@ -765,6 +797,7 @@ def modifier_produit(request, id):
         produit.qtestock = request.POST.get('qtestock')
         produit.seuil = request.POST.get('seuil')
         produit.pu = request.POST.get('pu')
+        produit.prix_en_gros = request.POST.get('prix_en_gros')
 
         categorie_id = request.POST.get('categorie')
         produit.categorie_id = categorie_id
@@ -844,19 +877,23 @@ def nouveau_produit(request):
             photo = photos[i] if i < len(photos) else None
 
             # Vérifier doublon
-            if Produits.objects.filter(refprod=ref).exists():
-                messages.error(request, f"Référence {ref} déjà existante.")
-                continue
+            if Produits.objects.filter(refprod=desg).exists():
+                messages.error(request, f"La Référence {ref} déjà existante doublons.")
+                return redirect('produits:nouveau_produit')
+            
+            elif Produits.objects.filter(desgprod=ref).exists():
+                messages.error(request, f"Le nom du Produit {ref} déjà dans la base de données doublons.")
+                return redirect('produits:nouveau_produit')
 
             try:
                 Produits.objects.create(
-                    refprod=ref,
-                    desgprod=desg,
-                    qtestock=qte,
-                    seuil=seuil,
-                    pu=pu,
-                    photoprod=photo,
-                    categorie_id=cat_id
+                    refprod = ref,
+                    desgprod = desg,
+                    qtestock = qte,
+                    seuil = seuil,
+                    pu = pu,
+                    photoprod = photo,
+                    categorie_id = cat_id
                 )
                 success_count += 1
 
@@ -878,7 +915,7 @@ def nouveau_produit(request):
 #================================================================================================
 # Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des produit
 #================================================================================================
-
+@login_required
 def choix_par_dates_produit_impression(request):
     return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_produits.html')
 
@@ -917,7 +954,7 @@ def listes_produits_impression(request):
 #================================================================================================
 # Fonction pour afficher formulaire de choix de dates de saisie pour l'impression
 #================================================================================================
-
+@login_required
 def choix_par_dates_ventes_impression(request):
     return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_ventes.html')
 
@@ -953,11 +990,9 @@ def listes_ventes_impression(request):
         context
     )
 
-
 #================================================================================================
 # Fonction pour afficher le formulaire de formulaire d'exportation des données
 #================================================================================================
-
 @login_required
 def exportation_donnees_excel(request):
     
@@ -966,7 +1001,6 @@ def exportation_donnees_excel(request):
 #=============================================================================================
 # Fonction pour exporter les données des ventes
 #==============================================================================================
-
 @login_required
 def export_ventes_excel(request):
     # 1. Récupérer toutes les ventes

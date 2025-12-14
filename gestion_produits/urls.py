@@ -18,6 +18,7 @@ urlpatterns = [
     #==========================================================================
     # Gestion des Ventes 
     #==========================================================================
+    
     path('vente/listes_des_ventes/', listes_des_ventes, name='listes_des_ventes'),
     path('vente/filtrer_listes_ventes/', filtrer_listes_ventes, name='filtrer_listes_ventes'),
     path('vente/supprimer_ventes/', supprimer_ventes, name='supprimer_ventes'),
@@ -28,9 +29,17 @@ urlpatterns = [
         
     #=============================================================================
     # Gestion des Commandes
+    
     path('commandes/listes_des_commandes/', listes_des_commandes, name='listes_des_commandes'),
     path('commandes/nouvelle_commande/', nouvelle_commande, name='nouvelle_commande'),
     path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
+    #=============================================================================
+    
+    # Gestion des Livraisons
+    
+    path('livraions/reception_livraison/', reception_livraison, name='reception_livraison'),
+    path('livraions/listes_des_livraisons/', listes_des_livraisons, name='listes_des_livraisons'),
+    #path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
     
     #=============================================================================
     path('approv/approvisionner_produit/<int:id>/', approvisionner_produit, name='approvisionner_produit'),
@@ -39,10 +48,12 @@ urlpatterns = [
     #==========================================================================
     # Gestion des catégories de produits
     #==========================================================================
+    
     path('ajouter_categorie/', ajouter_categorie, name='ajouter_categorie'),
     path('supprimer_categorie/', supprimer_categorie, name='supprimer_categorie'), 
     path('listes_categorie/', listes_categorie, name='listes_categorie'), 
     path('modifier_categorie/', modifier_categorie, name='modifier_categorie'), 
+    
     #==========================================================================
     # Impression 
     #==========================================================================

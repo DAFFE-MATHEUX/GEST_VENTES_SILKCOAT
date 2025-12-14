@@ -27,7 +27,7 @@
     <div id="page-inner">
         <div class="row">
             <div class="col-md-12">
-                <h2>GESTION DE TOUTES LES COMMANDES</h2>
+                <h2>GESTION DE TOUTES LES LIVRAISONS</h2>
             </div>
         </div>
         <br>
@@ -51,8 +51,8 @@
                 </a>
             </div>
             <div class="col-md-6 text-right">
-                <a href="{% url 'produits:nouvelle_commande' %}" class="btn btn-danger">
-                    <i class="fa fa-plus"></i> NOUVELLE COMMANDE ?
+                <a href="{% url 'produits:reception_livraison' %}" class="btn btn-danger">
+                    <i class="fa fa-plus"></i> NOUVELLE RECEPTION ?
                 </a>
             </div>
         </div>
@@ -80,20 +80,20 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="panel panel-default">
-                    <div class="panel-heading">LISTE DES COMMANDES EN COURS</div>
+                    <div class="panel-heading">LISTE DES LIVRAISONS RECU</div>
                     <div class="panel-body">
 
                         <div class="row align-items-center mb-3">
                             <div class="col-md-6 col-sm-12">
                                 <small class="text-muted" style="font-size: 20px; font-weight: bold;">
                                     <i class="fa fa-users text-primary me-1"></i>
-                                    Total Commandes Enregistrées :
-                                    <strong>{{ total_commandes }}</strong>
+                                    Total Livraisons Réçu :
+                                    <strong>{{ total_livraison }}</strong>
                                 </small>
                             </div>
                             <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
                                 <div class="input-group" style="max-width: 400px; margin-left: auto;">
-                                    <input type="text" class="form-control" placeholder="Rechercher une commande..." name="rechercher_informations" id="rechercher_informations">
+                                    <input type="text" class="form-control" placeholder="Rechercher une livraisons..." name="rechercher_informations" id="rechercher_informations">
                                 </div>
                             </div>
                         </div>
@@ -118,7 +118,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="my_table">
-                                    {% for elem in listes_commandes %}
+                                    {% for elem in listes_livraisons %}
                                     <tr>
                                         <td>{{ forloop.counter }}</td>
                                         <td>{{ elem.numcmd }}</td>
@@ -156,23 +156,23 @@
                                 <div class="col-md-8 offset-md-2">
                                     <nav aria-label="Page navigation">
                                         <ul class="pagination justify-content-center">
-                                            {% if listes_commandes.has_previous %}
+                                            {% if listes_livraisons.has_previous %}
                                                 <li class="page-item">
                                                     <a class="page-link" href="?pages=1">&laquo; Première</a>
                                                 </li>
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?pages={{ listes_commandes.previous_page_number }}">Précédent</a>
+                                                    <a class="page-link" href="?pages={{ listes_livraisons.previous_page_number }}">Précédent</a>
                                                 </li>
                                             {% endif %}
                                             <li class="page-item active">
-                                                <span class="page-link">Page {{ listes_commandes.number }} / {{ listes_commandes.paginator.num_pages }}</span>
+                                                <span class="page-link">Page {{ listes_livraisons.number }} / {{ listes_livraisons.paginator.num_pages }}</span>
                                             </li>
-                                            {% if listes_commandes.has_next %}
+                                            {% if listes_livraisons.has_next %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?pages={{ listes_commandes.next_page_number }}">Suivant</a>
+                                                    <a class="page-link" href="?pages={{ listes_livraisons.next_page_number }}">Suivant</a>
                                                 </li>
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?pages={{ listes_commandes.paginator.num_pages }}">Dernière &raquo;</a>
+                                                    <a class="page-link" href="?pages={{ listes_livraisons.paginator.num_pages }}">Dernière &raquo;</a>
                                                 </li>
                                             {% endif %}
                                         </ul>
@@ -193,7 +193,7 @@
                 <div class="modal-content">
                     <div class="modal-header bg-danger">
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
-                        <h4 class="modal-title">SUPPRESSION D'UNE COMMANDE</h4>
+                        <h4 class="modal-title">SUPPRESSION D'UNE LIVRAISON</h4>
                     </div>
                     <form method="POST" action="{% url 'produits:supprimer_commandes' %}">
                         {% csrf_token %}

@@ -6,7 +6,7 @@ from django.contrib import messages
 
 def pagination_liste(request, listes):
     default_page = 1 # Spécifie la page par défaut
-    items_per_page = 5 # 5 elements dans chaque page
+    items_per_page = 14 # 5 elements dans chaque page
     la_page = request.GET.get('pages') # Permet de recuperer la page 
     pagination = Paginator(listes, items_per_page)
     try:
@@ -22,7 +22,7 @@ def pagination_liste(request, listes):
 #=============2eme Méthode de la pagination en Django==========================
 def pagination_lis(request, liste):
     default_page = 1
-    pageformat = Paginator(liste, 6)
+    pageformat = Paginator(liste, 14)
     numero_page = request.GET.get('pages')
     try:
         items_page = pageformat.page(numero_page) # items_page est un dictionnaire de liste

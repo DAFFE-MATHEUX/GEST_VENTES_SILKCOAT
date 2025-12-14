@@ -13,53 +13,54 @@
 <form method="post">
   {% csrf_token %}
 
- <div class="form-group">
-    <label for="" class="form-control">Nom Complet du Client</label>
-    <input type="text" class="form-control" placeholder="Entrer le nom complet" name="nom_complet_client[]">
-  </div>
-
-<div class="form-group">
-    <label for="" class="form-control">Téléphone du Client</label>
-    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="telephone_client[]">
+  <!-- Client -->
+  <div class="form-group">
+    <label>Nom complet du Fournisseur</label>
+    <input type="text" class="form-control" name="nom_complet_fournisseur" required>
   </div>
 
   <div class="form-group">
-    <label for="" class="form-control">Adresse du Client</label>
-    <input type="text" class="form-control" placeholder="Entrer le numéro de téléphone" name="adresse_client[]">
+    <label>Téléphone</label>
+    <input type="text" class="form-control" name="telephone_fournisseur" required>
   </div>
 
-  <div class="mb-3">
-    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)...">
+  <div class="form-group">
+    <label>Adresse</label>
+    <input type="text" class="form-control" name="adresse_fournisseur" required>
   </div>
-<br>
+
+  <!-- Recherche -->
+  <div class="mb-3">
+    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)">
+  </div>
+
+  <!-- Table Produits -->
   <table class="table table-bordered" id="table-produits">
-    <thead>
+    <thead class="table-dark">
       <tr>
+        <th>Catégorie</th>
         <th>Produit</th>
-        <th>Stock</th>
+        <th>Stock Disponible</th>
         <th>Quantité à commander</th>
       </tr>
     </thead>
-
     <tbody>
       {% for p in produits %}
       <tr class="produit-row">
+        <td>{{p.categorie.desgcategorie}}</td>
         <td>
           <strong>{{ p.desgprod }}</strong><br>
           <small>{{ p.categorie.desgcategorie }}</small>
+        </td>
+        <td>{{ p.qtestock }}</td>
+        <td>
+          <input type="number" name="quantite[]" class="form-control qte" min="0" value="0">
           <input type="hidden" name="produit_id[]" value="{{ p.id }}">
         </td>
-
-        <td>{{ p.qtestock }}</td>
-
-        <td>
-          <input type="number" 
-                 name="quantite[]" 
-                 class="form-control qte" 
-                 min="0" 
-                 max="{{ p.qtestock }}" 
-                 value="0">
-        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="text-center">Aucun produit disponible.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -68,14 +69,14 @@
   <button class="btn btn-success mt-3">Valider la commande</button>
 </form>
 
+<!-- Recherche JS -->
 <script>
-  // ----- RECHERCHE PRODUIT -----
-  document.getElementById("search").addEventListener("input", function () {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll(".produit-row").forEach(row => {
-      row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
-    });
+document.getElementById("search").addEventListener("input", function () {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll(".produit-row").forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
   });
+});
 </script>
 
 {% endblock %}

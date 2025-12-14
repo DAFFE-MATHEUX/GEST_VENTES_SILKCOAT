@@ -166,23 +166,24 @@
     </table>
 
     <!-- 🔵 INFOS CLIENT -->
-    <h5 class="section-title">Informations Client</h5>
+    <h5 class="section-title">Informations sur le Client</h5>
     <table>
-        <tr><th>Nom complet</th><td>{{ ligne.nom_complet_client }}</td></tr>
-        <tr><th>Adresse</th><td>{{ ligne.adresseclt_client|default:"-" }}</td></tr>
-        <tr><th>Téléphone</th><td>{{ ligne.telclt_client|default:"-" }}</td></tr>
+        <tr><th>Nom complet</th><td>{{ vente.nom_complet_client }}</td></tr>
+        <tr><th>Adresse</th><td>{{ vente.adresseclt_client|default:"-" }}</td></tr>
+        <tr><th>Téléphone</th><td>{{ vente.telclt_client|default:"-" }}</td></tr>
     </table>
 
-    <h5 class="section-title">Détails des Produits Achetés</h5>
+    <h5 class="section-title">Détails sur les Produits Achetés</h5>
 
     <table>
         <thead>
             <tr>
                 <th>#</th>
                 <th>Catégorie</th>
-                <th>Produit</th>
-                <th>Quantité</th>
+                <th>Produits</th>
+                <th>Quantité(s)</th>
                 <th>Prix Unitaire (GNF)</th>
+                <th>Réduction Accordée</th>
                 <th>Sous-total (GNF)</th>
             </tr>
         </thead>
@@ -195,10 +196,13 @@
                 <td>{{ l.produit.desgprod }}</td>
                 <td>{{ l.quantite }}</td>
                 <td>{{ l.prix|floatformat:"0" }}</td>
+                <td>{{ l.montant_reduction|floatformat:"0" }}</td>
                 <td>{{ l.sous_total|floatformat:"0" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="6" style="text-align:center;">Aucun produit trouvé</td></tr>
+            <tr>
+                <td colspan="6" style="text-align:center;">Aucun produit trouvé pour le reçu</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
