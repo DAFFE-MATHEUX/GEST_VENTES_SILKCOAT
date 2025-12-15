@@ -104,7 +104,7 @@ def home(request):
     # ----------------------------------------------
     # Total de Livraisons de la semaine
     # ----------------------------------------------
-    livraisons_semaine = Livraisons.objects.filter(
+    livraisons_semaine = LivraisonsProduits.objects.filter(
         datelivrer__range=[debut_semaine, fin_semaine]
     )
     total_livraisons = livraisons_semaine.count()

@@ -67,6 +67,12 @@ urlpatterns = [
     #==========================================================================
     # Exportation des données vers Excel 
     #==========================================================================
-    path('exportation_donnees_excel/', exportation_donnees_excel, name='exportation_donnees_excel'),
+    path('confirmation_exportation_vente/', confirmation_exportation_vente, name='confirmation_exportation_vente'),
+    path('confirmation_exportation_produits/', confirmation_exportation_produits, name='confirmation_exportation_produits'),
+    
+    
     path('export_ventes_excel/', export_ventes_excel, name='export_ventes_excel'),
+    path('export_produits_excel/', export_produits_excel, name='export_produits_excel'),
+    #==========================================================================
+    
 ]

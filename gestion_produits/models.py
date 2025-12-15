@@ -2,7 +2,7 @@ from django.db import models
 from gestion_utilisateur.models import Utilisateur
 
 #==================================================================================
-# Classe Categorie Produit
+# Table Categorie Produit
 #==================================================================================
 
 class CategorieProduit(models.Model):
@@ -14,7 +14,7 @@ class CategorieProduit(models.Model):
         return f"Catégorie : {self.desgcategorie}"
   
 #==================================================================================
-# Classe Produits
+# Table Produits
 #==================================================================================
     
 class Produits(models.Model):
@@ -35,7 +35,7 @@ class Produits(models.Model):
         return f"Références : {self.refprod} Catégorie : {self.categorie}"
  
 #==================================================================================
-# Classe Ventes des Produits
+# Table Ventes des Produits
 #==================================================================================
 
 class VenteProduit(models.Model):
@@ -52,7 +52,8 @@ class VenteProduit(models.Model):
         return f"Vente {self.code} Par {self.utilisateur}"
 
 #==================================================================================
-
+# Table LigneVente
+#==================================================================================
 class LigneVente(models.Model):
     vente = models.ForeignKey(VenteProduit, on_delete=models.CASCADE, related_name='lignes')
     produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='lignes')
@@ -60,7 +61,6 @@ class LigneVente(models.Model):
     prix = models.IntegerField(default=0)  # Prix unitaire en details
     montant_reduction = models.IntegerField(default=0)  # Prix unitaire en details
     sous_total = models.IntegerField(default=0)
-    
     date_saisie = models.DateField(auto_now=True)
 
     def __str__(self):
@@ -68,9 +68,8 @@ class LigneVente(models.Model):
 
    
 #==================================================================================
-# Classe Commandes
+# Table Commandes
 #==================================================================================
-    
 class Commandes(models.Model):
     numcmd = models.CharField(max_length = 60)
     qtecmd = models.IntegerField(default = 0)
@@ -81,20 +80,21 @@ class Commandes(models.Model):
     nom_complet_fournisseur = models.CharField(max_length=60, null=True)
     adresse_fournisseur = models.CharField(max_length=60, null=True)
     telephone_fournisseur = models.CharField(max_length=25, null=True)
+    
     def __str__(self):
         return f"Produits : {self.produits} | Quantite : {self.qtecmd}"
     
 #==================================================================================
-# Classe Livraisons
+# Table Livraisons
 #==================================================================================
-
-class Livraisons(models.Model):
+class LivraisonsProduits(models.Model):
     qtelivrer = models.IntegerField(default = 0)
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
     datelivrer = models.DateField(auto_now = True)
+    statuts = models.CharField(max_length=60, null=True)
     
     def __str__(self):
-        return f"Fournisseur : {self.fournisseur} Produits : {self.produits}"
+        return f"Produits : {self.produits} | Statuts : {self.statuts}"
     
 #==================================================================================
 

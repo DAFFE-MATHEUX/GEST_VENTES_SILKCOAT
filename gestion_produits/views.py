@@ -278,15 +278,15 @@ def nouvelle_commande(request):
 def reception_livraison(request):
     # Récupérer toutes les commandes non encore livrées
     commandes = Commandes.objects.all().order_by('-datecmd')
-    
+
     if request.method == "POST":
         commande_ids = request.POST.getlist("commande_id[]")
         quantites_livrees = request.POST.getlist("quantite_livree[]")
-        
+
         if not commande_ids:
             messages.error(request, "Aucune commande sélectionnée pour la livraison.")
             return redirect("produits:reception_livraison")
-        
+
         for i in range(len(commande_ids)):
             try:
                 cmd = Commandes.objects.get(id=commande_ids[i])
@@ -299,22 +299,23 @@ def reception_livraison(request):
                 continue
 
             if qte_livree <= 0:
-                continue  # Ignorer si rien reçu
+                continue  # Ignorer les quantités nulles ou négatives
 
-            # Créer l'enregistrement de livraison
-            Livraisons.objects.create(
+            # Enregistrer la livraison
+            LivraisonsProduits.objects.create(
                 produits=cmd.produits,
                 qtelivrer=qte_livree,
-                datelivrer=timezone.now().date()
+                datelivrer=timezone.now().date(),
+                statuts="Livrée"
             )
 
-            # Mettre à jour le stock du produit
+            # Mettre à jour le stock
             cmd.produits.qtestock += qte_livree
             cmd.produits.save()
 
-            # Optionnel : marquer la commande comme reçue
-            # cmd.statut = "Livrée"
-            # cmd.save()
+            # Optionnel : marquer la commande comme partiellement ou totalement livrée
+            cmd.statut = "Livrée"
+            cmd.save()
 
         messages.success(request, "Livraisons enregistrées et stocks mis à jour avec succès !")
         return redirect("produits:listes_des_commandes")
@@ -635,7 +636,7 @@ def listes_des_livraisons(request):
     total_livraison = 0
     
     try:
-        listes_livraisons = Livraisons.objects.all().order_by('-id')
+        listes_livraisons = LivraisonsProduits.objects.all().order_by('-id')
         total_livraison = listes_livraisons.count()
         listes_livraisons = pagination_liste(request, listes_livraisons)
     except Exception as ex :
@@ -808,7 +809,7 @@ def modifier_produit(request, id):
         produit.save()
 
         messages.success(request, "Produit modifié avec succès !")
-        return redirect('listes_produits')
+        return redirect('produits:listes_produits')
 
     context = {
         'produit': produit,
@@ -994,9 +995,9 @@ def listes_ventes_impression(request):
 # Fonction pour afficher le formulaire de formulaire d'exportation des données
 #================================================================================================
 @login_required
-def exportation_donnees_excel(request):
+def confirmation_exportation_vente(request):
     
-    return render(request, 'gestion_produits/exportation/exportation_donnees_excel.html')
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_ventes.html')
 
 #=============================================================================================
 # Fonction pour exporter les données des ventes
@@ -1041,6 +1042,59 @@ def export_ventes_excel(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response['Content-Disposition'] = 'attachment; filename=ventes_produits.xlsx'
+    wb.save(response)
+    return response
+
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+@login_required
+def confirmation_exportation_produits(request):
+    
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_produits.html')
+
+#=============================================================================================
+# Fonction pour exporter les données des ventes
+#==============================================================================================
+@login_required
+def export_produits_excel(request):
+    # 1. Récupérer toutes les ventes
+    produits = Produits.objects.prefetch_related('categorie', 'categorie__desgcategorie').all()
+
+    # 2. Créer un fichier Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Liste des Produidts"
+
+    # 3. Ajouter les en-têtes
+    headers = [
+        "Catégorie", "Référence du Produit", "Date de Saisie", "Désignation",
+        "Prix Unitaire", "Quantité en Stock", "Seuil"
+    ]
+    for col_num, header in enumerate(headers, 1):
+        ws[f"{get_column_letter(col_num)}1"] = header
+
+    # 4. Insérer les données ligne par ligne
+    ligne = 2
+    for elem in produits:
+        for lv in elem.categorie.all():  # Chaque produit de la catégorie
+            ws[f"A{ligne}"] = elem.refprod
+            ws[f"B{ligne}"] = elem.date_maj.strftime("%d/%m/%Y %H:%M")
+            ws[f"C{ligne}"] = elem.desgprod
+            ws[f"D{ligne}"] = elem.pu
+            ws[f"E{ligne}"] = elem.qtestock
+            ws[f"F{ligne}"] = elem.seuil
+            ligne += 1
+
+    # 5. Ajuster la largeur des colonnes
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 25
+
+    # 6. Retourner le fichier Excel en téléchargement
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=listes_produits.xlsx'
     wb.save(response)
     return response
 
