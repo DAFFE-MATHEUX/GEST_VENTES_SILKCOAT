@@ -19,6 +19,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.http import HttpResponse
 from django.db.models import Sum, F
+from openpyxl import Workbook
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit
 #================================================================================================
@@ -66,8 +67,16 @@ def approvisionner_produit(request, id):
 #================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
-@login_required
 
+
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.contrib import messages
+import logging
+
+logger = logging.getLogger(__name__)
+
+@login_required
 def vendre_produit(request):
     produits = Produits.objects.all()
 
@@ -80,8 +89,8 @@ def vendre_produit(request):
         telephone = request.POST.get("telephone_client")
         adresse = request.POST.get("adresse_client")
 
-        if not nom_complet or not telephone:
-            messages.error(request, "Veuillez renseigner le nom complet et le téléphone du client.")
+        if not nom_complet or not telephone or not adresse:
+            messages.error(request, "Veuillez renseigner le nom complet, le téléphone et l'adresse du client.")
             return redirect("produits:vendre_produit")
 
         total_general = 0
@@ -94,17 +103,23 @@ def vendre_produit(request):
             except Produits.DoesNotExist:
                 continue
 
-            qte = int(qte_str or 0)
-            reduction = int(red_str or 0)
+            try:
+                qte = int(str(qte_str).replace(',', '').replace(' ', '') or 0)
+                reduction = int(str(red_str).replace(',', '').replace(' ', '') or 0)
+            except ValueError:
+                messages.error(request, f"Quantité ou réduction invalide pour {prod.desgprod}")
+                return redirect("produits:vendre_produit")
 
             if qte <= 0:
                 continue  # Ignorer si quantité nulle
-
             if qte > prod.qtestock:
                 messages.error(request, f"Stock insuffisant pour {prod.desgprod}. Disponible : {prod.qtestock}")
                 return redirect("produits:vendre_produit")
+            if reduction > prod.pu:
+                messages.error(request, f"La réduction pour {prod.desgprod} ne peut pas dépasser le prix unitaire ({prod.pu})")
+                return redirect("produits:vendre_produit")
 
-            sous_total = qte * max(prod.pu - reduction, 0)
+            sous_total = qte * (prod.pu - reduction)
             total_general += sous_total
 
             lignes.append((prod, qte, prod.pu, reduction, sous_total))
@@ -121,7 +136,6 @@ def vendre_produit(request):
             code=code,
             total=total_general,
             utilisateur=request.user,
-           
             nom_complet_client=nom_complet,
             telclt_client=telephone,
             adresseclt_client=adresse
@@ -142,14 +156,19 @@ def vendre_produit(request):
 
         # Envoi email admin (optionnel)
         try:
+            if not hasattr(settings, 'DEFAULT_FROM_EMAIL') or not hasattr(settings, 'ADMIN_EMAIL'):
+                raise ValueError("Paramètres email non définis")
+
             sujet = f"Nouvelle vente - Code {vente.code}"
             contenu = f"Vente par {request.user}\nClient : {nom_complet}\nTéléphone : {telephone}\nAdresse : {adresse}\nTotal : {total_general:,} GNF\nDétails :\n"
             for prod, qte, pu, reduction, st in lignes:
-                contenu += f"- {prod.desgprod} | Qté : {qte} | PU : {pu} | Réduction : {reduction} | Sous-total : {st}\n"
+                contenu += f"- {prod.desgprod} | Qté : {qte} | PU : {pu:,} | Réduction : {reduction:,} | Sous-total : {st:,}\n"
 
-            email = EmailMessage(sujet, contenu, settings.DEFAULT_FROM_EMAIL, [settings.ADMIN_EMAIL])
-            email.send()
+            email = EmailMessage(sujet, contenu, settings.ADMIN_EMAIL, [settings.DEFAULT_FROM_EMAIL])
+            email.send(fail_silently=False)
+
         except Exception as e:
+            logger.error(f"Erreur lors de l'envoi de l'email pour la vente {vente.code}: {str(e)}")
             messages.warning(request, f"Vente enregistrée mais email non envoyé : {str(e)}")
 
         messages.success(request, "Vente enregistrée avec succès !")
@@ -160,33 +179,62 @@ def vendre_produit(request):
 #================================================================================================
 # Fonction pour afficher l'historique des ventes
 #================================================================================================
+
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
+from collections import defaultdict
+from django.db.models import Sum
+from django.utils.timezone import localdate
 @login_required
+
 def historique_ventes(request):
 
-    # Récupérer toutes les ventes (la plus récente d'abord)
-    ventes = VenteProduit.objects.all().order_by('-date_vente')
+    ventes = (
+        VenteProduit.objects
+        .select_related("utilisateur")
+        .prefetch_related("lignes__produit__categorie")
+        .order_by("-date_vente")
+    )
 
-    # Ajouter les infos client (depuis LigneVente)
+    ventes_par_date = defaultdict(list)
+
+    # Regrouper les ventes par DATE
     for vente in ventes:
-        ligne = vente.lignes.first()  # 1 vente = toujours au moins une ligne
-        if ligne:
-            vente.client_nom = ligne.nom_complet_client
-            vente.client_telephone = ligne.telclt_client
-        else:
-            vente.client_nom = None
-            vente.client_telephone = None
+        date = vente.date_vente.date()
+        ventes_par_date[date].append(vente)
 
-        # Si tu veux gérer un statut "payé", sinon supprime ceci :
-        vente.paye = getattr(vente, "paye", True)  # Par défaut "Payé"
+    historique = []
 
-    # Total général des ventes
-    total_general = ventes.aggregate(total=Sum('total'))['total'] or 0
+    # Calculs par date
+    for date, ventes_du_jour in ventes_par_date.items():
+
+        total_montant = sum(v.total for v in ventes_du_jour)
+
+        total_quantite = 0
+        categories = set()
+
+        for v in ventes_du_jour:
+            for ligne in v.lignes.all():
+                total_quantite += ligne.quantite
+                categories.add(ligne.produit.categorie.id)
+
+        historique.append({
+            "date": date,
+            "ventes": ventes_du_jour,
+            "total_montant": total_montant,
+            "total_quantite": total_quantite,
+            "total_categories": len(categories),
+        })
 
     context = {
-        'ventes': ventes,
-        'total_general': total_general
+        "historique": historique
     }
-    return render(request, "gestion_produits/ventes/historisque_ventes.html", context)
+
+    return render(
+        request,
+        "gestion_produits/ventes/historisque_ventes.html",
+        context
+    )
 
 #================================================================================================
 # Fonction pour éffectuer une nouvelle commande
@@ -274,9 +322,15 @@ def nouvelle_commande(request):
     }
     return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
 
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.contrib import messages
+import logging
+
+logger = logging.getLogger(__name__)
 @login_required
+
 def reception_livraison(request):
-    # Récupérer toutes les commandes non encore livrées
     commandes = Commandes.objects.all().order_by('-datecmd')
 
     if request.method == "POST":
@@ -287,19 +341,17 @@ def reception_livraison(request):
             messages.error(request, "Aucune commande sélectionnée pour la livraison.")
             return redirect("produits:reception_livraison")
 
+        livraisons_effectuees = []  # pour l'email
+
         for i in range(len(commande_ids)):
             try:
                 cmd = Commandes.objects.get(id=commande_ids[i])
                 qte_livree = int(quantites_livrees[i])
-            except Commandes.DoesNotExist:
-                messages.error(request, "Commande introuvable.")
-                continue
-            except ValueError:
-                messages.error(request, f"Quantité livrée invalide pour {cmd.produits.desgprod}.")
+            except (Commandes.DoesNotExist, ValueError):
                 continue
 
             if qte_livree <= 0:
-                continue  # Ignorer les quantités nulles ou négatives
+                continue
 
             # Enregistrer la livraison
             LivraisonsProduits.objects.create(
@@ -309,21 +361,66 @@ def reception_livraison(request):
                 statuts="Livrée"
             )
 
-            # Mettre à jour le stock
+            # Mise à jour du stock
             cmd.produits.qtestock += qte_livree
             cmd.produits.save()
 
-            # Optionnel : marquer la commande comme partiellement ou totalement livrée
-            cmd.statut = "Livrée"
-            cmd.save()
+            # Statut commande (si champ existant)
+            if hasattr(cmd, "statut"):
+                cmd.statut = "Livrée"
+                cmd.save()
 
-        messages.success(request, "Livraisons enregistrées et stocks mis à jour avec succès !")
+            livraisons_effectuees.append({
+                "produit": cmd.produits.desgprod,
+                "quantite": qte_livree,
+                "fournisseur": cmd.nom_complet_fournisseur
+            })
+
+        # =================== ENVOI EMAIL ===================
+        if livraisons_effectuees:
+            try:
+                sujet = "Réception de livraison enregistrée"
+                contenu = f"""
+Une nouvelle réception de livraison a été enregistrée.
+
+Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+Utilisateur : {request.user}
+
+Détails des livraisons :
+"""
+                for l in livraisons_effectuees:
+                    contenu += (
+                        f"- Produit : {l['produit']} | "
+                        f"Quantité livrée : {l['quantite']} | "
+                        f"Fournisseur : {l['fournisseur']}\n"
+                    )
+
+                email = EmailMessage(
+                    sujet,
+                    contenu,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [settings.ADMIN_EMAIL]
+                )
+                email.send(fail_silently=False)
+
+            except Exception as e:
+                logger.error(f"Erreur envoi email livraison : {str(e)}")
+                messages.warning(
+                    request,
+                    "Livraison enregistrée, mais l'email n'a pas pu être envoyé."
+                )
+
+        messages.success(
+            request,
+            "Livraisons enregistrées et stocks mis à jour avec succès !"
+        )
         return redirect("produits:listes_des_commandes")
 
-    context = {
-        "commandes": commandes
-    }
-    return render(request, "gestion_produits/livraisons/reception_livraison.html", context)
+    return render(
+        request,
+        "gestion_produits/livraisons/reception_livraison.html",
+        {"commandes": commandes}
+    )
 
 #================================================================================================
 # Fonction pour voir le details de produit lors de la vente
@@ -590,20 +687,65 @@ def supprimer_commandes(request):
 #================================================================================================
 # Fonction pour supprimer une vente donnée
 #================================================================================================
+from django.contrib import messages
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.db import transaction
+
 @login_required
 def supprimer_ventes(request):
     if request.method == 'POST':
-        vente = request.POST.get('id_supprimer')
+        vente_id = request.POST.get('id_supprimer')
 
         try:
-            categorie = LigneVente.objects.get(id=vente)
-            categorie.delete()
-            messages.success(request, "Ligne vente supprimée avec succès !")
-            return redirect('produits:listes_des_ventes')
+            # 🔒 Transaction pour éviter incohérences
+            with transaction.atomic():
+
+                # 1️⃣ Récupérer la vente
+                vente = get_object_or_404(VenteProduit, id=vente_id)
+
+                # 2️⃣ Récupérer toutes les lignes liées
+                lignes = LigneVente.objects.filter(vente=vente)
+
+                # 3️⃣ Restaurer le stock
+                for ligne in lignes:
+                    produit = ligne.produit
+                    produit.qtestock += ligne.quantite
+                    produit.save()
+
+                # 4️⃣ Supprimer lignes + vente
+                lignes.delete()
+                vente.delete()
+
+            # 5️⃣ Envoi email admin
+            try:
+                sujet = "Suppression d'une vente"
+                contenu = f"""
+Une vente a été supprimée.
+
+Code vente : {vente.code}
+Utilisateur : {request.user}
+Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+
+Les stocks ont été restaurés automatiquement.
+"""
+                email = EmailMessage(
+                    sujet,
+                    contenu,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [settings.ADMIN_EMAIL]
+                )
+                email.send(fail_silently=True)
+
+            except Exception:
+                messages.warning(request, "Vente supprimée mais email non envoyé.")
+
+            messages.success(request, "Vente et lignes supprimées avec succès. Stock restauré ✔")
+
         except Exception as ex:
             messages.error(request, f"Erreur lors de la suppression : {str(ex)}")
 
-        return redirect('produits:listes_des_ventes')
+    return redirect('produits:listes_des_ventes')
 
 #================================================================================================
 # Fonction pour afficher la liste de tout les produits
@@ -1058,44 +1200,179 @@ def confirmation_exportation_produits(request):
 #==============================================================================================
 @login_required
 def export_produits_excel(request):
-    # 1. Récupérer toutes les ventes
-    produits = Produits.objects.prefetch_related('categorie', 'categorie__desgcategorie').all()
+    # 1️⃣ Récupération des produits + catégorie (OPTIMISÉ)
+    produits = Produits.objects.select_related('categorie').all()
 
-    # 2. Créer un fichier Excel
+    # 2️⃣ Création du fichier Excel
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Liste des Produidts"
+    ws.title = "Liste des Produits"
 
-    # 3. Ajouter les en-têtes
+    # 3️⃣ En-têtes
     headers = [
-        "Catégorie", "Référence du Produit", "Date de Saisie", "Désignation",
-        "Prix Unitaire", "Quantité en Stock", "Seuil"
+        "Catégorie",
+        "Référence Produit",
+        "Désignation",
+        "Prix Unitaire",
+        "Quantité en Stock",
+        "Seuil",
+        "Date de Mise à Jour"
     ]
+
     for col_num, header in enumerate(headers, 1):
         ws[f"{get_column_letter(col_num)}1"] = header
 
-    # 4. Insérer les données ligne par ligne
+    # 4️⃣ Données
     ligne = 2
-    for elem in produits:
-        for lv in elem.categorie.all():  # Chaque produit de la catégorie
-            ws[f"A{ligne}"] = elem.refprod
-            ws[f"B{ligne}"] = elem.date_maj.strftime("%d/%m/%Y %H:%M")
-            ws[f"C{ligne}"] = elem.desgprod
-            ws[f"D{ligne}"] = elem.pu
-            ws[f"E{ligne}"] = elem.qtestock
-            ws[f"F{ligne}"] = elem.seuil
-            ligne += 1
+    for produit in produits:
+        ws[f"A{ligne}"] = produit.categorie.desgcategorie if produit.categorie else ""
+        ws[f"B{ligne}"] = produit.refprod
+        ws[f"C{ligne}"] = produit.desgprod
+        ws[f"D{ligne}"] = produit.pu
+        ws[f"E{ligne}"] = produit.qtestock
+        ws[f"F{ligne}"] = produit.seuil
+        ws[f"G{ligne}"] = produit.date_maj.strftime("%d/%m/%Y %H:%M") if produit.date_maj else ""
+        ligne += 1
 
-    # 5. Ajuster la largeur des colonnes
+    # 5️⃣ Ajuster largeur colonnes
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col)].width = 25
 
-    # 6. Retourner le fichier Excel en téléchargement
+    # 6️⃣ Téléchargement
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=listes_produits.xlsx'
+    response['Content-Disposition'] = 'attachment; filename=liste_produits.xlsx'
     wb.save(response)
     return response
 
 #==============================================================================================
+
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+@login_required
+def confirmation_exportation_commande(request):
+    
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_commandes.html')
+
+def export_commandes_excel(request):
+    # 1. Récupérer les commandes avec les produits et catégories
+    commandes = Commandes.objects.select_related(
+        'produits',
+        'produits__categorie'
+    ).order_by('-datecmd')
+
+    # 2. Créer le fichier Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Liste des Commandes"
+
+    # 3. En-têtes
+    headers = [
+        "N° Commande",
+        "Date Commande",
+        "Produit",
+        "Catégorie",
+        "Quantité Commandée",
+        "Fournisseur",
+        "Téléphone Fournisseur"
+    ]
+
+    for col, header in enumerate(headers, 1):
+        ws[f"{get_column_letter(col)}1"] = header
+
+    # 4. Remplir les lignes
+    ligne = 2
+    for cmd in commandes:
+        ws[f"A{ligne}"] = cmd.numcmd
+        ws[f"B{ligne}"] = cmd.datecmd.strftime("%d/%m/%Y")
+        ws[f"C{ligne}"] = cmd.produits.desgprod
+        ws[f"D{ligne}"] = (
+            cmd.produits.categorie.desgcategorie
+            if cmd.produits.categorie else ""
+        )
+        ws[f"E{ligne}"] = cmd.qtecmd
+        ws[f"F{ligne}"] = cmd.nom_complet_fournisseur or ""
+        ws[f"G{ligne}"] = cmd.telephone_fournisseur or ""
+        ligne += 1
+
+    # 5. Ajuster largeur colonnes
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 25
+
+    # 6. Réponse HTTP
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = (
+        f'attachment; filename=commandes_{timezone.now().date()}.xlsx'
+    )
+
+    wb.save(response)
+    return response
+
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+@login_required
+def confirmation_exportation_livraison(request):
+    
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_livraisons.html')
+
+
+def export_livraisons_excel(request):
+    # Récupérer toutes les livraisons avec les produits
+    livraisons = LivraisonsProduits.objects.select_related('produits').all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Livraisons"
+
+    # En-têtes incluant les infos commande
+    headers = [
+        "Produit", "Quantité Livrée", "Date Livraison", "Statut",
+        "Numéro Commande", "Quantité Commandée",
+        "Fournisseur", "Téléphone Fournisseur", "Adresse Fournisseur"
+    ]
+
+    for col, header in enumerate(headers, 1):
+        ws[f"{get_column_letter(col)}1"] = header
+
+    ligne = 2
+    for l in livraisons:
+        # Tenter de récupérer la commande associée au produit et à la date de livraison
+        commande = Commandes.objects.filter(
+            produits=l.produits
+        ).order_by('-datecmd').first()  # On prend la dernière commande pour ce produit
+
+        ws[f"A{ligne}"] = l.produits.desgprod
+        ws[f"B{ligne}"] = l.qtelivrer
+        ws[f"C{ligne}"] = l.datelivrer.strftime("%d/%m/%Y")
+        ws[f"D{ligne}"] = l.statuts
+
+        if commande:
+            ws[f"E{ligne}"] = commande.numcmd
+            ws[f"F{ligne}"] = commande.qtecmd
+            ws[f"G{ligne}"] = commande.nom_complet_fournisseur
+            ws[f"H{ligne}"] = commande.telephone_fournisseur
+            ws[f"I{ligne}"] = commande.adresse_fournisseur
+        else:
+            ws[f"E{ligne}"] = ""
+            ws[f"F{ligne}"] = ""
+            ws[f"G{ligne}"] = ""
+            ws[f"H{ligne}"] = ""
+            ws[f"I{ligne}"] = ""
+
+        ligne += 1
+
+    # Ajuster la largeur des colonnes
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 25
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=livraisons.xlsx"
+    wb.save(response)
+    return response

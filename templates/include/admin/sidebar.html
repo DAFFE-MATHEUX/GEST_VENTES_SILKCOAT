@@ -34,7 +34,7 @@
                 </a>
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_des_ventes' %}"><i class="fa fa-list"></i> Listes des Ventes</a></li>
-                    <li><a href="{% url 'produits:historique_ventes' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
+                    <li><a href="{% url 'produits:historique_ventes_par_date' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
                 </ul>
             </li>
 
@@ -118,8 +118,8 @@
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:confirmation_exportation_vente' %}"><i class="fa fa-list"></i> Listes des Ventes</a></li>
                     <li><a href="{% url 'produits:confirmation_exportation_produits' %}"><i class="fa fa-list"></i> Listes des Produits</a></li>
-                    <li><a href="#"><i class="fa fa-list"></i> Listes des Commandes</a></li>
-                    <li><a href="#"><i class="fa fa-list"></i> Listes des Livraisons</a></li>
+                    <li><a href="{% url 'produits:confirmation_exportation_commande' %}"><i class="fa fa-list"></i> Listes des Commandes</a></li>
+                    <li><a href="{% url 'produits:confirmation_exportation_livraison' %}"><i class="fa fa-list"></i> Listes des Livraisons</a></li>
                 </ul>
             </li>
 

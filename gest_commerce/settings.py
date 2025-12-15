@@ -1,7 +1,6 @@
 
 
 from pathlib import Path
-from pathlib import Path
 from .info import *  # clés sensibles (EMAIL, SECRET_KEY...)
 from django.contrib.messages import constants as messages
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -139,8 +138,6 @@ DATABASES = {
     }
 }
 
-
-
 # ==============================
 # EMAIL
 # ==============================
@@ -152,6 +149,7 @@ EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
 EMAIL_USE_TLS = EMAIL_USE_TLS
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+ADMIN_EMAIL = EMAIL_HOST_USER
 
 
 # ==============================

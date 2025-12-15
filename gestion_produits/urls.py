@@ -14,7 +14,6 @@ urlpatterns = [
     path('produits/modifier/<int:id>/', modifier_produit, name="modifier_produit"),
     path('produits/consulter_produit/<int:id>/', consulter_produit, name="consulter_produit"),
 
-    
     #==========================================================================
     # Gestion des Ventes 
     #==========================================================================
@@ -23,20 +22,21 @@ urlpatterns = [
     path('vente/filtrer_listes_ventes/', filtrer_listes_ventes, name='filtrer_listes_ventes'),
     path('vente/supprimer_ventes/', supprimer_ventes, name='supprimer_ventes'),
     path('vente/vendre_produit/', vendre_produit, name='vendre_produit'),
-    path('vente/historique_ventes/', historique_ventes, name='historique_ventes'),
+    path('vente/historique_ventes_par_date/', historique_ventes, name='historique_ventes_par_date'),
     path('vente/details_vente/<int:id>/', details_vente, name='details_vente'),
     path('vente/recu_vente_global/<str:vente_code>/', recu_vente_global, name='recu_vente_global'),
         
     #=============================================================================
     # Gestion des Commandes
-    
+    #=============================================================================
+
     path('commandes/listes_des_commandes/', listes_des_commandes, name='listes_des_commandes'),
     path('commandes/nouvelle_commande/', nouvelle_commande, name='nouvelle_commande'),
     path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
     #=============================================================================
-    
     # Gestion des Livraisons
-    
+    #=============================================================================
+
     path('livraions/reception_livraison/', reception_livraison, name='reception_livraison'),
     path('livraions/listes_des_livraisons/', listes_des_livraisons, name='listes_des_livraisons'),
     #path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
@@ -69,10 +69,15 @@ urlpatterns = [
     #==========================================================================
     path('confirmation_exportation_vente/', confirmation_exportation_vente, name='confirmation_exportation_vente'),
     path('confirmation_exportation_produits/', confirmation_exportation_produits, name='confirmation_exportation_produits'),
+    path('confirmation_exportation_livraison/', confirmation_exportation_livraison, name='confirmation_exportation_livraison'),
+    path('confirmation_exportation_commande/', confirmation_exportation_commande, name='confirmation_exportation_commande'),
     
     
     path('export_ventes_excel/', export_ventes_excel, name='export_ventes_excel'),
     path('export_produits_excel/', export_produits_excel, name='export_produits_excel'),
+    path('export_commandes_excel/', export_commandes_excel, name='export_commandes_excel'),
+    path('export_livraisons_excel/', export_livraisons_excel, name='export_livraisons_excel'),
+    
     #==========================================================================
     
 ]

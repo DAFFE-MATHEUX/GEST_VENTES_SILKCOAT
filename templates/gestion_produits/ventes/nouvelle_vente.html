@@ -114,7 +114,16 @@ function recalc() {
 
     const qte = parseInt(row.querySelector(".qte").value || 0);
     const pu = parseInt(row.querySelector(".qte").dataset.pu || 0);
-    const reduction = parseInt(row.querySelector(".reduction").value || 0);
+    let reductionInput = row.querySelector(".reduction");
+    let reduction = parseInt(reductionInput.value || 0);
+
+    // ================= Contrôle réduction =================
+    if (reduction > pu) {
+      reduction = pu; // On limite la réduction au PU
+      reductionInput.value = pu; // On corrige la valeur affichée
+      // Optionnel : message utilisateur
+      // alert("La réduction ne peut pas être supérieure au prix unitaire !");
+    }
 
     let puFinal = pu - reduction;
     if (puFinal < 0) puFinal = 0;
@@ -143,5 +152,6 @@ document.getElementById("search").addEventListener("input", function () {
 
 recalc();
 </script>
+
 
 {% endblock %}
