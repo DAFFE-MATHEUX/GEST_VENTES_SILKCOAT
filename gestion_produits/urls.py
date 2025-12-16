@@ -60,7 +60,13 @@ urlpatterns = [
     
     path('produits/choix_par_dates_produit_impression/', choix_par_dates_produit_impression, name="choix_par_dates_produit_impression"),
     path('produits/listes_produits_impression/', listes_produits_impression, name="listes_produits_impression"),
-
+    
+    path('commandes/listes_commandes_impression/', listes_commandes_impression, name="listes_commandes_impression"),
+    path('commandes/choix_par_dates_commandes_impression/', choix_par_dates_commandes_impression, name="choix_par_dates_commandes_impression"),
+    
+    path('livraisons/listes_livraisons_impression/', listes_livraisons_impression, name="listes_livraisons_impression"),
+    path('livraisons/choix_par_dates_livraisons_impression/', choix_par_dates_livraisons_impression, name="choix_par_dates_livraisons_impression"),
+    
     path('ventes/choix_par_dates_ventes_impression/', choix_par_dates_ventes_impression, name="choix_par_dates_ventes_impression"),
     path('ventes/listes_ventes_impression/', listes_ventes_impression, name="listes_ventes_impression"),
 

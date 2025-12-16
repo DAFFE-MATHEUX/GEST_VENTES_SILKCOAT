@@ -46,7 +46,7 @@
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <a href="{% url 'produits:choix_par_dates_ventes_impression' %}" class="btn btn-primary">
+                <a href="{% url 'produits:choix_par_dates_commandes_impression' %}" class="btn btn-primary">
                     <i class="fa fa-print"></i> Imprimer la liste en PDF
                 </a>
             </div>
@@ -108,6 +108,7 @@
                                         <th>Réf Produit</th>
                                         <th>Désignation</th>
                                         <th>Quantité Commandée</th>
+                                        <th>Statut Commandé</th>
                                         <th>Quantité Stock</th>
                                         <th>Seuil</th>
                                         <th>Prix Unitaire</th>
@@ -125,6 +126,7 @@
                                         <td>{{ elem.produits.refprod }}</td>
                                         <td>{{ elem.produits.desgprod }}</td>
                                         <td>{{ elem.qtecmd }}</td>
+                                        <td>{{ elem.statuts }}</td>
                                         <td>{{ elem.produits.qtestock }}</td>
                                         <td>{{ elem.produits.seuil }}</td>
                                         <td>{{ elem.produits.pu }}</td>

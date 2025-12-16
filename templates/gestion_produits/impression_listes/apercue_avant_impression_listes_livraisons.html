@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES COMMANDES</title>
+    <title>LISTE DES LIVRAISONS</title>
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
@@ -74,7 +74,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES COMMANDES</h2>
+            <h2>LISTES DES LIVRAISONS</h2>
         </div>
 
         <div class="header-right">
@@ -85,41 +85,45 @@
     </div>
 
     <!-- TITRE -->
-    <h4>CATALOGUE COMPLET DES PRODUITS COMMANDEES</h4>
+    <h2>CATALOGUE COMPLET DES PRODUITS LIVRER</h2>
+    <h3>Date de Début Livraisons : {{date_debut }}</h3>
+    <h3>Date de Fin Livraisons : {{date_fin }}</h3>
 
     <!-- TABLEAU DES PRODUITS -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Références Commande</th>
+                <th>Références Livraisons</th>
                 <th>Références Produit</th>
                 <th>Désignation</th>
                 <th>Catégorie</th>
                 <th>PU (GNF)</th>
                 <th>Prix en Gros</th>
-                <th>Quantité Commandé</th>
-                <th>Date Commande</th>
+                <th>Quantité Livrées</th>
+                <th>Statut Livraisons</th>
+                <th>Date Livraisons</th>
                 <th>Photo</th>
             </tr>
         </thead>
 
         <tbody>
-        {% for c in listes_commandes %}
+        {% for l in listes_livraisons %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ c.numcmd }}</td>
-                <td>{{ c.produits.refprod }}</td>
-                <td>{{ c.produits.desgprod }}</td>
-                <td>{{ c.produits.categorie.desgcategorie|default:"-" }}</td>
-                <td>{{ c.produits.pu }}</td>
-                <td>{{ c.produits.prix_en_gros }}</td>
-                <td>{{ c.qtecmd }}</td>
-                <td>{{ c.datecmd }}</td>
+                <td>{{ l.numlivrer }}</td>
+                <td>{{ l.produits.refprod }}</td>
+                <td>{{ l.produits.desgprod }}</td>
+                <td>{{ l.produits.categorie.desgcategorie|default:"-" }}</td>
+                <td>{{ l.produits.pu }}</td>
+                <td>{{ l.produits.prix_en_gros }}</td>
+                <td>{{ l.qtelivrer }}</td>
+                <td>{{ l.statuts }}</td>
+                <td>{{ l.datelivrer }}</td>
 
                 <td style="text-align:center;">
-                    {% if c.produits.photoprod %}
-                        <img src="{{ c.produits.photoprod.url }}" class="photo-preview">
+                    {% if l.produits.photoprod %}
+                        <img src="{{ l.produits.photoprod.url }}" class="photo-preview">
                     {% else %}
                         -
                     {% endif %}

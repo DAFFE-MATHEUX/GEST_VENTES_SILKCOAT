@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES COMMANDES</title>
+    <title>LISTE DES PRODUITS</title>
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
@@ -74,7 +74,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES COMMANDES</h2>
+            <h2>LISTE DES PRODUITS</h2>
         </div>
 
         <div class="header-right">
@@ -85,41 +85,41 @@
     </div>
 
     <!-- TITRE -->
-    <h4>CATALOGUE COMPLET DES PRODUITS COMMANDEES</h4>
+    <h4>CATALOGUE COMPLET DES PRODUITS ENREGISTRÉS</h4>
 
     <!-- TABLEAU DES PRODUITS -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Références Commande</th>
-                <th>Références Produit</th>
+                <th>Code</th>
                 <th>Désignation</th>
                 <th>Catégorie</th>
                 <th>PU (GNF)</th>
                 <th>Prix en Gros</th>
-                <th>Quantité Commandé</th>
-                <th>Date Commande</th>
+                <th>Stock</th>
+                <th>Seuil Affecte</th>
+                <th>Date Ajout</th>
                 <th>Photo</th>
             </tr>
         </thead>
 
         <tbody>
-        {% for c in listes_commandes %}
+        {% for p in listes_produits %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ c.numcmd }}</td>
-                <td>{{ c.produits.refprod }}</td>
-                <td>{{ c.produits.desgprod }}</td>
-                <td>{{ c.produits.categorie.desgcategorie|default:"-" }}</td>
-                <td>{{ c.produits.pu }}</td>
-                <td>{{ c.produits.prix_en_gros }}</td>
-                <td>{{ c.qtecmd }}</td>
-                <td>{{ c.datecmd }}</td>
+                <td>{{ p.refprod }}</td>
+                <td>{{ p.desgprod }}</td>
+                <td>{{ p.categorie.desgcategorie|default:"-" }}</td>
+                <td>{{ p.pu }}</td>
+                <td>{{ p.prix_en_gros }}</td>
+                <td>{{ p.qtestock }}</td>
+                <td>{{ p.seuil }}</td>
+                <td>{{ p.date_maj }}</td>
 
                 <td style="text-align:center;">
-                    {% if c.produits.photoprod %}
-                        <img src="{{ c.produits.photoprod.url }}" class="photo-preview">
+                    {% if p.photoProduit %}
+                        <img src="{{ p.photoProduit.url }}" class="photo-preview">
                     {% else %}
                         -
                     {% endif %}

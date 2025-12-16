@@ -46,7 +46,7 @@
 
         <div class="row mb-3">
             <div class="col-md-6">
-                <a href="{% url 'produits:choix_par_dates_ventes_impression' %}" class="btn btn-primary">
+                <a href="{% url 'produits:choix_par_dates_livraisons_impression' %}" class="btn btn-primary">
                     <i class="fa fa-print"></i> Imprimer la liste en PDF
                 </a>
             </div>
@@ -104,6 +104,7 @@
                                 <thead>
                                     <tr>
                                         <th>#</th>
+                                        <th>Num Livraison</th>
                                         <th>Num Commande</th>
                                         <th>Réf Produit</th>
                                         <th>Catégorie</th>
@@ -120,11 +121,12 @@
                                     {% for elem in listes_livraisons %}
                                     <tr>
                                         <td>{{ forloop.counter }}</td>
-                                        <td>{{ elem.numcmd }}</td>
+                                        <td>{{ elem.numlivrer }}</td>
+                                        <td>{{ elem.commande.numcmd }}</td>
                                         <td>{{ elem.produits.refprod }}</td>
                                         <td>{{ elem.produits.categorie.desgcategorie }}</td>
                                         <td>{{ elem.produits.desgprod }}</td>
-                                        <td>{{ elem.qtecmd }}</td>
+                                        <td>{{ elem.commande.qtecmd }}</td>
                                         <td>{{ elem.qtelivrer }}</td>
                                         <td>{{ elem.produits.qtestock }}</td>
                                         <td>{{ elem.produits.pu }}</td>

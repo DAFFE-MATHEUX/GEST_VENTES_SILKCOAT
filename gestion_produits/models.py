@@ -43,9 +43,9 @@ class VenteProduit(models.Model):
     date_vente = models.DateTimeField(auto_now_add=True)
     total = models.IntegerField(default=0)
     
-    nom_complet_client = models.CharField(max_length=60, null=True)
+    nom_complet_client = models.CharField(max_length=70, null=True)
     adresseclt_client = models.CharField(max_length=60, null=True)
-    telclt_client = models.CharField(max_length=25, null=True)
+    telclt_client = models.CharField(max_length=65, null=True)
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
@@ -61,7 +61,7 @@ class LigneVente(models.Model):
     prix = models.IntegerField(default=0)  # Prix unitaire en details
     montant_reduction = models.IntegerField(default=0)  # Prix unitaire en details
     sous_total = models.IntegerField(default=0)
-    date_saisie = models.DateField(auto_now=True)
+    date_saisie = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.produit.desgprod} (x{self.quantite})"
@@ -73,13 +73,14 @@ class LigneVente(models.Model):
 class Commandes(models.Model):
     numcmd = models.CharField(max_length = 60)
     qtecmd = models.IntegerField(default = 0)
-    datecmd = models.DateField(auto_now = True)
+    datecmd = models.DateField(auto_now_add = True)
+    statuts = models.CharField(max_length=60, null=True)
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
     
     # Information du Fournisseur
-    nom_complet_fournisseur = models.CharField(max_length=60, null=True)
+    nom_complet_fournisseur = models.CharField(max_length=70, null=True)
     adresse_fournisseur = models.CharField(max_length=60, null=True)
-    telephone_fournisseur = models.CharField(max_length=25, null=True)
+    telephone_fournisseur = models.CharField(max_length=60, null=True)
     
     def __str__(self):
         return f"Produits : {self.produits} | Quantite : {self.qtecmd}"
@@ -88,9 +89,11 @@ class Commandes(models.Model):
 # Table Livraisons
 #==================================================================================
 class LivraisonsProduits(models.Model):
+    numlivrer = models.CharField(max_length = 60, default=0)
     qtelivrer = models.IntegerField(default = 0)
+    commande = models.ForeignKey(Commandes, on_delete = models.CASCADE, default=1)
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
-    datelivrer = models.DateField(auto_now = True)
+    datelivrer = models.DateField(auto_now_add = True)
     statuts = models.CharField(max_length=60, null=True)
     
     def __str__(self):

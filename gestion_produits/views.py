@@ -20,6 +20,9 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.db.models import Sum, F
 from openpyxl import Workbook
+
+from django.db import transaction
+from collections import defaultdict
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit
 #================================================================================================
@@ -69,9 +72,6 @@ def approvisionner_produit(request, id):
 #================================================================================================
 
 
-from django.core.mail import EmailMessage
-from django.conf import settings
-from django.contrib import messages
 import logging
 
 logger = logging.getLogger(__name__)
@@ -180,11 +180,7 @@ def vendre_produit(request):
 # Fonction pour afficher l'historique des ventes
 #================================================================================================
 
-from django.db.models import Sum, Count
-from django.db.models.functions import TruncDate
-from collections import defaultdict
-from django.db.models import Sum
-from django.utils.timezone import localdate
+
 @login_required
 
 def historique_ventes(request):
@@ -322,9 +318,6 @@ def nouvelle_commande(request):
     }
     return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
 
-from django.core.mail import EmailMessage
-from django.conf import settings
-from django.contrib import messages
 import logging
 
 logger = logging.getLogger(__name__)
@@ -342,6 +335,7 @@ def reception_livraison(request):
             return redirect("produits:reception_livraison")
 
         livraisons_effectuees = []  # pour l'email
+        numlivrer = f"LIV{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
         for i in range(len(commande_ids)):
             try:
@@ -355,10 +349,11 @@ def reception_livraison(request):
 
             # Enregistrer la livraison
             LivraisonsProduits.objects.create(
-                produits=cmd.produits,
-                qtelivrer=qte_livree,
-                datelivrer=timezone.now().date(),
-                statuts="Livrée"
+                numlivrer = numlivrer,
+                produits = cmd.produits,
+                qtelivrer = qte_livree,
+                datelivrer = timezone.now().date(),
+                statuts = "Livrée"
             )
 
             # Mise à jour du stock
@@ -367,7 +362,7 @@ def reception_livraison(request):
 
             # Statut commande (si champ existant)
             if hasattr(cmd, "statut"):
-                cmd.statut = "Livrée"
+                cmd.statuts = "Livrée"
                 cmd.save()
 
             livraisons_effectuees.append({
@@ -414,7 +409,7 @@ Détails des livraisons :
             request,
             "Livraisons enregistrées et stocks mis à jour avec succès !"
         )
-        return redirect("produits:listes_des_commandes")
+        return redirect("produits:listes_des_livraisons")
 
     return render(
         request,
@@ -687,11 +682,6 @@ def supprimer_commandes(request):
 #================================================================================================
 # Fonction pour supprimer une vente donnée
 #================================================================================================
-from django.contrib import messages
-from django.core.mail import EmailMessage
-from django.conf import settings
-from django.db import transaction
-
 @login_required
 def supprimer_ventes(request):
     if request.method == 'POST':
@@ -771,7 +761,6 @@ def listes_produits(request):
 #================================================================================================
 # Fonction pour afficher la liste de tout les livraisons
 #================================================================================================
-
 @login_required
 def listes_des_livraisons(request):
     listes_livraisons = []
@@ -924,7 +913,6 @@ def editer_produit(request, id):
 #================================================================================================
 # Fonction pour modifier un produit donnée
 #================================================================================================
-
 @login_required
 def modifier_produit(request, id):
     try:
@@ -1082,7 +1070,7 @@ def listes_produits_impression(request):
         date_maj__range=[date_debut, date_fin]
     )
 
-    nom_entreprise = Produits.objects.first()
+    nom_entreprise = Entreprise.objects.first()
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
@@ -1117,19 +1105,110 @@ def listes_ventes_impression(request):
     except ValueError as ve:
         messages.warning(request, f"Erreur de type de données : {str(ve)}")
         
-    listes_ventes = VenteProduit.objects.filter(
-        date_vente__range=[date_debut, date_fin]
+    listes_ventes = LigneVente.objects.all()
+    
+    listes_ventes_filtre = listes_ventes.filter(
+        date_saisie__range = [
+            date_debut, date_fin
+        ]
+    )
+    print(f"listes_ventes : {listes_ventes_filtre}")
+    nom_entreprise = Entreprise.objects.first()
+    context = {
+        'nom_entreprise': nom_entreprise,
+        'today': timezone.now(),
+        'listes_ventes' : listes_ventes_filtre,
+        'date_debut' : date_debut,
+        'date_fin' : date_fin,
+    }
+    return render(
+        request,
+        'gestion_produits/impression_listes/apercue_avant_impression_listes_ventes.html',
+        context
+    )
+
+#================================================================================================
+# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Commandes
+#================================================================================================
+@login_required
+def choix_par_dates_commandes_impression(request):
+    return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_commandes.html')
+
+#================================================================================================
+# Fonction pour imprimer la listes des Commandes
+#================================================================================================
+
+@login_required
+def listes_commandes_impression(request):
+    
+    try:
+        date_debut = request.POST.get('date_debut')
+        date_fin = request.POST.get('date_fin')
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
+
+    except ValueError as ve:
+        messages.warning(request, f"Erreur de type de données : {str(ve)}")
+        
+    listes_commandes = Commandes.objects.filter(
+        datecmd__range=[
+            date_debut, date_fin
+    ]
+    )
+    nom_entreprise = Entreprise.objects.first()
+    context = {
+        'nom_entreprise': nom_entreprise,
+        'today': timezone.now(),
+        'listes_commandes' : listes_commandes,
+        'date_debut' : date_debut,
+        'date_fin' : date_fin,
+    }
+    return render(
+        request,
+        'gestion_produits/impression_listes/apercue_avant_impression_listes_produits.html',
+        context
+    )
+
+#================================================================================================
+# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Livraisons
+#================================================================================================
+@login_required
+def choix_par_dates_livraisons_impression(request):
+    return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_livraisons.html')
+
+#================================================================================================
+# Fonction pour imprimer la listes des Commandes
+#================================================================================================
+
+@login_required
+def listes_livraisons_impression(request):
+    
+    try:
+        date_debut = request.POST.get('date_debut')
+        date_fin = request.POST.get('date_fin')
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
+
+    except ValueError as ve:
+        messages.warning(request, f"Erreur de type de données : {str(ve)}")
+        
+    listes_livraisons = LivraisonsProduits.objects.filter(
+        datelivrer__range=[
+            date_debut, date_fin
+    ]
     )
 
     nom_entreprise = Entreprise.objects.first()
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
-        'listes_ventes' : listes_ventes,
+        'listes_livraisons' : listes_livraisons,
+        'date_debut' : date_debut,
+        'date_fin' : date_fin,
     }
     return render(
         request,
-        'gestion_produits/impression_listes/apercue_avant_impression_listes_ventes.html',
+        'gestion_produits/impression_listes/apercue_avant_impression_listes_livraisons.html',
         context
     )
 
@@ -1376,3 +1455,5 @@ def export_livraisons_excel(request):
     response["Content-Disposition"] = "attachment; filename=livraisons.xlsx"
     wb.save(response)
     return response
+
+#================================================================================================
