@@ -138,7 +138,7 @@ class Commandes(models.Model):
     numcmd = models.CharField(max_length = 60)
     qtecmd = models.IntegerField(default = 0)
     datecmd = models.DateField(auto_now_add = True)
-    statuts = models.CharField(max_length=60, null=True)
+    statuts = models.CharField(max_length=60, null=True, default="Non Livrer")
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
     
     # Information du Fournisseur

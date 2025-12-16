@@ -69,11 +69,21 @@ def home(request):
     # ----------------------------------------
     total_produits = Produits.objects.count()
     
+
     # ---------------------------------------------------------
-    # Statistiques sur le total des stocks de tout les produits
+    # Statistiques sur le total des stocks de tous les produits
+    # dans le magasin et l'entrepôt
     # ----------------------------------------------------------
-    #data_products = Produits.objects.all()
-    #total_stock = data_products.aggregate(qtestock=Sum('qtestock'))['qtestock'] or 0
+
+    # Stock total en entrepôt
+    total_stock_entrepot = StockProduit.objects.filter(entrepot__isnull=False).aggregate(
+        total=Sum('qtestock')
+    )['total'] or 0
+
+    # Stock total en magasin
+    total_stock_magasin = StockProduit.objects.filter(magasin__isnull=False).aggregate(
+        total=Sum('qtestock')
+    )['total'] or 0
 
     # ----------------------------------------
     # Statistiques sur le total de catégorie
@@ -147,7 +157,8 @@ def home(request):
         'total_livraisons': total_livraisons,
         'total_audit' : total_audit,
         'total_ventes': total_ventes,
-        #'total_stock' : total_stock,
+        'total_stock_entrepot' : total_stock_entrepot,
+        'total_stock_magasin' : total_stock_magasin,
         'now': date.today(),
     }
 

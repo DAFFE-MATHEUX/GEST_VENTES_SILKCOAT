@@ -50,7 +50,7 @@ urlpatterns = [
     #path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
     
     #=============================================================================
-    path('approv/approvisionner_produit/<int:id>/', approvisionner_produit, name='approvisionner_produit'),
+    path('approv/approvisionner_produits/', approvisionner_produits, name='approvisionner_produits'),
     
     
     #==========================================================================

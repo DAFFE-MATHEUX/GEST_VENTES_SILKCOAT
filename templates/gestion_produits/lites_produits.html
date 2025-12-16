@@ -103,7 +103,6 @@
                                         {% endif %}
                                         <th>Date Enregistrement</th>
                                         <th>Photo Produit</th>
-                                        <th>Approvisionnement</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -128,13 +127,6 @@
                                             {% endif %}           
                                         </td> 
 
-                                                 <!-- APPRO BOUTON -->
-                                    <td>
-                                      <a href="{% url 'produits:approvisionner_produit' elem.id %}" 
-                                        class="btn btn-primary btn-sm">
-                                        <i class="fa fa-plus"></i> Appro
-                                      </a>
-                                    </td>
                                         <td>
 
                                     <a class="btn btn-primary" href="{% url 'produits:consulter_produit' elem.id %}" title="Voir"><i class="fa fa-eye"></i></a>

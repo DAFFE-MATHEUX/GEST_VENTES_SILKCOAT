@@ -1,22 +1,52 @@
 {% extends 'admin.html' %}
 
 {% block contents %}
-<h2>Approvisionnement</h2>
+<h2>Approvisionnement global des produits</h2>
 <hr>
 
 <form method="post">
   {% csrf_token %}
-
-  <p><strong>Produit :</strong> {{ produit.desgprod }}</p>
-  <p><strong>Stock actuel :</strong> {{ produit.qtestock }}</p>
-
-  <div class="form-group">
-    <label>Quantité à ajouter</label>
-    <input type="number" name="quantite" class="form-control" min="1" required>
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Produit</th>
+          <th>Catégorie</th>
+          <th>Stock Entrepôt</th>
+          <th>Seuil Entrepôt</th>
+          <th>Stock Magasin</th>
+          <th>Seuil Magasin</th>
+          <th>Quantité Souhaitée</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in produits_data %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ p.produit.desgprod }}</td>
+            <td>{{ p.produit.categorie.desgcategorie }}</td>
+            <td>{{ p.stock_entrepot }}</td>
+            <td>{{ p.seuil_entrepot }}</td>
+            <td>{{ p.stock_magasin }}</td>
+            <td>{{ p.seuil_magasin }}</td>
+            <td>
+               <input type="number" name="quantite" class="form-control" min="1" value="0">
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="text-center">Aucun produit disponible</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="row mt-3">
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary">Transférer toutes les quantités</button>
+      </div>
+    </div>
   </div>
-
-  <button class="btn btn-primary">Valider</button>
-  <a href="{% url 'produits:vendre_produit' %}" class="btn btn-secondary">Retour</a>
 </form>
 
 {% endblock %}

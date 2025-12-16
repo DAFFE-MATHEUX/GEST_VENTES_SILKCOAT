@@ -23,6 +23,8 @@ from openpyxl import Workbook
 
 from django.db import transaction
 from collections import defaultdict
+import logging
+
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit
 #================================================================================================
@@ -51,20 +53,58 @@ def ajouter_categorie(request):
 # Fonction pour éffectuer un approvisionnement
 #================================================================================================
 @login_required
-def approvisionner_produit(request, id):
-    produit = Produits.objects.get(id=id)
+def approvisionner_produits(request):
+    produits = Produits.objects.all()
+    produits_data = []
+
+    # Préparer les données pour le template
+    for p in produits:
+        stock_entrepot = p.stocks.filter(entrepot__isnull=False).first()
+        stock_magasin = p.stocks.filter(magasin__isnull=False).first()
+
+        produits_data.append({
+            "produit": p,
+            "stock_entrepot": stock_entrepot.qtestock if stock_entrepot else 0,
+            "seuil_entrepot": stock_entrepot.seuil if stock_entrepot else 0,
+            "stock_magasin": stock_magasin.qtestock if stock_magasin else 0,
+            "stock_entrepot_instance": stock_entrepot,
+        })
 
     if request.method == "POST":
-        qte = int(request.POST.get("quantite"))
+        qte = int(request.POST.get("quantite", 0))
 
-        produit.qtestock += qte
-        produit.save()
+        if qte <= 0:
+            messages.error(request, "La quantité doit être supérieure à zéro.")
+            return redirect("produits:approvisionner_produits")
 
-        messages.success(request, "Approvisionnement réussi !")
-        return redirect("produits:vendre_produit")
+        # Transférer tous les produits
+        for p in produits_data:
+            se = p["stock_entrepot_instance"]
+            sm = p["stock_magasin_instance"]
+
+            if not se:
+                continue  # Aucun stock en entrepôt, on saute
+
+            if not sm:
+                # Crée le stock magasin si inexistant
+                sm, _ = StockProduit.objects.get_or_create(
+                    produit=p["produit"],
+                    entrepot=None,
+                    magasin=p["produit"].stocks.filter(magasin__isnull=False).first().magasin if p["produit"].stocks.filter(magasin__isnull=False).exists() else None,
+                    defaults={"qtestock": 0, "seuil": 0}
+                )
+
+            transfert = min(qte, se.qtestock)
+            se.qtestock = F('qtestock') - transfert
+            sm.qtestock = F('qtestock') + transfert
+            se.save()
+            sm.save()
+
+        messages.success(request, "Approvisionnement global effectué avec succès !")
+        return redirect("produits:listes_produits_stock")
 
     return render(request, "gestion_produits/approvisionnement/approvisionner_produit.html", {
-        "produit": produit
+        "produits_data": produits_data
     })
 
 #================================================================================================
@@ -72,13 +112,16 @@ def approvisionner_produit(request, id):
 #================================================================================================
 
 
-import logging
-
 logger = logging.getLogger(__name__)
-
 @login_required
+
 def vendre_produit(request):
     produits = Produits.objects.all()
+    
+        # Pour chaque produit, récupérer le stock magasin
+    for p in produits:
+        stock_magasin = StockProduit.objects.filter(produit=p, magasin__isnull=False).first()
+        p.qtestock_magasin = stock_magasin.qtestock if stock_magasin else 0
 
     if request.method == "POST":
         ids = request.POST.getlist("produit_id[]")
@@ -96,7 +139,7 @@ def vendre_produit(request):
         total_general = 0
         lignes = []
 
-        # Boucle sécurisée
+        # Boucle sécurisée pour préparer la vente
         for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
             try:
                 prod = Produits.objects.get(id=prod_id)
@@ -111,10 +154,14 @@ def vendre_produit(request):
                 return redirect("produits:vendre_produit")
 
             if qte <= 0:
-                continue  # Ignorer si quantité nulle
-            if qte > prod.qtestock:
-                messages.error(request, f"Stock insuffisant pour {prod.desgprod}. Disponible : {prod.qtestock}")
+                continue
+
+            # Vérification stock magasin uniquement
+            stock_magasin = StockProduit.objects.filter(produit=prod, magasin__isnull=False).first()
+            if not stock_magasin or stock_magasin.qtestock < qte:
+                messages.error(request, f"Stock insuffisant en magasin pour {prod.desgprod}. Disponible : {stock_magasin.qtestock if stock_magasin else 0}")
                 return redirect("produits:vendre_produit")
+
             if reduction > prod.pu:
                 messages.error(request, f"La réduction pour {prod.desgprod} ne peut pas dépasser le prix unitaire ({prod.pu})")
                 return redirect("produits:vendre_produit")
@@ -128,10 +175,8 @@ def vendre_produit(request):
             messages.error(request, "Aucun produit sélectionné pour la vente.")
             return redirect("produits:vendre_produit")
 
-        # Code vente
-        code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
-
         # Création vente globale
+        code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
         vente = VenteProduit.objects.create(
             code=code,
             total=total_general,
@@ -141,7 +186,7 @@ def vendre_produit(request):
             adresseclt_client=adresse
         )
 
-        # Création lignes et mise à jour stock
+        # Création lignes de vente et mise à jour stock magasin
         for prod, qte, pu, reduction, st in lignes:
             LigneVente.objects.create(
                 vente=vente,
@@ -151,10 +196,10 @@ def vendre_produit(request):
                 sous_total=st,
                 montant_reduction=reduction,
             )
-            
-            
-            prod.qtestock -= qte
-            prod.save()
+
+            stock_magasin = StockProduit.objects.filter(produit=prod, magasin__isnull=False).first()
+            stock_magasin.qtestock -= qte
+            stock_magasin.save()
 
         # Envoi email admin (optionnel)
         try:
@@ -241,6 +286,23 @@ def historique_ventes(request):
 def nouvelle_commande(request):
     produits = Produits.objects.all()
     
+    produits_data = []
+
+    # Préparer les données pour le template
+    for p in produits:
+        stock_entrepot = p.stocks.filter(entrepot__isnull=False).first()
+        stock_magasin = p.stocks.filter(magasin__isnull=False).first()
+
+        produits_data.append({
+            "produit": p,
+            "stock_entrepot": stock_entrepot.qtestock if stock_entrepot else 0,
+            "seuil_entrepot": stock_entrepot.seuil if stock_entrepot else 0,
+            "stock_magasin": stock_magasin.qtestock if stock_magasin else 0,
+            "seuil_magasin": stock_magasin.seuil if stock_magasin else 0,
+            "stock_magasin_instance": stock_magasin,
+            "stock_entrepot_instance": stock_entrepot,
+        })
+        
     if request.method == "POST":
         ids = request.POST.getlist("produit_id[]")
         quantites = request.POST.getlist("quantite[]")
@@ -317,6 +379,7 @@ def nouvelle_commande(request):
 
     context = {
         'produits': produits,
+        'produits_data' : produits_data,
     }
     return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
 
@@ -336,7 +399,7 @@ def reception_livraison(request):
             messages.error(request, "Aucune commande sélectionnée pour la livraison.")
             return redirect("produits:reception_livraison")
 
-        livraisons_effectuees = []  # pour l'email
+        livraisons_effectuees = []
         numlivrer = f"LIV{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
         for i in range(len(commande_ids)):
@@ -351,20 +414,33 @@ def reception_livraison(request):
 
             # Enregistrer la livraison
             LivraisonsProduits.objects.create(
-                numlivrer = numlivrer,
-                produits = cmd.produits,
-                qtelivrer = qte_livree,
-                datelivrer = timezone.now().date(),
-                statuts = "Livrée"
+                numlivrer=numlivrer,
+                produits=cmd.produits,
+                qtelivrer=qte_livree,
+                datelivrer=timezone.now().date(),
+                statuts="Livrée"
             )
 
-            # Mise à jour du stock
-            cmd.produits.qtestock += qte_livree
-            cmd.produits.save()
+            # Récupérer ou créer le stock Entrepôt du produit
+            stock_entrepot = StockProduit.objects.filter(
+                produit=cmd.produits, entrepot__isnull=False, magasin__isnull=True
+            ).first()
 
-            # Statut commande (si champ existant)
+            if not stock_entrepot:
+                stock_entrepot = StockProduit.objects.create(
+                    produit=cmd.produits,
+                    entrepot=True,  # ou le champ approprié pour l'entrepôt
+                    magasin=None,
+                    qtestock=qte_livree,
+                    seuil=0
+                )
+            else:
+                stock_entrepot.qtestock = F('qtestock') + qte_livree
+                stock_entrepot.save()
+
+            # Mise à jour statut commande si champ existant
             if hasattr(cmd, "statut"):
-                cmd.statuts = "Livrée"
+                cmd.statut = "Livrée"
                 cmd.save()
 
             livraisons_effectuees.append({
@@ -373,24 +449,13 @@ def reception_livraison(request):
                 "fournisseur": cmd.nom_complet_fournisseur
             })
 
-        # =================== ENVOI EMAIL ===================
+        # ENVOI EMAIL ADMIN
         if livraisons_effectuees:
             try:
                 sujet = "Réception de livraison enregistrée"
-                contenu = f"""
-Une nouvelle réception de livraison a été enregistrée.
-
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-Utilisateur : {request.user}
-
-Détails des livraisons :
-"""
+                contenu = f"Nouvelle réception de livraison enregistrée.\n\n"
                 for l in livraisons_effectuees:
-                    contenu += (
-                        f"- Produit : {l['produit']} | "
-                        f"Quantité livrée : {l['quantite']} | "
-                        f"Fournisseur : {l['fournisseur']}\n"
-                    )
+                    contenu += f"- Produit : {l['produit']} | Quantité livrée : {l['quantite']} | Fournisseur : {l['fournisseur']}\n"
 
                 email = EmailMessage(
                     sujet,
@@ -399,18 +464,11 @@ Détails des livraisons :
                     [settings.ADMIN_EMAIL]
                 )
                 email.send(fail_silently=False)
-
             except Exception as e:
                 logger.error(f"Erreur envoi email livraison : {str(e)}")
-                messages.warning(
-                    request,
-                    "Livraison enregistrée, mais l'email n'a pas pu être envoyé."
-                )
+                messages.warning(request, "Livraison enregistrée, mais l'email n'a pas pu être envoyé.")
 
-        messages.success(
-            request,
-            "Livraisons enregistrées et stocks mis à jour avec succès !"
-        )
+        messages.success(request, "Livraisons enregistrées et stocks mis à jour avec succès !")
         return redirect("produits:listes_des_livraisons")
 
     return render(

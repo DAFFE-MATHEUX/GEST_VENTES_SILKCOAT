@@ -14,17 +14,17 @@
   {% csrf_token %}
 
   <!-- ================= CLIENT ================= -->
-  <div class="form-group">
+  <div class="form-group mb-3">
     <label>Nom complet du client</label>
     <input type="text" class="form-control" name="nom_complet_client" required>
   </div>
 
-  <div class="form-group">
+  <div class="form-group mb-3">
     <label>Téléphone du client</label>
     <input type="text" class="form-control" name="telephone_client" required>
   </div>
 
-  <div class="form-group">
+  <div class="form-group mb-3">
     <label>Adresse du client</label>
     <input type="text" class="form-control" name="adresse_client" required>
   </div>
@@ -40,7 +40,7 @@
       <tr>
         <th>Produit</th>
         <th>PU</th>
-        <th>Stock</th>
+        <th>Stock Magasin</th>
         <th>Quantité</th>
         <th>Réduction / unité</th>
         <th>Sous-total</th>
@@ -59,7 +59,7 @@
         </td>
 
         <td class="pu">{{ p.pu }}</td>
-        <td class="stock">{{ p.qtestock }}</td>
+        <td class="stock">{{ p.qtestock_magasin }}</td>
 
         <!-- Quantité -->
         <td>
@@ -67,7 +67,7 @@
                  name="quantite[]"
                  class="form-control qte"
                  min="0"
-                 max="{{ p.qtestock }}"
+                 max="{{ p.qtestock_magasin }}"
                  value="0"
                  data-pu="{{ p.pu }}">
         </td>
@@ -93,6 +93,10 @@
         </td>
 
       </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="text-center">Aucun produit en stock magasin disponible.</td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
@@ -112,22 +116,20 @@ function recalc() {
 
   document.querySelectorAll(".produit-row").forEach(row => {
 
-    const qte = parseInt(row.querySelector(".qte").value || 0);
-    const pu = parseInt(row.querySelector(".qte").dataset.pu || 0);
-    let reductionInput = row.querySelector(".reduction");
+    const qteInput = row.querySelector(".qte");
+    const qte = parseInt(qteInput.value || 0);
+    const pu = parseInt(qteInput.dataset.pu || 0);
+
+    const reductionInput = row.querySelector(".reduction");
     let reduction = parseInt(reductionInput.value || 0);
 
-    // ================= Contrôle réduction =================
+    // Limiter la réduction au PU
     if (reduction > pu) {
-      reduction = pu; // On limite la réduction au PU
-      reductionInput.value = pu; // On corrige la valeur affichée
-      // Optionnel : message utilisateur
-      // alert("La réduction ne peut pas être supérieure au prix unitaire !");
+      reduction = pu;
+      reductionInput.value = pu;
     }
 
-    let puFinal = pu - reduction;
-    if (puFinal < 0) puFinal = 0;
-
+    const puFinal = Math.max(0, pu - reduction);
     const sousTotal = qte * puFinal;
 
     row.querySelector(".sous-total").textContent = sousTotal;
@@ -137,7 +139,7 @@ function recalc() {
   document.getElementById("total-general").textContent = total;
 }
 
-// Événements
+// Événements pour recalcul
 document.querySelectorAll(".qte, .reduction").forEach(input => {
   input.addEventListener("input", recalc);
 });
@@ -152,6 +154,5 @@ document.getElementById("search").addEventListener("input", function () {
 
 recalc();
 </script>
-
 
 {% endblock %}

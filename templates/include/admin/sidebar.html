@@ -35,7 +35,18 @@
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_categorie' %}"><i class="fa fa-user-plus"></i> Gestion des Catégories</a></li>
                     <li><a href="{% url 'produits:listes_produits' %}"><i class="fa fa-list"></i>Listes des Produits</a></li>
+                </ul>
+            </li>
+
+        <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-users"></i>
+                    <span>Gestion des Stock et Appro</span>
+                    <i class="fa fa-angle-left pull-right"></i> 
+                </a>
+                <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_produits_stock' %}"><i class="fa fa-list"></i>Listes des Stocks</a></li>
+                    <li><a href="{% url 'produits:approvisionner_produits' %}"><i class="fa fa-list"></i>Approvisionnement des Stocks</a></li>
                 </ul>
             </li>
 

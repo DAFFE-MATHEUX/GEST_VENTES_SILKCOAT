@@ -111,9 +111,8 @@
                                         <th>Désignation</th>
                                         <th>Quantité Commandée</th>
                                         <th>Quantité Livrée</th>
-                                        <th>Quantité Stock</th>
                                         <th>Prix Unitaire</th>
-                                        <th>Date Livraison</th>
+                                        <th>Date de Livraison</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -128,7 +127,6 @@
                                         <td>{{ elem.produits.desgprod }}</td>
                                         <td>{{ elem.commande.qtecmd }}</td>
                                         <td>{{ elem.qtelivrer }}</td>
-                                        <td>{{ elem.produits.qtestock }}</td>
                                         <td>{{ elem.produits.pu }}</td>
                                         <td>{{ elem.datelivrer|date:'d/m/Y' }}</td>
                                         <td>

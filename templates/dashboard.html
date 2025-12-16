@@ -44,13 +44,28 @@
            <div class="col-lg-3 col-xs-6">
             <div class="small-box bg-red">
                 <div class="inner">
-                    <h3>{{ total_stock }}</h3>
-                    <p>Total Stock</p>
+                    <h3>{{ total_stock_entrepot }}</h3>
+                    <p>Total Stock Entrepot</p>
                 </div>
                 <div class="icon">
                     <i class="ion ion-cash"></i>
                 </div>
                 <a href="{% url 'produits:listes_produits_stock' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-yellow">
+                <div class="inner">
+                    <h3>{{ total_stock_magasin }}</h3>
+                    <p>Total Stock Magasin</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-bag"></i>
+                </div>
+                <a href="{% url 'produits:listes_des_commandes' %}" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
             </div>
@@ -71,6 +86,10 @@
             </div>
         </div>
 
+    </div>
+
+        <div class="row">
+
         <div class="col-lg-3 col-xs-6">
             <div class="small-box bg-yellow">
                 <div class="inner">
@@ -85,12 +104,6 @@
                 </a>
             </div>
         </div>
-
-
-    </div>
-
-        <div class="row">
-
                <div class="col-lg-3 col-xs-6">
             <div class="small-box bg-yellow">
                 <div class="inner">
