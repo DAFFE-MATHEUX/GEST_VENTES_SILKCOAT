@@ -1,0 +1,76 @@
+{% extends 'admin.html' %}
+{% block contents %}
+
+<h2>Ajouter du Stock à Plusieurs Produits</h2>
+
+{% if messages %}
+    {% for mgs in messages %}
+        <div class="alert {% if mgs.tags == 'success' %} alert-success {% elif mgs.tags == 'error' %} alert-danger {% else %} alert-info {% endif %}">
+            {{ mgs }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Produit</th>
+                <th>Entrepôt</th>
+                <th>Quantité à ajouter</th>
+                <th>Seuil</th>
+                <th>Magasin</th>
+                <th>Quantité à ajouter</th>
+                <th>Seuil</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in produits %}
+            <tr>
+                <td>{{ p.refprod }} - {{ p.desgprod }}
+                    <input type="hidden" name="produit[]" value="{{ p.id }}">
+                </td>
+
+                <td>
+                    <select name="entrepot[]" class="form-control" required>
+                        <option value="">-- Sélectionner un entrepôt --</option>
+                        {% for e in entrepots %}
+                            <option value="{{ e.id }}">{{ e.nom_entrepot }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <input type="number" name="qtestock_entrepot[]" class="form-control" value="0" required>
+                </td>
+
+                <td>
+                    <input type="number" name="seuil_entrepot[]" class="form-control" value="0" required>
+                </td>
+
+                <td>
+                    <select name="magasin[]" class="form-control" required>
+                        <option value="">-- Sélectionner un magasin --</option>
+                        {% for m in magasins %}
+                            <option value="{{ m.id }}">{{ m.nom_magasin }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+
+                <td>
+                    <input type="number" name="qtestock_magasin[]" class="form-control" value="0" required>
+                </td>
+
+                <td>
+                    <input type="number" name="seuil_magasin[]" class="form-control" value="0" required>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-primary mt-3">Valider l'enregistrement de tous les stocks</button>
+</form>
+
+{% endblock %}

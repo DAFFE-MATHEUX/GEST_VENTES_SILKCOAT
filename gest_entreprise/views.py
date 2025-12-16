@@ -66,11 +66,13 @@ def modifier_entreprise(request):
             identifiant_etablissement = request.POST.get('identifiant_etablissement')
             entreprise = get_object_or_404(Entreprise, id=identifiant_etablissement)
             
-            entreprise.nom_entrepriese = request.POST.get('nom_entrepriese')
-            entreprise.email = request.POST.get('email')
-            entreprise.adresse = request.POST.get('adresse')
-            entreprise.contact2 = request.POST.get('contact1')
-            entreprise.logo = request.POST.get('logo')
+            entreprise.nom_entrepriese = request.POST.get("nom_entrepriese")
+            entreprise.adresse = request.POST.get("adresse")
+            entreprise.email = request.POST.get("email")
+            entreprise.contact1 = request.POST.get("contact1")
+            entreprise.contact2 = request.POST.get("contact2")
+            if request.FILES.get("logo"):
+                entreprise.logo = request.FILES.get("logo")
             entreprise.save()
             messages.success(request, "Modification effectuée avec succès ! ")
             return redirect('liste_etablissement')

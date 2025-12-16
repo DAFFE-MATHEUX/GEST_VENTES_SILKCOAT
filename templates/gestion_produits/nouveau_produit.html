@@ -88,16 +88,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <label>Désignation</label>
                         <input class="form-control" placeholder="Nom du produit" name="desgprod[]" required>
                     </div>
-
+                    
+                     {% if not request.user.type_utilisateur == 'Gerante' %}
                     <div class="form-group">
-                        <label>Quantité en Stock</label>
-                        <input class="form-control" type="number" name="qtestock[]" value="0" required>
+                        <label>Prix Unitaire en Gros (PU)</label>
+                        <input class="form-control" type="number" name="pu_engros[]" value="0" required>
                     </div>
 
-                    <div class="form-group">
-                        <label>Seuil d'alerte</label>
-                        <input class="form-control" type="number" name="seuil[]" value="0" required>
-                    </div>
+                     {% endif %}
                 </div>
 
                 <div class="col-md-6">

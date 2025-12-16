@@ -97,10 +97,10 @@
                                         <th>Ref Produit</th>
                                         <th>Catégorie</th>
                                         <th>Désignation</th>
-                                        <th>Quantité</th>
-                                        <th>Seuil</th>
                                         <th>Prix Unitaire</th>
+                                        {% if not request.user.type_utilisateur == 'Gerante' %}
                                         <th>Prix Unitaire en Gros</th>
+                                        {% endif %}
                                         <th>Date Enregistrement</th>
                                         <th>Photo Produit</th>
                                         <th>Approvisionnement</th>
@@ -115,10 +115,10 @@
                                         <td>{{ elem.refprod }}</td>  
                                         <td>{{ elem.categorie }}</td>
                                         <td>{{ elem.desgprod }}</td>    
-                                        <td>{{ elem.qtestock }}</td>
-                                        <td>{{ elem.seuil }}</td>
                                         <td>{{ elem.pu }}</td>
+                                         {% if not request.user.type_utilisateur == 'Gerante' %}
                                         <td>{{ elem.prix_en_gros }}</td>
+                                        {% endif %}
                                         <td>{{ elem.date_maj |date:'Y-n-j' }}</td>
                                         <td>
                                             {% if elem.photoprod %}

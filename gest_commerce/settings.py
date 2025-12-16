@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     
     # Librairies
     'rest_framework',
-    #'import_export',
+    'import_export',
 ]
 
 MIDDLEWARE = [

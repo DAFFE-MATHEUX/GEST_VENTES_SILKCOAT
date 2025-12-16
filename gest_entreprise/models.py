@@ -1,6 +1,5 @@
 from django.db import models
 
-# Create your models here.
 class Entreprise(models.Model):
     nom_entrepriese = models.CharField(max_length = 80)
     contact1 = models.CharField(max_length=30)
@@ -13,3 +12,17 @@ class Entreprise(models.Model):
     def __str__(self):
         return f"Nom : {self.nom_entrepriese} Email : {self.email}"
     
+
+class Entrepot(models.Model):
+    nom_entrepot = models.CharField(max_length = 80)
+    description = models.CharField(max_length=70)
+    
+    def __str__(self):
+        return f"Nom : {self.nom_entrepot}"
+    
+class Magasin(models.Model):
+    nom_magasin = models.CharField(max_length = 80)
+    description = models.CharField(max_length=70)
+
+    def __str__(self):
+        return f"Nom : {self.nom_magasin}"

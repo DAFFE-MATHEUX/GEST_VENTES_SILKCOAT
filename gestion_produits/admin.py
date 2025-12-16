@@ -1,87 +1,96 @@
 from django.contrib import admin
-from gest_entreprise.models import Entreprise
+from .models import (
+    CategorieProduit, Produits, StockProduit, MouvementProduit,
+    VenteProduit, LigneVente, Commandes, LivraisonsProduits
+)
 
-from .models import *
-# from .models import Order:
-#from import_export.admin import ImportExportModelAdmin
+# ==========================
+# CATEGORIE PRODUIT
+# ==========================
+@admin.register(CategorieProduit)
+class AdminCategorie(admin.ModelAdmin):
+    list_display = ('id', 'desgcategorie', 'date_maj')
+    list_editable = ('desgcategorie',)
+    search_fields = ('desgcategorie',)
+    ordering = ('-date_maj',)
 
-# ====================================================================================
+# ==========================
+# PRODUITS
+# ==========================
+@admin.register(Produits)
+class AdminProduits(admin.ModelAdmin):
+    list_display = ('id', 'refprod', 'desgprod', 'pu', 'categorie', 'date_maj')
+    list_editable = ('pu',)
+    list_filter = ('categorie',)
+    search_fields = ('refprod', 'desgprod')
+    ordering = ('-date_maj',)
 
-""" 
-class AdminProduits(ImportExportModelAdmin): #class AdminProducts(admin.ModelAdmin):
-    list_display = '__all__'
-    search_fields = ('refprod','categorie', 'desgprod') # Permet une zone de recherche par categorie
-    
-    list_editable = ('refprod',) # Donner la possibilité de modifier dans la partie administration
-    
-    list_filter = (
-        'refprod','categorie', 'date_inscription' , 'desgprod'
-                   ) # Donner la possibilité de filtrer partie administration
+# ==========================
+# STOCK PRODUIT
+# ==========================
 
-class AdminLigneVente(ImportExportModelAdmin): #class AdminProducts(admin.ModelAdmin):
-    list_display = '__all__'
-    
-    search_fields = ('vente','produit') # Permet une zone de recherche par designation
-    
-    list_editable = ('quantite',) # Donner la possibilité de modifier dans la partie administration
-    
-    list_filter = (
-        'vente','produit',
-                   ) # Donner la possibilité de filtrer partie administration
+@admin.register(StockProduit)
+class AdminStock(admin.ModelAdmin):
+    list_display = (
+        'produit',
+        'lieu_stockage',
+        'qtestock',
+        'seuil',
+        'date_maj'
+    )
 
-class AdminVenteProduit(ImportExportModelAdmin): #class AdminProducts(admin.ModelAdmin):
-    list_display ='__all__'
-    
-    search_fields = ('code','date_vente', 'utilisateur') # Permet une zone de recherche
-    
-    list_editable = ('code',) # Donner la possibilité de modifier dans la partie administration
-    
-    list_filter = (
-        'code','date_vente', 'utilisateur') # Donner la possibilité de filtrer partie administration
-    
+    list_editable = ('qtestock', 'seuil')
 
-class AdminCategorie(ImportExportModelAdmin): #class AdminProducts(admin.ModelAdmin):
-    list_display ='__all__'
-    
-    search_fields = ('desgcategorie','description') # Permet une zone de recherche
-    
-    list_editable = ('desgcategorie',) # Donner la possibilité de modifier dans la partie administration
-    
-    list_filter = (
-        'desgcategorie','description',) # Donner la possibilité de filtrer partie administration
+    list_filter = ('entrepot', 'magasin')
+    search_fields = ('produit__refprod',)
 
-class AdminCommande(ImportExportModelAdmin): #class AdminProducts(admin.ModelAdmin):
-    list_display ='__all__'
-    
-    search_fields = ('numcmd','produits') # Permet une zone de recherche
-    
-    list_editable = ('numcmd','produits', ) # Donner la possibilité de modifier dans la partie administration
-    
-    list_filter = (
-        'numcmd','produits', 'datecmd',) # Donner la possibilité de filtrer partie administration
+    def lieu_stockage(self, obj):
+        return obj.entrepot if obj.entrepot else obj.magasin
 
-class AdminLivraisons(ImportExportModelAdmin): #class AdminProducts(admin.ModelAdmin):
-    list_display ='__all__'
-    
-    search_fields = ('fournisseur','produits', 'datelivrer') # Permet une zone de recherche
-    
-    list_editable = ('numcmd','qtelivrer', ) # Donner la possibilité de modifier dans la partie administration
-    
-    list_filter = (
-        'fournisseur','qtelivrer', 'produits', 'datelivrer') # Donner la possibilité de filtrer partie administration
+    lieu_stockage.short_description = "Lieu de stockage"
 
-"""  
-# =========================================================================================
-""" 
-admin.register(Produits, AdminProduits)
-admin.register(CategorieProduit, AdminCategorie)
-admin.register(Commandes, AdminCommande)
-admin.register(Livraisons, AdminLivraisons)
-admin.register(VenteProduit, AdminVenteProduit)
-admin.register(LigneVente, AdminLigneVente)
+# ==========================
+# MOUVEMENT PRODUIT
+# ==========================
+@admin.register(MouvementProduit)
+class AdminMouvement(admin.ModelAdmin):
+    list_display = ('produit', 'type_mouvement', 'quantite', 'date_vente')
+    list_filter = ('type_mouvement',)
+    ordering = ('-date_vente',)
 
-"""
-# =========================================================================================
-admin.register(Produits)
-admin.register(VenteProduit)
-admin.register(LigneVente)
+# ==========================
+# VENTE PRODUIT
+# ==========================
+@admin.register(VenteProduit)
+class AdminVenteProduit(admin.ModelAdmin):
+    list_display = ('code', 'total', 'nom_complet_client', 'telclt_client', 'utilisateur', 'date_vente')
+    search_fields = ('code', 'nom_complet_client', 'telclt_client')
+    ordering = ('-date_vente',)
+
+# ==========================
+# LIGNE DE VENTE
+# ==========================
+@admin.register(LigneVente)
+class AdminLigneVente(admin.ModelAdmin):
+    list_display = ('vente', 'produit', 'quantite', 'prix', 'montant_reduction', 'sous_total')
+    list_editable = ('quantite', 'prix', 'montant_reduction')
+
+# ==========================
+# COMMANDES
+# ==========================
+@admin.register(Commandes)
+class AdminCommande(admin.ModelAdmin):
+    list_display = ('numcmd', 'produits', 'qtecmd', 'statuts', 'datecmd')
+    list_editable = ('statuts',)
+    search_fields = ('numcmd', 'produits__desgprod')
+    ordering = ('-datecmd',)
+
+# ==========================
+# LIVRAISONS
+# ==========================
+@admin.register(LivraisonsProduits)
+class AdminLivraison(admin.ModelAdmin):
+    list_display = ('numlivrer', 'commande', 'produits', 'qtelivrer', 'statuts', 'datelivrer')
+    list_editable = ('qtelivrer', 'statuts')
+    search_fields = ('numlivrer', 'produits__desgprod')
+    ordering = ('-datelivrer',)

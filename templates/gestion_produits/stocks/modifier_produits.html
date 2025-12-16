@@ -56,8 +56,15 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Changer la photo</label>
-                                        <input type="file" name="photoprod">
+                                        <label>Quantité en Stock</label>
+                                        <input class="form-control" name="qtestock" type="number"
+                                               value="{{ produit.qtestock }}" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Seuil d’alerte</label>
+                                        <input class="form-control" name="seuil" type="number"
+                                               value="{{ produit.seuil }}">
                                     </div>
 
                                 </div>
@@ -73,13 +80,11 @@
                                                value="{{ produit.pu }}" required>
                                     </div>
 
-                                         {% if not request.user.type_utilisateur == 'Gerante' %}
                                     <div class="form-group">
                                         <label>Prix Unitaire en Gros(PU)</label>
                                         <input class="form-control" name="prix_en_gros" type="number"
                                                value="{{ produit.prix_en_gros }}" required>
                                     </div>
-                                    {% endif %}
 
                                     <div class="form-group">
                                         <label>Catégorie</label>
@@ -94,6 +99,10 @@
                                         </select>
                                     </div>
 
+                                    <div class="form-group">
+                                        <label>Changer la photo</label>
+                                        <input type="file" name="photoprod">
+                                    </div>
 
                                     {% if produit.photoprod %}
                                         <div class="form-group">

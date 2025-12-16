@@ -42,15 +42,12 @@
                                     <p class="form-control-static">{{ produit.pu }} GNF</p>
                                 </div>
 
+                                 {% if not request.user.type_utilisateur == 'Gerante' %}
                                 <div class="form-group">
                                     <label>Prix Unitaire en Gros</label>
                                     <p class="form-control-static">{{ produit.prix_en_gros }} GNF</p>
                                 </div>
-
-                                <div class="form-group">
-                                    <label>Quantité en Stock</label>
-                                    <p class="form-control-static">{{ produit.qtestock }}</p>
-                                </div>
+                                {% endif %}
 
 
                             </div>

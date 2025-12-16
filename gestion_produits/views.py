@@ -151,6 +151,8 @@ def vendre_produit(request):
                 sous_total=st,
                 montant_reduction=reduction,
             )
+            
+            
             prod.qtestock -= qte
             prod.save()
 
@@ -629,6 +631,62 @@ def supprimer_produits(request):
         return redirect('produits:listes_produits')
 
 #================================================================================================
+# Fonction pour supprimer un produit donné
+#================================================================================================
+
+@login_required
+def supprimer_produits_stock(request):
+    if request.method == 'POST':
+        prod_id = request.POST.get('id_supprimer')
+
+        try:
+            produit = StockProduit.objects.get(id=prod_id)
+
+            # Vérifier si le produit est lié à des ventes
+            if Produits.objects.filter(
+                produit = prod_id
+                ).exists():
+                messages.warning(
+                    request,
+                    "Impossible de supprimer ce stock car il est déjà utilisé les produit. "
+                    "Veuillez d'abord supprimer les produits associées."
+                )
+                return redirect('produits:listes_produits_stock')
+
+            # ----- Ancienne valeur pour l'audit -----
+            ancienne_valeur = {
+                "id": produit.id,
+                "refprod": produit.refprod if hasattr(produit, "refprod") else "",
+                "desgprod": produit.desgprod,
+                "pu": float(produit.pu),
+                "qtestock": produit.qtestock,
+                "categorie": str(produit.categorie) if produit.categorie else None,
+            }
+
+            # ----- Suppression -----
+            produit.delete()
+
+            # ----- Audit -----
+            enregistrer_audit(
+                utilisateur = request.user,
+                action="Suppression produit",
+                table="Produits",
+                ancienne_valeur=ancienne_valeur,
+                nouvelle_valeur=None
+            )
+
+            messages.success(request, "Produit en Stock supprimé avec succès !")
+
+        except StockProduit.DoesNotExist:
+            messages.error(request, "Stock introuvable.")
+        except Produits.DoesNotExist:
+            messages.error(request, "Produit introuvable.")
+        except Exception as ex:
+            messages.error(request, f"Erreur lors de la suppression : {str(ex)}")
+
+        return redirect('produits:listes_produits_stock')
+
+#================================================================================================
 # Fonction pour supprimer une commande donnée
 #================================================================================================
 @login_required
@@ -757,6 +815,31 @@ def listes_produits(request):
         'total_produit' : total_produit
     }
     return render(request, "gestion_produits/lites_produits.html", context)
+
+#================================================================================================
+# Fonction pour afficher la liste de tout les produits
+#================================================================================================
+
+@login_required
+
+def listes_produits_stock(request):
+    try:
+        listes_stock = StockProduit.objects.select_related('produit', 'entrepot', 'magasin').all().order_by('-id')
+        total_produit = listes_stock.count()
+
+        # Appliquer la pagination
+        listes_stock = pagination_liste(request, listes_stock)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des produits en stock : {str(ex)} !")
+        return redirect('produits:listes_produits_stock')  # Retourner un HttpResponse
+
+    context = {
+        'listes_produits': listes_stock,
+        'total_produit': total_produit
+    }
+
+    return render(request, "gestion_produits/stocks/lites_produits_stocks.html", context)
 
 #================================================================================================
 # Fonction pour afficher la liste de tout les livraisons
@@ -959,8 +1042,8 @@ def generate_references(prefix, date_str, numero):
 #================================================================================================
 
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-def nouveau_produit(request):
 
+def nouveau_produit(request):
     prefix = "PROD"
     date_str = datetime.now().strftime("%Y%m%d")
 
@@ -982,52 +1065,51 @@ def nouveau_produit(request):
 
         refs = request.POST.getlist("refprod[]")
         noms = request.POST.getlist("desgprod[]")
-        stocks = request.POST.getlist("qtestock[]")
-        seuils = request.POST.getlist("seuil[]")
         pus = request.POST.getlist("pu[]")
+        pu_engros = request.POST.getlist("pu_engros[]")
         categories = request.POST.getlist("categorie[]")
-        
         photos = request.FILES.getlist("photoprod[]")
 
         total = len(noms)
         success_count = 0
 
         # Vérification cohérence des listes
-        if not (len(refs) == len(noms) == len(stocks) == len(seuils) == len(pus) == len(categories)):
+        if not (len(refs) == len(noms) == len(pus) == len(pu_engros) == len(categories)):
             messages.error(request, "Erreur : Données incomplètes dans le formulaire.")
             return redirect("produits:nouveau_produit")
 
         for i in range(total):
-
             ref = refs[i]
             desg = noms[i]
-            qte = int(stocks[i])
-            seuil = int(seuils[i])
-            pu = int(pus[i])
+            try:
+                pu = int(pus[i])
+                pu_engro_val = int(pu_engros[i])
+            except ValueError:
+                messages.error(request, f"Erreur : Le prix doit être un nombre pour le produit {desg}.")
+                return redirect("produits:nouveau_produit")
+
             cat_id = categories[i]
             photo = photos[i] if i < len(photos) else None
 
-            # Vérifier doublon
-            if Produits.objects.filter(refprod=desg).exists():
-                messages.error(request, f"La Référence {ref} déjà existante doublons.")
+            # Vérifier doublons
+            if Produits.objects.filter(refprod=ref).exists():
+                messages.error(request, f"La Référence {ref} existe déjà.")
                 return redirect('produits:nouveau_produit')
-            
-            elif Produits.objects.filter(desgprod=ref).exists():
-                messages.error(request, f"Le nom du Produit {ref} déjà dans la base de données doublons.")
+            elif Produits.objects.filter(desgprod=desg).exists():
+                messages.error(request, f"Le nom du Produit {desg} existe déjà.")
                 return redirect('produits:nouveau_produit')
 
+            # Création du produit
             try:
                 Produits.objects.create(
-                    refprod = ref,
-                    desgprod = desg,
-                    qtestock = qte,
-                    seuil = seuil,
-                    pu = pu,
-                    photoprod = photo,
-                    categorie_id = cat_id
+                    refprod=ref,
+                    desgprod=desg,
+                    pu=pu,
+                    prix_en_gros=pu_engro_val,
+                    photoprod=photo,
+                    categorie_id=cat_id
                 )
                 success_count += 1
-
             except Exception as e:
                 messages.error(request, f"Erreur lors de l’enregistrement de {ref} : {e}")
 
@@ -1042,6 +1124,102 @@ def nouveau_produit(request):
     }
 
     return render(request, "gestion_produits/nouveau_produit.html", context)
+
+#================================================================================================
+# Fonction pour ajouter un nouveau produit
+#================================================================================================
+
+@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
+def ajouter_stock_multiple(request):
+    produits = Produits.objects.all()
+    entrepots = Entrepot.objects.all()
+    magasins = Magasin.objects.all()
+
+    if request.method == "POST":
+        # Récupération des listes de valeurs depuis le formulaire
+        produit_ids = request.POST.getlist("produit[]")
+        entrepot_ids = request.POST.getlist("entrepot[]")
+        magasin_ids = request.POST.getlist("magasin[]")
+
+        qte_entrepot_list = request.POST.getlist("qtestock_entrepot[]")
+        qte_magasin_list = request.POST.getlist("qtestock_magasin[]")
+        seuil_entrepot_list = request.POST.getlist("seuil_entrepot[]")
+        seuil_magasin_list = request.POST.getlist("seuil_magasin[]")
+
+        success_count = 0
+
+        # Parcours de chaque produit
+        for i in range(len(produit_ids)):
+            try:
+                produit = Produits.objects.get(id=int(produit_ids[i]))
+                entrepot = Entrepot.objects.get(id=int(entrepot_ids[i]))
+                magasin = Magasin.objects.get(id=int(magasin_ids[i]))
+
+                qte_entrepot = int(qte_entrepot_list[i])
+                qte_magasin = int(qte_magasin_list[i])
+                seuil_e = int(seuil_entrepot_list[i])
+                seuil_m = int(seuil_magasin_list[i])
+
+                # =======================
+                # STOCK ENTREPOT
+                # =======================
+                stock_entrepot, created_e = StockProduit.objects.get_or_create(
+                    produit=produit,
+                    entrepot=entrepot,
+                    magasin=None,
+                    defaults={
+                        "qtestock": qte_entrepot,
+                        "seuil": seuil_e
+                    }
+                )
+
+                if not created_e:
+                    stock_entrepot.qtestock += qte_entrepot
+                    stock_entrepot.seuil = seuil_e
+                    stock_entrepot.save()
+
+                # =======================
+                # STOCK MAGASIN
+                # =======================
+                stock_magasin, created_m = StockProduit.objects.get_or_create(
+                    produit=produit,
+                    magasin=magasin,
+                    entrepot=None,
+                    defaults={
+                        "qtestock": qte_magasin,
+                        "seuil": seuil_m
+                    }
+                )
+
+                if not created_m:
+                    stock_magasin.qtestock += qte_magasin
+                    stock_magasin.seuil = seuil_m
+                    stock_magasin.save()
+
+                success_count += 1
+
+            except Produits.DoesNotExist:
+                messages.error(request, f"Produit introuvable pour l'entrée {i+1}.")
+            except Entrepot.DoesNotExist:
+                messages.error(request, f"Entrepôt introuvable pour l'entrée {i+1}.")
+            except Magasin.DoesNotExist:
+                messages.error(request, f"Magasin introuvable pour l'entrée {i+1}.")
+            except ValueError:
+                messages.error(request, f"Quantité ou seuil invalide pour le produit {produit.refprod}.")
+            except Exception as e:
+                messages.error(request, f"Erreur pour le produit {produit.refprod}: {e}")
+
+        messages.success(
+            request,
+            f"{success_count} produit(s) enregistré(s) / mis à jour avec succès."
+        )
+        return redirect("produits:ajouter_stock_multiple")
+
+    return render(request, "gestion_produits/stocks/ajouter_stock_multiple.html", {
+        "produits": produits,
+        "entrepots": entrepots,
+        "magasins": magasins,
+    })
 
 #================================================================================================
 # Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des produit
@@ -1166,6 +1344,47 @@ def listes_commandes_impression(request):
     return render(
         request,
         'gestion_produits/impression_listes/apercue_avant_impression_listes_produits.html',
+        context
+    )
+
+
+#================================================================================================
+# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Stocks
+#================================================================================================
+@login_required
+def choix_par_dates_stocks_impression(request):
+    return render(request, 'gestion_produits/impression_listes/stock/fiches_choix_impression_stocks.html')
+
+#================================================================================================
+# Fonction pour imprimer la listes des Produits en Stocks
+#================================================================================================
+
+@login_required
+def listes_stocks_impression(request):
+    
+    try:
+        date_debut = request.POST.get('date_debut')
+        date_fin = request.POST.get('date_fin')
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
+
+    except ValueError as ve:
+        messages.warning(request, f"Erreur de type de données : {str(ve)}")
+        
+    listes_produits = StockProduit.objects.filter(
+        date_maj__range = [
+    date_debut, date_fin])
+    nom_entreprise = Entreprise.objects.first()
+    context = {
+        'nom_entreprise': nom_entreprise,
+        'today': timezone.now(),
+        'listes_produits' : listes_produits,
+        'date_debut' : date_debut,
+        'date_fin' : date_fin,
+    }
+    return render(
+        request,
+        'gestion_produits/impression_listes/stock/apercue_avant_impression_listes_stocks.html',
         context
     )
 

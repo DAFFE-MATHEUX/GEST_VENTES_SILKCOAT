@@ -81,13 +81,19 @@
                 <td class="text-center">
 
                   <!-- Modifier -->
-                  <button type="button" class="btn btn-warning btn-sm btn-cat-mod" data-toggle="modal"
-                    data-target="#modifier_categorie"
-                    data-id="{{ element.id }}"
-                    data-nom="{{ element.desgcategorie }}"
-                    data-description="{{ element.description }}">
-                    <i class="fa fa-pencil"></i>
-                  </button>
+                          <button type="button"
+                            class="btn btn-warning btn-sm btn-ent-mod"
+                            data-toggle="modal"
+                            data-target="#modifier_entreprise"
+                            data-id="{{ element.id }}"
+                            data-nom="{{ element.nom_entrepriese }}"
+                            data-adresse="{{ element.adresse }}"
+                            data-email="{{ element.email }}"
+                            data-contact1="{{ element.contact1 }}"
+                            data-contact2="{{ element.contact2 }}">
+                            <i class="fa fa-pencil"></i>
+                          </button>
+
 
                   <!-- Supprimer -->
                   <button type="button" class="btn btn-danger btn-sm btn-cat-sup" data-toggle="modal"
@@ -166,35 +172,60 @@
 </div>
 
 <!-- Modifier -->
-<div class="modal fade" id="modifier_categorie">
+<div class="modal fade" id="modifier_entreprise">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
 
       <div class="modal-header bg-warning">
-        <h4 class="modal-title">Modifier les Informations</h4>
+        <h4 class="modal-title">Modifier les informations de l'entreprise</h4>
       </div>
 
-      <form method="POST" action="{% url 'produits:modifier_categorie' %}">
+      <form method="POST"
+            action="{% url 'modifier_entreprise' %}"
+            enctype="multipart/form-data">
         {% csrf_token %}
+
         <div class="modal-body">
 
           <input type="hidden" name="id_modif" id="id_modif">
 
           <div class="form-group">
-            <label>Nom</label>
-            <input type="text" name="nom_modif" id="nom_modif" class="form-control" required>
+            <label>Nom complet</label>
+            <input type="text" name="nom_entrepriese" id="nom_modif" class="form-control" required>
           </div>
 
           <div class="form-group">
-            <label>Description</label>
-            <textarea name="description_modif" id="description_modif" class="form-control"></textarea>
+            <label>Adresse</label>
+            <input type="text" name="adresse" id="adresse_modif" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" id="email_modif" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label>Contact 1</label>
+            <input type="text" name="contact1" id="contact1_modif" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label>Contact 2</label>
+            <input type="text" name="contact2" id="contact2_modif" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label>Logo (optionnel)</label>
+            <input type="file" name="logo" class="form-control">
           </div>
 
         </div>
 
         <div class="modal-footer">
-          <button type="submit" class="btn btn-warning">Modifier</button>
-          <button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fa fa-save"></i> Modifier
+          </button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
         </div>
 
       </form>
@@ -202,6 +233,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Supprimer -->
 <div class="modal fade" id="supprimer_categorie">
@@ -233,13 +265,16 @@
 <!-- ====================== JS ====================== -->
 <script>
   // Pré-remplissage du modal Modifier
-  document.querySelectorAll('.btn-cat-mod').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('id_modif').value = btn.dataset.id;
-      document.getElementById('nom_modif').value = btn.dataset.nom;
-      document.getElementById('description_modif').value = btn.dataset.description;
-    });
+document.querySelectorAll('.btn-ent-mod').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('id_modif').value = btn.dataset.id;
+    document.getElementById('nom_modif').value = btn.dataset.nom;
+    document.getElementById('adresse_modif').value = btn.dataset.adresse;
+    document.getElementById('email_modif').value = btn.dataset.email;
+    document.getElementById('contact1_modif').value = btn.dataset.contact1;
+    document.getElementById('contact2_modif').value = btn.dataset.contact2;
   });
+});
 
   // Pré-remplissage pour Supprimer
   document.querySelectorAll('.btn-cat-sup').forEach(btn => {

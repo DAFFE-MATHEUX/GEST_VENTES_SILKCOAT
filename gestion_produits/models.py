@@ -1,6 +1,6 @@
 from django.db import models
 from gestion_utilisateur.models import Utilisateur
-
+from gest_entreprise.models import Entrepot, Magasin
 #==================================================================================
 # Table Categorie Produit
 #==================================================================================
@@ -20,8 +20,7 @@ class CategorieProduit(models.Model):
 class Produits(models.Model):
     refprod = models.CharField(max_length = 50)
     desgprod = models.TextField(null=True, blank = True)
-    qtestock = models.IntegerField(default = 0)
-    seuil = models.IntegerField(default = 0)
+
     pu = models.IntegerField(default = 0)
     prix_en_gros = models.IntegerField(default = 0)  # Prix unitaire en gros
     photoprod = models.ImageField(upload_to = 'Produits/', null = True, blank = True)
@@ -33,11 +32,76 @@ class Produits(models.Model):
         
     def __str__(self):
         return f"Références : {self.refprod} Catégorie : {self.categorie}"
- 
+
+#==================================================================================
+# Table Stock des Produits
+#==================================================================================
+class StockProduit(models.Model):
+    produit = models.ForeignKey(
+        Produits,
+        on_delete=models.CASCADE,
+        related_name='stocks'
+    )
+
+    entrepot = models.ForeignKey(
+        Entrepot,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='stocks'
+    )
+
+    magasin = models.ForeignKey(
+        Magasin,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='stocks'
+    )
+
+    qtestock = models.IntegerField(default=0)
+    seuil = models.IntegerField(default=0)
+
+    date_maj = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(entrepot__isnull=False, magasin__isnull=True) |
+                    models.Q(entrepot__isnull=True, magasin__isnull=False)
+                ),
+                name="stock_entrepot_ou_magasin"
+            ),
+            models.UniqueConstraint(
+                fields=["produit", "entrepot", "magasin"],
+                name="unique_stock_produit_lieu"
+            )
+        ]
+
+    def __str__(self):
+        lieu = self.entrepot or self.magasin
+        return f"{self.produit.refprod} | {lieu}"
+
+#==================================================================================
+# Table Mouvement des Produits
+#==================================================================================
+class MouvementProduit(models.Model):
+    TYPE_MOUVEMENT = [
+        ('Entrer', 'Entrer'),
+        ('Sortie', 'Sortie'),
+        ('Transfert', 'Transfert'),
+    ]
+    produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='mouvement')
+    type_mouvement = models.CharField(max_length=45, choices=TYPE_MOUVEMENT)
+    quantite = models.IntegerField(default = 0)
+    date_vente = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"Références : {self.produit.refprod} Stock : {self.qtestock}"
+
 #==================================================================================
 # Table Ventes des Produits
 #==================================================================================
-
 class VenteProduit(models.Model):
     code = models.CharField(max_length=20, unique=True)
     date_vente = models.DateTimeField(auto_now_add=True)

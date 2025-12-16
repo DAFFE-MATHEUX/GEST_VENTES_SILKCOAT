@@ -72,8 +72,8 @@ def home(request):
     # ---------------------------------------------------------
     # Statistiques sur le total des stocks de tout les produits
     # ----------------------------------------------------------
-    data_products = Produits.objects.all()
-    total_stock = data_products.aggregate(qtestock=Sum('qtestock'))['qtestock'] or 0
+    #data_products = Produits.objects.all()
+    #total_stock = data_products.aggregate(qtestock=Sum('qtestock'))['qtestock'] or 0
 
     # ----------------------------------------
     # Statistiques sur le total de catégorie
@@ -147,7 +147,7 @@ def home(request):
         'total_livraisons': total_livraisons,
         'total_audit' : total_audit,
         'total_ventes': total_ventes,
-        'total_stock' : total_stock,
+        #'total_stock' : total_stock,
         'now': date.today(),
     }
 

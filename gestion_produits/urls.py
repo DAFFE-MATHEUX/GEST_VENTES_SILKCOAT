@@ -7,13 +7,21 @@ urlpatterns = [
     # Gestion des produits
     #==========================================================================
     
-    path('listes_produits/', listes_produits, name='listes_produits'),
-    path('nouveau_produit/', nouveau_produit, name='nouveau_produit'),    
-    path('supprimer_produits/', supprimer_produits, name='supprimer_produits'),    
+    path('produits/listes_produits/', listes_produits, name='listes_produits'),
+    path('produits/nouveau_produit/', nouveau_produit, name='nouveau_produit'),    
+    path('produits/supprimer_produits/', supprimer_produits, name='supprimer_produits'),    
     path('produits/editer_produit/<int:id>/', editer_produit, name="editer_produit"),
     path('produits/modifier/<int:id>/', modifier_produit, name="modifier_produit"),
     path('produits/consulter_produit/<int:id>/', consulter_produit, name="consulter_produit"),
 
+    #==========================================================================
+    # Gestion des produits en Stocks
+    #======================================================================================================================
+    
+    path('stock/listes_produits_stock/', listes_produits_stock, name='listes_produits_stock'),
+    path('stock/ajouter_stock_multiple/', ajouter_stock_multiple, name='ajouter_stock_multiple'),  
+    path('stock/supprimer_produits_stock/', supprimer_produits_stock, name='supprimer_produits_stock'),
+     
     #==========================================================================
     # Gestion des Ventes 
     #==========================================================================
@@ -55,7 +63,7 @@ urlpatterns = [
     path('modifier_categorie/', modifier_categorie, name='modifier_categorie'), 
     
     #==========================================================================
-    # Impression 
+    # Impression listes
     #==========================================================================
     
     path('produits/choix_par_dates_produit_impression/', choix_par_dates_produit_impression, name="choix_par_dates_produit_impression"),
@@ -63,6 +71,9 @@ urlpatterns = [
     
     path('commandes/listes_commandes_impression/', listes_commandes_impression, name="listes_commandes_impression"),
     path('commandes/choix_par_dates_commandes_impression/', choix_par_dates_commandes_impression, name="choix_par_dates_commandes_impression"),
+    
+    path('stocks/choix_par_dates_stocks_impression/', choix_par_dates_stocks_impression, name="choix_par_dates_stocks_impression"),
+    path('stocks/listes_stocks_impression/', listes_stocks_impression, name="listes_stocks_impression"),
     
     path('livraisons/listes_livraisons_impression/', listes_livraisons_impression, name="listes_livraisons_impression"),
     path('livraisons/choix_par_dates_livraisons_impression/', choix_par_dates_livraisons_impression, name="choix_par_dates_livraisons_impression"),
