@@ -137,7 +137,7 @@
             <td>{{ elem.date_maj|date:'d/m/Y' }}</td>
             <td>
             {% if elem.produit.photoprod %}
-            <img src="{{ elem.produit.photoprod.url }}">
+            <img src="{{ elem.produit.photoprod.url }}" width="60px" height="40px">
             {% else %}
             Photo indisponible
             {% endif %}
