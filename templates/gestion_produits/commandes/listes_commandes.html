@@ -109,8 +109,6 @@
                                         <th>Désignation</th>
                                         <th>Quantité Commandée</th>
                                         <th>Statut Commandé</th>
-                                        <th>Quantité Stock</th>
-                                        <th>Seuil</th>
                                         <th>Prix Unitaire</th>
                                         <th>Catégorie</th>
                                         <th>Date Commande</th>
@@ -127,8 +125,6 @@
                                         <td>{{ elem.produits.desgprod }}</td>
                                         <td>{{ elem.qtecmd }}</td>
                                         <td>{{ elem.statuts }}</td>
-                                        <td>{{ elem.produits.qtestock }}</td>
-                                        <td>{{ elem.produits.seuil }}</td>
                                         <td>{{ elem.produits.pu }}</td>
                                         <td>{{ elem.produits.categorie.desgcategorie }}</td>
                                         <td>{{ elem.datecmd|date:'d/m/Y' }}</td>
@@ -141,7 +137,6 @@
                                         </td>
                                         <td>
                                             <a class="btn btn-primary" href="{% url 'produits:consulter_produit' elem.produits.id %}" title="Voir"><i class="fa fa-eye"></i></a>
-                                            <a class="btn btn-info" href="{% url 'produits:editer_produit' elem.produits.id %}" title="Modifier"><i class="fa fa-edit"></i></a>
                                             <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-toggle="modal" data-target="#supprimer" data-id="{{elem.id}}">
                                                 <i class="fa fa-trash"></i>
                                             </button>

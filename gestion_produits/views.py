@@ -121,13 +121,13 @@ def approvisionner_produits(request):
             try:
                 sujet = "Approvisionnement Entrepôt → Magasin"
                 contenu = f"""
-Nouvel approvisionnement effectué.
+                Nouvel approvisionnement effectué.
 
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-Utilisateur : {request.user}
+                Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+                Utilisateur : {request.user}
 
-Détails :
-"""
+                Détails :
+                """
                 for a in approvisionnements:
                     contenu += f"- Produit : {a['produit']} | Quantité transférée : {a['quantite']}\n"
 
@@ -196,13 +196,14 @@ def vendre_produit(request):
                 messages.error(request, f"Quantité ou réduction invalide pour {prod.desgprod}")
                 return redirect("produits:vendre_produit")
 
-            if qte <= 0:
-                continue
+            if qte < 0:
+                messages.error(request, f"La quantité est inférieur à 0 pour {prod.desgprod}. Disponible : {stock_magasin.qtestock if stock_magasin else 0}")
+                return redirect("produits:vendre_produit")
 
             # Vérification stock magasin uniquement
             stock_magasin = StockProduit.objects.filter(produit=prod, magasin__isnull=False).first()
             if not stock_magasin or stock_magasin.qtestock < qte:
-                messages.error(request, f"Stock insuffisant en magasin pour {prod.desgprod}. Disponible : {stock_magasin.qtestock if stock_magasin else 0}")
+                messages.error(request, f"Stock insuffisant en magasin pour {prod.desgprod}. Disponible : {stock_magasin.qtestock if stock_magasin else 0}, Veuillez approvisionnement la quantitée")
                 return redirect("produits:vendre_produit")
 
             if reduction > prod.pu:
@@ -223,7 +224,7 @@ def vendre_produit(request):
         vente = VenteProduit.objects.create(
             code=code,
             total=total_general,
-            utilisateur=request.user,
+            utilisateur = request.user,
             nom_complet_client=nom_complet,
             telclt_client=telephone,
             adresseclt_client=adresse
@@ -754,15 +755,6 @@ def supprimer_produits_stock(request):
                 'produit', 'entrepot', 'magasin'
             ).get(id=stock_id)
 
-            # 🔒 Vérifier si le stock est utilisé dans des livraisons
-            if LivraisonsProduits.objects.filter(produits=stock.produit).exists():
-                messages.warning(
-                    request,
-                    "Impossible de supprimer ce stock : "
-                    "le produit est déjà utilisé dans des livraisons."
-                )
-                return redirect('produits:listes_produits_stock')
-
             # ===== ANCIENNE VALEUR (AUDIT) =====
             ancienne_valeur = {
                 "id_stock": stock.id,
@@ -773,14 +765,13 @@ def supprimer_produits_stock(request):
                 "entrepot": str(stock.entrepot) if stock.entrepot else "N/A",
                 "magasin": str(stock.magasin) if stock.magasin else "N/A",
             }
-
             # ===== SUPPRESSION =====
             stock.delete()
-
+            
             # ===== AUDIT =====
             enregistrer_audit(
-                utilisateur=request.user,
-                action="Suppression stock produit",
+                utilisateur = str(request.user),
+                action ="Suppression stock produit",
                 table="StockProduit",
                 ancienne_valeur=ancienne_valeur,
                 nouvelle_valeur=None
@@ -788,9 +779,9 @@ def supprimer_produits_stock(request):
 
             # ===== NOTIFICATION =====
             Notification.objects.create(
-                destinataire=request.user,
+                destinataire = request.user,
                 titre="🗑 Suppression de stock",
-                message=(
+                message = (
                     f"Le stock du produit {ancienne_valeur['produit']} "
                     f"a été supprimé avec succès."
                 )
@@ -800,20 +791,19 @@ def supprimer_produits_stock(request):
             try:
                 sujet = "🗑 Suppression d’un stock produit"
                 contenu = f"""
-Une suppression de stock a été effectuée.
+            Une suppression de stock a été effectuée.
 
-Utilisateur : {request.user}
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+            Utilisateur : {request.user}
+            Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 
-Détails du stock supprimé :
-- Produit : {ancienne_valeur['produit']}
-- Référence : {ancienne_valeur['reference']}
-- Quantité : {ancienne_valeur['quantite']}
-- Seuil : {ancienne_valeur['seuil']}
-- Entrepôt : {ancienne_valeur['entrepot']}
-- Magasin : {ancienne_valeur['magasin']}
-"""
-
+            Détails du stock supprimé :
+            - Produit : {ancienne_valeur['produit']}
+            - Référence : {ancienne_valeur['reference']}
+            - Quantité : {ancienne_valeur['quantite']}
+            - Seuil : {ancienne_valeur['seuil']}
+            - Entrepôt : {ancienne_valeur['entrepot']}
+            - Magasin : {ancienne_valeur['magasin']}
+            """
                 email = EmailMessage(
                     sujet,
                     contenu,
@@ -821,14 +811,12 @@ Détails du stock supprimé :
                     [settings.ADMIN_EMAIL]
                 )
                 email.send(fail_silently=False)
-
             except Exception as e:
                 logger.error(f"Erreur envoi email suppression stock : {str(e)}")
                 messages.warning(
                     request,
                     "Stock supprimé, mais l'email d'information n'a pas pu être envoyé."
                 )
-
             messages.success(request, "Stock produit supprimé avec succès.")
 
         except StockProduit.DoesNotExist:
@@ -836,7 +824,7 @@ Détails du stock supprimé :
         except Exception as ex:
             messages.error(request, f"Erreur lors de la suppression : {str(ex)}")
 
-        return redirect('produits:listes_produits_stock')
+    return redirect('produits:listes_produits_stock')
 
 #================================================================================================
 # Fonction pour supprimer une commande donnée
