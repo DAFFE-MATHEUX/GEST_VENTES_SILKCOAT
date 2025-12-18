@@ -95,7 +95,6 @@
 
 <!-- ================= CONTENU DYNAMIQUE ================= -->
 
-
 {% if rapport.type == "VENTES" %}
 <h3>LISTE DES VENTES (STOCK MAGASIN)</h3>
 
@@ -110,22 +109,16 @@
         <th>Sous-total</th>
     </tr>
 
-    {% for item in data %}
+    {% for ligne in data %}
     <tr>
         <td>{{ forloop.counter }}</td>
-        <td>{{ item.vente.code }}</td>
-        <td>{{ item.produit.desgprod }}</td>
-        <td>{{ item.quantite }}</td>
-
-        <!-- 🔹 STOCK MAGASIN -->
-        <td>
-                {{ stock_magasin.qtestock|default:"0" }}
-        </td>
-
-        <td>{{ item.vente.date_vente|date:"d/m/Y H:i" }}</td>
-        <td>{{ item.sous_total|floatformat:0 }} GNF</td>
+        <td>{{ ligne.vente.code }}</td>
+        <td>{{ ligne.produit.desgprod }}</td>
+        <td>{{ ligne.quantite }}</td>
+        <td>{{ ligne.stock_magasin|default:"0" }}</td>
+        <td>{{ ligne.vente.date_vente|date:"d/m/Y H:i" }}</td>
+        <td>{{ ligne.sous_total|floatformat:0 }} GNF</td>
     </tr>
-
     {% empty %}
     <tr>
         <td colspan="7" class="empty">Aucune vente trouvée.</td>
@@ -145,26 +138,15 @@
 {% endif %}
 
 
-{% if total_montant %}
-<div class="resume">
-    <table>
-        <tr>
-            <td>Montant total vendu :</td>
-            <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
-        </tr>
-    </table>
-</div>
-{% endif %}
-
 {% elif rapport.type == "COMMANDES" %}
 <h3>LISTE DES COMMANDES</h3>
 <table>
     <tr>
         <th>#</th>
-        <th>Founisseur</th>
+        <th>Fournisseur</th>
         <th>Contact</th>
         <th>Code commande</th>
-        <th>Catagorie</th>
+        <th>Catégorie</th>
         <th>Produit</th>
         <th>Quantité</th>
         <th>Date</th>
@@ -181,11 +163,11 @@
         <td>{{ item.datecmd|date:"d/m/Y" }}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="5" class="empty">Aucune commande trouvée.</td></tr>
+    <tr><td colspan="8" class="empty">Aucune commande trouvée.</td></tr>
     {% endfor %}
 </table>
 
-    {% elif rapport.type == "STOCKS" %}
+{% elif rapport.type == "STOCKS" %}
 <h3>ÉTAT DES STOCKS PAR LIEU</h3>
 
 <table>
@@ -195,7 +177,7 @@
         <th>Produit</th>
         <th>Lieu</th>
         <th>Type</th>
-        <th>Quantité Dispoinble</th>
+        <th>Quantité Disponible</th>
         <th>Seuil</th>
         <th>Date MAJ</th>
     </tr>
@@ -205,7 +187,6 @@
         <td>{{ forloop.counter }}</td>
         <td>{{ item.produit.refprod }}</td>
         <td>{{ item.produit.desgprod }}</td>
-
         <td>
             {% if item.entrepot %}
                 {{ item.entrepot }}
@@ -213,7 +194,6 @@
                 {{ item.magasin }}
             {% endif %}
         </td>
-
         <td>
             {% if item.entrepot %}
                 Entrepôt
@@ -221,12 +201,10 @@
                 Magasin
             {% endif %}
         </td>
-
         <td>{{ item.qtestock }}</td>
         <td>{{ item.seuil }}</td>
         <td>{{ item.date_maj|date:"d/m/Y H:i" }}</td>
     </tr>
-
     {% empty %}
     <tr>
         <td colspan="8" class="empty">Aucun stock trouvé pour cette période.</td>
@@ -260,22 +238,16 @@
         <th>Statut</th>
     </tr>
 
-    {% for item in data %}
+    {% for ligne in data %}
     <tr>
         <td>{{ forloop.counter }}</td>
-        <td>{{ item.numlivrer }}</td>
-        <td>{{ item.produits.desgprod }}</td>
-        <td>{{ item.qtelivrer }}</td>
-
-        <!-- 🔹 STOCK ENTREPÔT -->
-        <td>
-            {{ stock_entrepot.qtestock|default:"0" }}
-        </td>
-
-        <td>{{ item.datelivrer|date:"d/m/Y" }}</td>
-        <td>{{ item.statuts }}</td>
+        <td>{{ ligne.numlivrer }}</td>
+        <td>{{ ligne.produits.desgprod }}</td>
+        <td>{{ ligne.qtelivrer }}</td>
+        <td>{{ ligne.stock_entrepot|default:"0" }}</td>
+        <td>{{ ligne.datelivrer|date:"d/m/Y" }}</td>
+        <td>{{ ligne.statuts }}</td>
     </tr>
-
     {% empty %}
     <tr>
         <td colspan="7" class="empty">Aucune livraison trouvée.</td>
@@ -292,7 +264,6 @@
         </tr>
     </table>
 </div>
-
 {% endif %}
 
 {% endif %}

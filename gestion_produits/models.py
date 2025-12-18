@@ -90,6 +90,7 @@ class VenteProduit(models.Model):
     code = models.CharField(max_length=20, unique=True)
     date_vente = models.DateTimeField(auto_now_add=True)
     total = models.IntegerField(default=0)
+    benefice_total = models.IntegerField(default=0)
     
     nom_complet_client = models.CharField(max_length=70, null=True)
     adresseclt_client = models.CharField(max_length=60, null=True)
@@ -100,6 +101,11 @@ class VenteProduit(models.Model):
         ordering = ['-code']
     def __str__(self):
         return f"Vente {self.code} Par {self.utilisateur}"
+    
+    def calculer_totaux(self):
+        self.total = sum(ligne.sous_total for ligne in self.lignes.all())
+        self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
+        self.save(update_fields=['total', 'benefice_total'])
 
 #==================================================================================
 # Table LigneVente
@@ -111,20 +117,22 @@ class LigneVente(models.Model):
     prix = models.IntegerField(default=0)  # Prix unitaire en details
     montant_reduction = models.IntegerField(default=0)  # Prix unitaire en details
     sous_total = models.IntegerField(default=0)
+    benefice = models.IntegerField(default=0)
     date_saisie = models.DateField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.produit.desgprod} (x{self.quantite})"
 
-    # Calcul du bénéfice
-    def calcul_benefice_ligne(ligne_vente):
-        prix_vente = ligne_vente.prix
-        quantite = ligne_vente.quantite
-        cout_total = ligne_vente.produit.pu * quantite
-        revenu_total = prix_vente * quantite
-        benefice = revenu_total - cout_total
-        
-        return benefice
+    def save(self, *args, **kwargs):
+        # Calcul du sous-total
+        self.sous_total = (self.prix * self.quantite) - self.montant_reduction
+
+        # Calcul du bénéfice
+        cout_total = self.produit.pu * self.quantite
+        revenu_total = self.prix * self.quantite
+        self.benefice = revenu_total - cout_total
+
+        super().save(*args, **kwargs)
    
 #==================================================================================
 # Table Commandes
@@ -158,6 +166,7 @@ class LivraisonsProduits(models.Model):
     def __str__(self):
         return f"Produits : {self.produits} | Statuts : {self.statuts}"
     
+
 #==================================================================================
 
     

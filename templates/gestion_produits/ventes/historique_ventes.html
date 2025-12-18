@@ -10,9 +10,7 @@
 
     <!-- EN-TÊTE DATE -->
     <div class="card-header bg-dark text-white">
-        <h4>
-            📅 {{ bloc.date|date:"d/m/Y" }}
-        </h4>
+        <h4>📅 {{ bloc.date|date:"d/m/Y" }}</h4>
         <small>
             💰 Total : <strong>{{ bloc.total_montant|floatformat:"0" }} GNF</strong> |
             📦 Produits vendus : <strong>{{ bloc.total_quantite }}</strong> |
@@ -23,19 +21,18 @@
     <!-- TABLE DES VENTES -->
     <div class="card-body">
         <table class="table table-bordered table-striped table-hover">
-
             <thead class="table-dark">
                 <tr>
                     <th>#</th>
                     <th>Code Vente</th>
                     <th>Client</th>
                     <th>Total (GNF)</th>
+                    <th>Profit (GNF)</th>
                     <th>Vendeur</th>
                     <th>Heure</th>
                     <th>Reçu</th>
                 </tr>
             </thead>
-
             <tbody>
                 {% for v in bloc.ventes %}
                 <tr>
@@ -46,19 +43,17 @@
                         <small>{{ v.telclt_client }}</small>
                     </td>
                     <td><strong>{{ v.total|floatformat:"0" }}</strong></td>
+                    <td><strong>{{ v.total_profit|floatformat:"0" }}</strong></td>
                     <td>{{ v.utilisateur }}</td>
                     <td>{{ v.date_vente|date:"H:i" }}</td>
                     <td>
-                        <a href="{% url 'produits:recu_vente_global' v.code %}"
-                           target="_blank"
-                           class="btn btn-primary btn-sm">
-                           <i class="fa fa-file"></i>
+                        <a href="{% url 'produits:recu_vente_global' v.code %}" target="_blank" class="btn btn-primary btn-sm">
+                            <i class="fa fa-file"></i>
                         </a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
-
         </table>
     </div>
 

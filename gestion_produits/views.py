@@ -27,6 +27,14 @@ from django.db import transaction
 from collections import defaultdict
 import logging
 logger = logging.getLogger(__name__)
+
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+@receiver([post_save, post_delete], sender=LigneVente)
+def mise_a_jour_totaux_vente(sender, instance, **kwargs):
+    instance.vente.calculer_totaux()
+
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit
 #================================================================================================
@@ -268,14 +276,14 @@ def vendre_produit(request):
     return render(request, "gestion_produits/ventes/nouvelle_vente.html", {"produits": produits})
 
 #================================================================================================
-# Fonction pour afficher l'historique des ventes
+# Fonction pour afficher l'historique des ventes par date
 #================================================================================================
 
-
+from collections import defaultdict
 @login_required
 
 def historique_ventes(request):
-
+    # Récupérer toutes les ventes avec utilisateur et lignes
     ventes = (
         VenteProduit.objects
         .select_related("utilisateur")
@@ -285,7 +293,7 @@ def historique_ventes(request):
 
     ventes_par_date = defaultdict(list)
 
-    # Regrouper les ventes par DATE
+    # Regrouper les ventes par date
     for vente in ventes:
         date = vente.date_vente.date()
         ventes_par_date[date].append(vente)
@@ -294,23 +302,25 @@ def historique_ventes(request):
 
     # Calculs par date
     for date, ventes_du_jour in ventes_par_date.items():
-
-        total_montant = sum(v.total for v in ventes_du_jour)
-
+        total_montant = 0
         total_quantite = 0
-        categories = set()
-
+        total_categories = set()
+        # Calcul du profit par ligne et total de la vente
         for v in ventes_du_jour:
+            v.total_profit = 0
             for ligne in v.lignes.all():
+                ligne.profit = (ligne.produit.pu - ligne.produit.prix_en_gros) * ligne.quantite
+                v.total_profit += ligne.profit
                 total_quantite += ligne.quantite
-                categories.add(ligne.produit.categorie.id)
+                total_categories.add(ligne.produit.categorie.id)
+            total_montant += v.total
 
         historique.append({
             "date": date,
             "ventes": ventes_du_jour,
             "total_montant": total_montant,
             "total_quantite": total_quantite,
-            "total_categories": len(categories),
+            "total_categories": len(total_categories),
         })
 
     context = {
@@ -319,7 +329,7 @@ def historique_ventes(request):
 
     return render(
         request,
-        "gestion_produits/ventes/historisque_ventes.html",
+        "gestion_produits/ventes/historique_ventes.html",
         context
     )
 
@@ -1125,24 +1135,50 @@ def listes_des_livraisons(request):
 # Fonction pour afficher la liste des ventes
 #================================================================================================
 @login_required
+
 def listes_des_ventes(request):
-    listes_ventes = []
-    total_ventes = None
     try:
-        listes_ventes = LigneVente.objects.all().order_by('-id')
+        # Récupération des lignes de vente
+        listes_ventes = LigneVente.objects.select_related(
+            'vente', 'produit'
+        ).order_by('-id')
+
+        # Totaux
         total_ventes = listes_ventes.count()
-        
-        listes_ventes = pagination_lis(request,listes_ventes)
-    except Exception as ex :
-        return messages.warning(request, f"Erreur de récupération des produits {str(ex)} !")
-    except ValueError as ve:
-        return messages.warning(request, f"Erreur de valeur {str(ve)} !")
-        
+
+        total_montant_ventes = listes_ventes.aggregate(
+            total=Sum('sous_total')
+        )['total'] or 0
+
+        benefice_global = listes_ventes.aggregate(
+            total=Sum('benefice')
+        )['total'] or 0
+
+        # Pagination
+        listes_ventes = pagination_lis(request, listes_ventes)
+
+    except Exception as ex:
+        messages.warning(
+            request,
+            f"Erreur de récupération des ventes : {str(ex)}"
+        )
+        listes_ventes = []
+        total_ventes = 0
+        total_montant_ventes = 0
+        benefice_global = 0
+
     context = {
-        'listes_ventes' : listes_ventes,
-        'total_ventes' : total_ventes
+        'listes_ventes': listes_ventes,
+        'total_ventes': total_ventes,
+        'total_montant_ventes': total_montant_ventes,
+        'benefice_global': benefice_global,
     }
-    return render(request, "gestion_produits/ventes/listes_ventes.html", context)
+
+    return render(
+        request,
+        "gestion_produits/ventes/listes_ventes.html",
+        context
+    )
 
 #================================================================================================
 # Fonction pour afficher la liste des commandes éffectuées

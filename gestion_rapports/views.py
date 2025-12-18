@@ -55,7 +55,6 @@ def creer_rapport(request):
 #==================================================================================
 
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-
 def generer_rapport(request):
     if request.method != "POST":
         messages.warning(request, "Méthode non autorisée.")
@@ -76,6 +75,7 @@ def generer_rapport(request):
             date_debut = dt.strptime(periode_debut, "%Y-%m-%d")
             date_fin = dt.strptime(periode_fin, "%Y-%m-%d")
 
+        # Création du rapport
         rapport = Rapport.objects.create(
             titre=titre.upper(),
             periode_debut=date_debut,
@@ -85,70 +85,68 @@ def generer_rapport(request):
         )
 
         data_qs = []
-        total_montant = None
-
+        total_montant = 0
 
         # ================= VENTES =================
         if type_rapport == "VENTES":
             data_qs = (
                 LigneVente.objects
                 .select_related('vente', 'produit')
-                .filter(
-                    vente__date_vente__range=[date_debut, date_fin]
-                )
+                .filter(vente__date_vente__range=[date_debut, date_fin])
                 .order_by('-vente__date_vente')
             )
+            total_montant = data_qs.aggregate(total=Sum('sous_total'))['total'] or 0
 
-            total_montant = data_qs.aggregate(
-                total=Sum('sous_total')
-            )['total'] or 0
+            # Récupérer le stock magasin actuel pour chaque produit vendu
+            for ligne in data_qs:
+                try:
+                    stock = StockProduit.objects.filter(
+                        produit=ligne.produit
+                    ).order_by('-date_maj').first()
+                    ligne.stock_magasin = stock.qtestock if stock else 0
+                except StockProduit.DoesNotExist:
+                    ligne.stock_magasin = 0
 
         # ================= COMMANDES =================
         elif type_rapport == "COMMANDES":
-            data_qs = Commandes.objects.filter(
-                datecmd__range=[date_debut, date_fin]
-            )
-            total_montant = data_qs.aggregate(
-                total=Sum('qtecmd')
-            )['total'] or 0
+            data_qs = Commandes.objects.filter(datecmd__range=[date_debut, date_fin])
+            total_montant = data_qs.aggregate(total=Sum('qtecmd'))['total'] or 0
 
         # ================= LIVRAISONS =================
         elif type_rapport == "LIVRAISONS":
-
             data_qs = (
                 LivraisonsProduits.objects
                 .select_related('produits', 'commande')
-                .filter(
-                    datelivrer__range=[date_debut, date_fin]
-                )
+                .filter(datelivrer__range=[date_debut, date_fin])
                 .order_by('-datelivrer')
             )
+            total_montant = data_qs.aggregate(total=Sum('qtelivrer'))['total'] or 0
 
-            # 🔢 Total quantité livrée
-            total_montant = data_qs.aggregate(
-                total=Sum('qtelivrer')
-            )['total'] or 0
-
+            # Récupérer le stock entrepôt actuel pour chaque produit livré
+            for item in data_qs:
+                try:
+                    stock = StockProduit.objects.filter(
+                        produit=item.produits
+                    ).order_by('-date_maj').first()
+                    item.stock_entrepot = stock.qtestock if stock else 0
+                except StockProduit.DoesNotExist:
+                    item.stock_entrepot = 0
 
         # ================= STOCKS =================
         elif type_rapport == "STOCKS":
-
             data_qs = (
                 StockProduit.objects
                 .select_related('produit', 'entrepot', 'magasin')
                 .filter(date_maj__range=[date_debut, date_fin])
                 .order_by('entrepot', 'magasin', 'produit__desgprod')
             )
-            # 🔢 Total global du stock
-            total_montant = data_qs.aggregate(
-                total=Sum('qtestock')
-            )['total'] or 0
-
+            total_montant = data_qs.aggregate(total=Sum('qtestock'))['total'] or 0
 
         else:
             messages.error(request, "Type de rapport invalide.")
             return redirect("rapports:creer_rapport")
 
+        # ================= CONTEXTE POUR PDF =================
         context = {
             'rapport': rapport,
             'data': data_qs,
