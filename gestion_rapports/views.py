@@ -176,6 +176,9 @@ def generer_rapport(request):
 
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def suppression_rapport(request):
+    """
+    Supprime un rapport et enregistre l'action dans l'audit.
+    """
     if request.method != "POST":
         messages.warning(request, "Méthode non autorisée pour la suppression.")
         return redirect('rapports:liste_rapports')
@@ -186,6 +189,7 @@ def suppression_rapport(request):
         return redirect('rapports:liste_rapports')
     
     try:
+        # Récupération du rapport à supprimer
         rapport = get_object_or_404(Rapport, id=id_supprimer)
 
         # --- Enregistrement de l'audit avant suppression ---
@@ -194,15 +198,17 @@ def suppression_rapport(request):
             "Période début": str(rapport.periode_debut),
             "Période fin": str(rapport.periode_fin),
             "Type": rapport.type,
-            'utilisateur' : request.user.get_full_name,
+            "Utilisateur connecté": request.user.get_full_name(),
             "Généré par": rapport.genere_par.username if rapport.genere_par else ""
         }
+
+        # Ici on passe l'instance utilisateur, pas juste le nom
         enregistrer_audit(
-            utilisateur = request.user.get_full_name,
-            action = "Suppression",
+            utilisateur=request.user,
+            action="Suppression",
             table="Rapport",
-            ancienne_valeur = ancienne_valeur,
-            nouvelle_valeur = None
+            ancienne_valeur=ancienne_valeur,
+            nouvelle_valeur=None
         )
 
         # --- Suppression effective ---

@@ -278,8 +278,6 @@ def vendre_produit(request):
 #================================================================================================
 # Fonction pour afficher l'historique des ventes par date
 #================================================================================================
-
-from collections import defaultdict
 @login_required
 
 def historique_ventes(request):
@@ -334,24 +332,25 @@ def historique_ventes(request):
     )
 
 
+@login_required 
+
 def historique_commandes_livraisons(request):
     """
-    Affiche l'historique des commandes avec les livraisons associées,
-    la quantité totale livrée et la quantité restante.
+    Vue pour afficher l'historique des commandes et livraisons
+    avec totaux calculés côté Python.
     """
-    commandes = Commandes.objects.select_related('produits').all().order_by('-datecmd')
 
     historique = []
+    commandes = Commandes.objects.all().order_by('-datecmd')
+
+    total_commandes = 0
+    total_livrees = 0
+    total_restantes = 0
 
     for cmd in commandes:
-        # Toutes les livraisons associées à cette commande
         livraisons = LivraisonsProduits.objects.filter(commande=cmd).order_by('datelivrer')
-
-        # Quantité totale livrée
         total_livree = livraisons.aggregate(total=Sum('qtelivrer'))['total'] or 0
-
-        # Quantité restante à livrer
-        qte_restante = max(cmd.qtecmd - total_livree, 0)
+        qte_restante = cmd.qtecmd - total_livree
 
         historique.append({
             'commande': cmd,
@@ -360,15 +359,19 @@ def historique_commandes_livraisons(request):
             'qte_restante': qte_restante
         })
 
+        # 🔹 Totaux pour le footer
+        total_commandes += cmd.qtecmd
+        total_livrees += total_livree
+        total_restantes += qte_restante
+
     context = {
-        'historique': historique
+        'historique': historique,
+        'total_commandes': total_commandes,
+        'total_livrees': total_livrees,
+        'total_restantes': total_restantes
     }
 
-    return render(
-        request,
-        "gestion_produits/livraisons/historique_commandes_livraisons.html",
-        context
-    )
+    return render(request, 'gestion_produits/livraisons/historique_commandes_livraisons.html', context)
 
 #================================================================================================
 # Fonction pour éffectuer une nouvelle commande
@@ -477,88 +480,147 @@ def nouvelle_commande(request):
 
 @login_required
 def reception_livraison(request):
-    commandes_qs = Commandes.objects.all().order_by('-datecmd')
-    commandes = []
+    """
+    Vue pour réceptionner les commandes avec possibilité de livrer en magasin,
+    en entrepôt ou les deux, uniquement si la quantité restante > 0.
+    Envoi un email à l'administrateur après la livraison.
+    """
 
-    # ================= PRÉPARATION AFFICHAGE =================
-    for cmd in commandes_qs:
+    # 🔹 Préparer les commandes avec quantité restante
+    commandes_data = []
+    commandes = Commandes.objects.all().order_by('-datecmd')
+
+    for cmd in commandes:
         total_livree = (
             LivraisonsProduits.objects
             .filter(commande=cmd)
-            .aggregate(total=Sum('qtelivrer'))['total'] or 0
+            .aggregate(total=Sum("qtelivrer"))["total"] or 0
         )
+        qte_restante = max(cmd.qtecmd - total_livree, 0)  # jamais négatif
 
-        qte_restante = max(cmd.qtecmd - total_livree, 0)
+        if qte_restante > 0:
+            commandes_data.append({
+                "commande": cmd,
+                "total_livree": total_livree,
+                "qte_restante": qte_restante
+            })
 
-        commandes.append({
-            "commande": cmd,
-            "total_livree": total_livree,
-            "qte_restante": qte_restante
-        })
+    entrepots = Entrepot.objects.all()
+    magasins = Magasin.objects.all()
 
-    # ================= TRAITEMENT POST =================
+    # 🔹 Traitement POST
     if request.method == "POST":
         commande_ids = request.POST.getlist("commande_id[]")
-        quantites_livrees = request.POST.getlist("quantite_livree[]")
+        destinations = request.POST.getlist("destination[]")
+        qte_magasin_list = request.POST.getlist("qte_magasin[]")
+        qte_entrepot_list = request.POST.getlist("qte_entrepot[]")
 
         numlivrer = f"LIV{timezone.now().strftime('%Y%m%d%H%M%S')}"
-        entrepot = Entrepot.objects.first()
+        livraisons_effectuees = []
 
         for i in range(len(commande_ids)):
             cmd = Commandes.objects.get(id=commande_ids[i])
-            qte_livree = int(quantites_livrees[i])
+            qte_magasin = int(qte_magasin_list[i])
+            qte_entrepot = int(qte_entrepot_list[i])
+            qte_total = qte_magasin + qte_entrepot
 
-            if qte_livree <= 0:
-                continue
-
-            # 🔹 Calcul sécurisé
+            # 🔹 Recalcul côté serveur
             total_livree = (
                 LivraisonsProduits.objects
                 .filter(commande=cmd)
-                .aggregate(total=Sum('qtelivrer'))['total'] or 0
+                .aggregate(total=Sum("qtelivrer"))["total"] or 0
             )
-
             qte_restante = cmd.qtecmd - total_livree
 
-            if qte_livree > qte_restante:
+            if qte_restante <= 0:
                 messages.warning(
                     request,
-                    f"Livraison refusée : {cmd.produits.desgprod} "
-                    f"(reste {qte_restante})"
+                    f"La commande {cmd.numcmd} est déjà totalement livrée."
                 )
                 continue
 
-            # ================= LIVRAISON =================
+            if qte_total > qte_restante:
+                messages.warning(
+                    request,
+                    f"{cmd.produits.desgprod} : quantité restante {qte_restante}."
+                )
+                continue
+
+            if qte_total <= 0:
+                continue  # rien à livrer
+
+            # 🔹 Enregistrer livraison
             LivraisonsProduits.objects.create(
                 numlivrer=numlivrer,
                 commande=cmd,
                 produits=cmd.produits,
-                qtelivrer=qte_livree,
+                qtelivrer=qte_total,
                 datelivrer=timezone.now().date(),
                 statuts="Livrée"
             )
 
-            # ================= STOCK =================
-            stock, created = StockProduit.objects.get_or_create(
-                produit=cmd.produits,
-                entrepot=entrepot,
-                magasin=None,
-                defaults={"qtestock": qte_livree, "seuil": 0}
-            )
+            # 🔹 Stock Magasin
+            if qte_magasin > 0:
+                magasin = Magasin.objects.first()  # adapter selon choix réel
+                stock, created = StockProduit.objects.get_or_create(
+                    produit=cmd.produits,
+                    magasin=magasin,
+                    entrepot=None,
+                    defaults={"qtestock": qte_magasin}
+                )
+                if not created:
+                    stock.qtestock = F("qtestock") + qte_magasin
+                    stock.save(update_fields=["qtestock"])
 
-            if not created:
-                stock.qtestock = F('qtestock') + qte_livree
-                stock.save()
+            # 🔹 Stock Entrepôt
+            if qte_entrepot > 0:
+                entrepot = Entrepot.objects.first()  # adapter selon choix réel
+                stock, created = StockProduit.objects.get_or_create(
+                    produit=cmd.produits,
+                    entrepot=entrepot,
+                    magasin=None,
+                    defaults={"qtestock": qte_entrepot}
+                )
+                if not created:
+                    stock.qtestock = F("qtestock") + qte_entrepot
+                    stock.save(update_fields=["qtestock"])
 
-            # ================= STATUT COMMANDE =================
-            total_livree_finale = total_livree + qte_livree
-
-            if total_livree_finale == cmd.qtecmd:
+            # 🔹 Mise à jour statut commande
+            if total_livree + qte_total == cmd.qtecmd:
                 cmd.statuts = "Livrée"
             else:
                 cmd.statuts = "Partiellement livrée"
+            cmd.save(update_fields=["statuts"])
 
-            cmd.save()
+            # 🔹 Préparer liste pour email
+            livraisons_effectuees.append({
+                "commande": cmd.numcmd,
+                "produit": cmd.produits.desgprod,
+                "qte_magasin": qte_magasin,
+                "qte_entrepot": qte_entrepot,
+                "fournisseur": cmd.nom_complet_fournisseur
+            })
+
+        # 🔹 Envoi email à l'administrateur
+        if livraisons_effectuees:
+            contenu = "📦 Nouvelle réception de livraison :\n\n"
+            for l in livraisons_effectuees:
+                contenu += (
+                    f"- Commande : {l['commande']} | "
+                    f"Produit : {l['produit']} | "
+                    f"Magasin : {l['qte_magasin']} | "
+                    f"Entrepôt : {l['qte_entrepot']} | "
+                    f"Fournisseur : {l['fournisseur']}\n"
+                )
+            try:
+                EmailMessage(
+                    subject="Réception de livraison enregistrée",
+                    body=contenu,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.ADMIN_EMAIL]
+                ).send()
+            except Exception as e:
+                messages.warning(request, f"Livraison enregistrée mais email non envoyé : {str(e)}")
 
         messages.success(request, "Livraison enregistrée avec succès.")
         return redirect("produits:listes_des_livraisons")
@@ -566,7 +628,11 @@ def reception_livraison(request):
     return render(
         request,
         "gestion_produits/livraisons/reception_livraison.html",
-        {"commandes": commandes}
+        {
+            "commandes": commandes_data,
+            "entrepots": entrepots,
+            "magasins": magasins
+        }
     )
 
 #================================================================================================
@@ -869,50 +935,85 @@ def supprimer_produits_stock(request):
 @login_required
 def supprimer_commandes(request):
     if request.method == 'POST':
-        prod_id = request.POST.get('id_supprimer')
+        commande_id = request.POST.get('id_supprimer')
 
+        if not commande_id:
+            messages.warning(request, "Aucune commande sélectionnée pour suppression.")
+            return redirect('produits:listes_des_commandes')
         try:
-            produit = Commandes.objects.get(id=prod_id)
+            commande = get_object_or_404(Commandes, id=commande_id)
 
-            # Vérifier si le produit est lié à des commandes
-            if Produits.objects.filter(produit=produit).exists():
+            # Vérifier si cette commande est liée à des produits
+            if Produits.objects.filter(commande=commande).exists():
                 messages.warning(
                     request,
-                    "Impossible de supprimer cette commande car il est déjà utilisé dans une commande. "
-                    "Veuillez d'abord supprimer les commandes associées."
+                    "Impossible de supprimer cette commande car elle contient des produits. "
+                    "Veuillez d'abord supprimer les produits associés."
                 )
                 return redirect('produits:listes_des_commandes')
 
-            # ----- Ancienne valeur pour l'audit -----
+            # ----- Préparer ancienne valeur pour l'audit -----
             ancienne_valeur = {
-                "id": produit.id,
-                "refprod": produit.refprod if hasattr(produit, "refprod") else "",
-                "desgprod": produit.desgprod,
-                "pu": float(produit.pu),
-                "qtestock": produit.qtestock,
-                "categorie": str(produit.categorie) if produit.categorie else None,
+                "Num Commande": commande.numcmd,
+                "Produit": commande.produits.desgprod if commande.produits else "",
+                "Qté commandée": commande.qtecmd,
+                "Fournisseur": commande.nom_complet_fournisseur,
+                "Utilisateur connecté": request.user.get_full_name(),
             }
 
-            # ----- Suppression -----
-            produit.delete()
+            # ----- Suppression de la commande -----
+            commande.delete()
 
-            # ----- Audit -----
+            # ----- Enregistrement de l'audit -----
             enregistrer_audit(
                 utilisateur=request.user,
-                action="Suppression produit",
-                table="Produits",
+                action="Suppression",
+                table="Commandes",
                 ancienne_valeur=ancienne_valeur,
                 nouvelle_valeur=None
             )
 
-            messages.success(request, "Produit supprimé avec succès !")
+            # ===== Notification interne =====
+            Notification.objects.create(
+                destinataire=request.user,
+                titre="🗑 Suppression de commande",
+                message=f"La commande {ancienne_valeur['Num Commande']} a été supprimée."
+            )
 
-        except Produits.DoesNotExist:
-            messages.error(request, "Produit introuvable.")
+            # ===== Envoi email admin =====
+            try:
+                sujet = "🗑 Suppression d'une commande"
+                contenu = f"""
+                Une commande a été supprimée.
+
+                Numéro commande : {ancienne_valeur['Num Commande']}
+                Produit : {ancienne_valeur['Produit']}
+                Qté commandée : {ancienne_valeur['Qté commandée']}
+                Fournisseur : {ancienne_valeur['Fournisseur']}
+                Utilisateur : {request.user.get_full_name()}
+                Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+                """
+                EmailMessage(
+                    sujet,
+                    contenu,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [settings.ADMIN_EMAIL]
+                ).send(fail_silently=False)
+            except Exception as e:
+                logger.error(f"Erreur email suppression commande : {str(e)}")
+                messages.warning(
+                    request,
+                    "Commande supprimée mais l'email d'information n'a pas pu être envoyé."
+                )
+
+            messages.success(request, "Commande supprimée avec succès ✔")
+
+        except Commandes.DoesNotExist:
+            messages.error(request, "Commande introuvable.")
         except Exception as ex:
             messages.error(request, f"Erreur lors de la suppression : {str(ex)}")
 
-        return redirect('produits:listes_produits')
+        return redirect('produits:listes_des_commandes')
 
 #================================================================================================
 # Fonction pour supprimer une livraisons donnée
@@ -1020,52 +1121,82 @@ Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 #================================================================================================
 @login_required
 def supprimer_ventes(request):
-    if request.method == 'POST':
-        vente_id = request.POST.get('id_supprimer')
+    if request.method != 'POST':
+        messages.warning(request, "Méthode non autorisée pour la suppression.")
+        return redirect('produits:listes_des_ventes')
 
-        try:
-            # 🔒 Transaction pour éviter incohérences
-            with transaction.atomic():
+    vente_id = request.POST.get('id_supprimer')
+    if not vente_id:
+        messages.warning(request, "⚠️ Aucun vente sélectionnée pour suppression.")
+        return redirect('produits:listes_des_ventes')
 
-                # 1️⃣ Récupérer la vente
-                vente = get_object_or_404(VenteProduit, id=vente_id)
-                code_vente = vente.code  # sauvegarde avant suppression
+    try:
+        with transaction.atomic():
+            # 1️⃣ Récupérer la vente
+            vente = get_object_or_404(VenteProduit, id=vente_id)
+            code_vente = vente.code
 
-                # 2️⃣ Récupérer toutes les lignes liées
-                lignes = LigneVente.objects.select_related('produit').filter(vente=vente)
+            # 2️⃣ Récupérer toutes les lignes liées
+            lignes = LigneVente.objects.select_related('produit').filter(vente=vente)
 
-                # 3️⃣ Restaurer le stock
-                for ligne in lignes:
-                    produit = ligne.produit
-                    produit.qtestock += ligne.quantite
-                    produit.save()
+            # 3️⃣ Restaurer le stock
+            for ligne in lignes:
+                produit = ligne.produit
 
-                # 4️⃣ Supprimer lignes + vente
-                lignes.delete()
-                vente.delete()
+                # Stock magasin
+                stock_magasin = produit.stocks.filter(magasin__isnull=False).first()
+                if stock_magasin:
+                    stock_magasin.qtestock += ligne.quantite
+                    stock_magasin.save(update_fields=['qtestock'])
 
-            # ===== NOTIFICATION =====
-            Notification.objects.create(
-                destinataire=request.user,
-                titre="🗑 Suppression de vente",
-                message=(
-                    f"La vente {code_vente} a été supprimée avec succès. "
-                    "Les stocks ont été restaurés automatiquement."
-                )
+                # Stock entrepôt
+                stock_entrepot = produit.stocks.filter(entrepot__isnull=False).first()
+                if stock_entrepot:
+                    stock_entrepot.qtestock += ligne.quantite
+                    stock_entrepot.save(update_fields=['qtestock'])
+
+            # 4️⃣ Enregistrement de l'audit
+            ancienne_valeur = {
+                "Vente": code_vente,
+                "Produits": [{ 
+                    "Produit": ligne.produit.desgprod,
+                    "Qté": ligne.quantite,
+                    "Sous-total": ligne.sous_total
+                } for ligne in lignes],
+                "Utilisateur connecté": request.user.get_full_name(),
+                "Date": timezone.now().strftime('%d/%m/%Y %H:%M')
+            }
+            enregistrer_audit(
+                utilisateur=request.user,
+                action="Suppression",
+                table="VenteProduit",
+                ancienne_valeur=ancienne_valeur,
+                nouvelle_valeur=None
             )
 
-            # ===== ENVOI EMAIL ADMIN =====
+            # 5️⃣ Supprimer lignes + vente
+            lignes.delete()
+            vente.delete()
+
+            # 6️⃣ Notification interne
+            Notification.objects.create(
+                destinataire=request.user,
+                titre=f"🗑 Suppression de vente {code_vente}",
+                message=f"La vente {code_vente} a été supprimée avec succès. Les stocks ont été restaurés automatiquement."
+            )
+
+            # 7️⃣ Envoi email à l'administrateur
             try:
-                sujet = "🗑 Suppression d'une vente"
+                sujet = f"🗑 Suppression d'une vente - {code_vente}"
                 contenu = f"""
-                Une vente a été supprimée.
+Une vente a été supprimée.
 
-                Code vente : {code_vente}
-                Utilisateur : {request.user}
-                Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+Code vente : {code_vente}
+Utilisateur : {request.user.get_full_name()}
+Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 
-                Les stocks ont été restaurés automatiquement.
-                """
+Les stocks ont été restaurés automatiquement.
+"""
                 email = EmailMessage(
                     sujet,
                     contenu,
@@ -1073,7 +1204,6 @@ def supprimer_ventes(request):
                     [settings.ADMIN_EMAIL]
                 )
                 email.send(fail_silently=False)
-
             except Exception as e:
                 logger.error(f"Erreur email suppression vente : {str(e)}")
                 messages.warning(
@@ -1081,16 +1211,10 @@ def supprimer_ventes(request):
                     "Vente supprimée mais l'email d'information n'a pas pu être envoyé."
                 )
 
-            messages.success(
-                request,
-                "Vente supprimée avec succès. Stocks restaurés ✔"
-            )
+        messages.success(request, f"Vente {code_vente} supprimée avec succès. Stocks restaurés ✔")
 
-        except Exception as ex:
-            messages.error(
-                request,
-                f"Erreur lors de la suppression de la vente : {str(ex)}"
-            )
+    except Exception as ex:
+        messages.error(request, f"⚠️ Erreur lors de la suppression de la vente : {str(ex)}")
 
     return redirect('produits:listes_des_ventes')
 
@@ -1181,33 +1305,34 @@ def listes_des_livraisons(request):
 # Fonction pour afficher la liste des ventes
 #================================================================================================
 @login_required
-
 def listes_des_ventes(request):
     try:
         # Récupération des lignes de vente
-        listes_ventes = LigneVente.objects.select_related(
-            'vente', 'produit'
-        ).order_by('-id')
+        lignes = LigneVente.objects.select_related('vente', 'produit').order_by('-id')
 
-        # Totaux
-        total_ventes = listes_ventes.count()
+        total_ventes = lignes.count()
+        total_montant_ventes = 0
+        benefice_global = 0
+        listes_ventes = []
 
-        total_montant_ventes = listes_ventes.aggregate(
-            total=Sum('sous_total')
-        )['total'] or 0
+        for ligne in lignes:
+            # Prix d'achat du produit (assure-toi que ce champ existe)
+            prix_achat = ligne.produit.pu_achat if hasattr(ligne.produit, 'pu_achat') else 0
 
-        benefice_global = listes_ventes.aggregate(
-            total=Sum('benefice')
-        )['total'] or 0
+            # Calcul du bénéfice pour cette ligne
+            benefice = ligne.sous_total - (prix_achat * ligne.quantite)
+            benefice_global += benefice
+            total_montant_ventes += ligne.sous_total
 
-        # Pagination
+            # Ajouter le bénéfice à la ligne pour le template
+            ligne.benefice = benefice
+            listes_ventes.append(ligne)
+
+        # Pagination si nécessaire
         listes_ventes = pagination_lis(request, listes_ventes)
 
     except Exception as ex:
-        messages.warning(
-            request,
-            f"Erreur de récupération des ventes : {str(ex)}"
-        )
+        messages.warning(request, f"Erreur de récupération des ventes : {str(ex)}")
         listes_ventes = []
         total_ventes = 0
         total_montant_ventes = 0
@@ -1218,6 +1343,68 @@ def listes_des_ventes(request):
         'total_ventes': total_ventes,
         'total_montant_ventes': total_montant_ventes,
         'benefice_global': benefice_global,
+    }
+
+    return render(request, "gestion_produits/ventes/listes_ventes.html", context)
+
+
+#================================================================================================
+# Fonction pour afficher les ventes du jours
+#================================================================================================
+@login_required
+def ventes_du_jour(request):
+    """
+    Affiche toutes les ventes du jour avec totaux et bénéfices.
+    """
+    total_ventes = 0
+    total_montant_ventes = 0
+    benefice_global = 0
+    listes_ventes_du_jour = []
+
+    try:
+        # Date actuelle
+        today = timezone.localdate()  # date du jour selon le fuseau
+
+        # Filtrage des ventes du jour
+        listes_ventes_du_jour = VenteProduit.objects.filter(
+            date_vente__date=today
+        ).order_by('-date_vente')
+
+        # Calcul des totaux via les lignes de chaque vente
+        total_montant_ventes = listes_ventes_du_jour.aggregate(
+            total=Sum('lignes__sous_total')
+        )['total'] or 0
+
+        benefice_global = listes_ventes_du_jour.aggregate(
+            total=Sum('lignes__benefice')
+        )['total'] or 0
+
+        # Pagination
+        listes_ventes_du_jour = pagination_liste(request, listes_ventes_du_jour)
+
+        # Nombre de ventes
+        try:
+            total_ventes = listes_ventes_du_jour.paginator.count
+        except AttributeError:
+            total_ventes = len(listes_ventes_du_jour)
+
+    except Exception as ex:
+        messages.warning(
+            request,
+            f"Erreur lors de la récupération des ventes du jour : {str(ex)}"
+        )
+        listes_ventes_du_jour = []
+        total_ventes = 0
+        total_montant_ventes = 0
+        benefice_global = 0
+
+    context = {
+        "date_debut": today,
+        "date_fin": today,
+        "listes_ventes_filtre": listes_ventes_du_jour,
+        "total_ventes": total_ventes,
+        "total_montant_ventes": total_montant_ventes,
+        "benefice_global": benefice_global,
     }
 
     return render(
@@ -1608,33 +1795,58 @@ def choix_par_dates_ventes_impression(request):
 #================================================================================================
 
 @login_required
+
 def listes_ventes_impression(request):
-    
     try:
         date_debut = request.POST.get('date_debut')
         date_fin = request.POST.get('date_fin')
     except Exception as ex:
         messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
+        date_debut = date_fin = None
 
-    except ValueError as ve:
-        messages.warning(request, f"Erreur de type de données : {str(ve)}")
-        
-    listes_ventes = LigneVente.objects.all()
-    
-    listes_ventes_filtre = listes_ventes.filter(
-        date_saisie__range = [
-            date_debut, date_fin
-        ]
-    )
-    print(f"listes_ventes : {listes_ventes_filtre}")
+    if not date_debut or not date_fin:
+        lignes = LigneVente.objects.none()
+    else:
+        lignes = LigneVente.objects.select_related('vente', 'produit').filter(
+            date_saisie__range=[date_debut, date_fin]
+        ).order_by('-id')
+
+    ventes_dict = {}
+    benefice_global = 0
+
+    # Regrouper les lignes par vente
+    for ligne in lignes:
+        code_vente = ligne.vente.code
+        if code_vente not in ventes_dict:
+            ventes_dict[code_vente] = {
+                'vente': ligne.vente,
+                'lignes': [],
+                'total_vente': 0,
+                'benefice_vente': 0
+            }
+
+        prix_achat = ligne.produit.pu_achat if hasattr(ligne.produit, 'pu_achat') else 0
+        benefice_ligne = ligne.sous_total - (prix_achat * ligne.quantite)
+        ligne.benefice = benefice_ligne
+
+        ventes_dict[code_vente]['lignes'].append(ligne)
+        ventes_dict[code_vente]['total_vente'] += ligne.sous_total
+        ventes_dict[code_vente]['benefice_vente'] += benefice_ligne
+
+        benefice_global += benefice_ligne
+
+    ventes_liste = list(ventes_dict.values())
     nom_entreprise = Entreprise.objects.first()
+
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
-        'listes_ventes' : listes_ventes_filtre,
-        'date_debut' : date_debut,
-        'date_fin' : date_fin,
+        'ventes_liste': ventes_liste,
+        'date_debut': date_debut,
+        'date_fin': date_fin,
+        'benefice_global': benefice_global,
     }
+
     return render(
         request,
         'gestion_produits/impression_listes/apercue_avant_impression_listes_ventes.html',

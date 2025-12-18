@@ -7,52 +7,24 @@
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
-        h2, h4 { text-align: center; margin: 0; }
-        h4 { margin-top: 5px; color: #444; }
+        h2, h3, h4 { text-align: center; margin: 0; }
+        h3 { margin-top: 5px; color: #444; }
 
-        /* Table style */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         table, th, td { border: 1px solid #000; }
         th, td { padding: 6px; text-align: left; font-size: 11px; }
         th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
         img.photo-preview { max-width: 45px; border-radius: 4px; }
 
-        /* Print style */
-        @media print {
-            body { margin: 0; }
-            .no-print { display: none; }
-        }
+        @media print { body { margin: 0; } .no-print { display: none; } }
 
-        /* Header style */
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-
-        .header-left, .header-right {
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .header-left, .header-right { font-size: 13px; line-height: 1.5; }
         .header-center { text-align: center; flex: 1; }
-        .header-center h2 {
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-            color: #002060;
-        }
-
-        .logo {
-            width: 130px;
-            height: 70px;
-            object-fit: contain;
-        }
-
+        .header-center h2 { font-weight: bold; text-transform: uppercase; margin-bottom: 5px; color: #002060; }
+        .logo { width: 130px; height: 70px; object-fit: contain; }
         .footer { margin-top: 25px; font-size: 11px; text-align: right; color: #555; }
+        .total-row { font-weight: bold; background-color: #e6f7ff; }
     </style>
 </head>
 
@@ -64,7 +36,7 @@
         <div class="header-left">
             <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
             <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
-            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if entreprise.contact2 %} / {{ entreprise.contact2 }}{% endif %}<br>
+            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
             {% if nom_entreprise.email %}
             <strong>Email :</strong> {{ nom_entreprise.email }}
             {% endif %}
@@ -74,7 +46,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES VENTES</h2>
+            <h2>LISTE DES VENTES EFFECTUEES</h2>
         </div>
 
         <div class="header-right">
@@ -85,61 +57,68 @@
     </div>
 
     <!-- TITRE -->
-    <h2>CATALOGUE COMPLET DES PRODUITS VENDUS</h2>
-    <h3>Date de Début de la Vente: {{date_debut}}</h3>
-    <h3>Date De Fin de la Vente : {{date_fin}}</h3>
+    <h3>Ventes du {{ date_debut }} au {{ date_fin }}</h3>
 
     <!-- TABLEAU DES VENTES -->
-                            <table>
-                                <thead>
-                                    <tr>         
-                                    <th>#</th>
-                                        <th>Ref Ventes</th>
-                                        <th>Ref Produit</th>
-                                        <th>Catégorie du Produi</th>
-                                        <th>Désignation du Produit</th>
-                                        <th>Nom Complet Client</th>
-                                        <th>Téléphone</th>
-                                        <th>Adresse</th>
-                                        <th>Quantité Vendue</th>
-                                        <th>Seuil</th>
-                                        <th>Prix Unitaire</th>
-                                        <th>Date Vente</th>
-                                        <th>Photo Produit</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="my_table">
-                                     {% for elem in listes_ventes %}
-                            
-                                    <tr>      
-                                       <td>{{ forloop.counter}}</td>
-                                        <td>{{ elem.vente.code }}</td>  
-                                        <td>{{ elem.produit.refprod }}</td> 
-                                        <td>{{ elem.produit.categorie }}</td> 
-                                        <td>{{ elem.produit.desgprod }}</td>    
-                                        <td>{{ elem.vente.nom_complet_client }}</td>    
-                                        <td>{{ elem.vente.telclt_client }}</td>    
-                                        <td>{{ elem.vente.adresseclt_client }}</td>    
-                                        <td>{{ elem.quantite }}</td>    
-                                        <td>{{ elem.produit.seuil }}</td>
-                                        <td>{{ elem.produit.pu }}</td>
-                                        <td>{{ elem.vente.date_vente |date:'Y-n-j' }}</td>
-                                        <td>
-                                            {% if elem.produit.photoprod %}
-                                                <img src="{{ elem.produit.photoprod.url }}" width="50px" height="50px">
-                                            {% else %}   
-                                                <label>Photo indisponible</label>   
-                                            {% endif %}           
-                                        </td> 
-                                       
-                                    </tr>
-                                    {% empty %}
-                             <tr>
-                               <td colspan="16" class="text-center">Aucune vente récente.</td>
-                              </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Ref Vente</th>
+                <th>Catégorie Produit</th>
+                <th>Produit</th>
+                <th>Qté</th>
+                <th>Prix Vente</th>
+                <th>Sous-total</th>
+                <th>Bénéfice</th>
+                <th>Date Vente</th>
+                <th>Photo Produit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if ventes_liste %}
+                {% for vente_data in ventes_liste %}
+                    {% for ligne in vente_data.lignes %}
+                        <tr>
+                            <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
+                            <td>{{ vente_data.vente.code }}</td>
+                            <td>{{ ligne.produit.categorie.desgcategorie }}</td>
+                            <td>{{ ligne.produit.desgprod }}</td>
+                            <td>{{ ligne.quantite }}</td>
+                            <td>{{ ligne.prix }} GNF</td>
+                            <td>{{ ligne.sous_total }} GNF</td>
+                            <td>{{ ligne.benefice }} GNF</td>
+                            <td>{{ ligne.vente.date_vente|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if ligne.produit.photoprod %}
+                                    <img src="{{ ligne.produit.photoprod.url }}" class="photo-preview">
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    <!-- Totaux par vente -->
+                    <tr class="total-row">
+                        <td colspan="5" style="text-align:right;">Total Vente {{ vente_data.vente.code }} :</td>
+                        <td>{{ vente_data.total_vente }} GNF</td>
+                        <td>{{ vente_data.benefice_vente }} GNF</td>
+                        <td colspan="2"></td>
+                    </tr>
+                {% endfor %}
+                <!-- Bénéfice global -->
+                <tr class="total-row">
+                    <td colspan="6" style="text-align:right;">Bénéfice Global :</td>
+                    <td>{{ benefice_global }} GNF</td>
+                    <td colspan="2"></td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="9" style="text-align:center;">Aucune vente enregistrée pour cette période.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
 
     <!-- Signature -->
     <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">

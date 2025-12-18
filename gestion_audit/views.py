@@ -9,7 +9,6 @@ from django.contrib.auth.decorators import login_required
 from datetime import date
 from gestion_utilisateur.models import Utilisateur
 
-@login_required
 def enregistrer_audit(utilisateur, action, table, ancienne_valeur=None, nouvelle_valeur=None):
     
     AuditLog.objects.create(

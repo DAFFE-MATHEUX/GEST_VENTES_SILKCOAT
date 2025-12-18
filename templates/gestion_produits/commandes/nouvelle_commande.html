@@ -55,7 +55,7 @@
         <td>{{ p.stock_magasin }}</td>
         <td>{{ p.seuil_magasin }}</td>
         <td>
-          <input type="number" name="quantite[]" class="form-control qte" min="0" max="{{ p.stock_entrepot }}" value="0">
+          <input type="number" name="quantite[]" class="form-control qte" value="0">
           <input type="hidden" name="produit_id[]" value="{{ p.produit.id }}">
         </td>
       </tr>

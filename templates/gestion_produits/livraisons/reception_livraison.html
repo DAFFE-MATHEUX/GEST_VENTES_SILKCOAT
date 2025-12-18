@@ -6,61 +6,62 @@
 
 <form method="post">
   {% csrf_token %}
-
   <div class="table-responsive">
     <table class="table table-bordered table-striped align-middle">
       <thead class="table-dark">
         <tr>
           <th>#</th>
-          <th>Numéro commande</th>
+          <th>Commande</th>
           <th>Produit</th>
           <th>Fournisseur</th>
           <th>Qté commandée</th>
           <th>Déjà livrée</th>
           <th>Restante</th>
-          <th>Qté à livrer</th>
+          <th>Destination</th>
+          <th>Qté Magasin</th>
+          <th>Qté Entrepôt</th>
         </tr>
       </thead>
 
       <tbody>
         {% for item in commandes %}
-        <tr {% if item.qte_restante == 0 %} class="table-success" {% endif %}>
+        <tr {% if item.qte_restante == 0 %}class="table-success"{% endif %}>
           <td>{{ forloop.counter }}</td>
           <td>{{ item.commande.numcmd }}</td>
           <td>{{ item.commande.produits.desgprod }}</td>
           <td>{{ item.commande.nom_complet_fournisseur }}</td>
           <td>{{ item.commande.qtecmd }}</td>
-          <td>
-            <span class="badge bg-info">
-              {{ item.total_livree }}
-            </span>
-          </td>
+          <td><span class="badge bg-info">{{ item.total_livree }}</span></td>
           <td>
             <span class="badge {% if item.qte_restante == 0 %}bg-success{% else %}bg-warning text-dark{% endif %}">
               {{ item.qte_restante }}
             </span>
           </td>
-          <td style="width: 140px;">
-            {% if item.qte_restante > 0 %}
-              <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
-              <input
-                type="number"
-                name="quantite_livree[]"
-                class="form-control"
-                min="1"
-                max="{{ item.qte_restante }}"
-                value="{{ item.qte_restante }}"
-              >
-            {% else %}
-              <span class="text-success fw-bold">✔ Livrée</span>
-            {% endif %}
+
+          {% if item.qte_restante > 0 %}
+          <td>
+            <select name="destination[]" class="form-select">
+              <option value="MAGASIN">Magasin</option>
+              <option value="ENTREPOT">Entrepôt</option>
+              <option value="DEUX">Les deux</option>
+            </select>
           </td>
+
+          <td>
+            <input type="number" name="qte_magasin[]" class="form-control" min="0" max="{{ item.qte_restante }}" value="0">
+          </td>
+          <td>
+            <input type="number" name="qte_entrepot[]" class="form-control" min="0" max="{{ item.qte_restante }}" value="{{ item.qte_restante }}">
+          </td>
+
+          <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
+          {% else %}
+          <td colspan="3" class="text-success fw-bold text-center">✔ Livraison complète</td>
+          {% endif %}
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="text-center text-muted">
-            Aucune commande à réceptionner
-          </td>
+          <td colspan="10" class="text-center text-muted">Aucune commande à réceptionner</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -68,11 +69,9 @@
   </div>
 
   {% if commandes %}
-    <div class="mt-3">
-      <button type="submit" class="btn btn-success">
-        💾 Enregistrer la livraison
-      </button>
-    </div>
+  <div class="mt-3">
+    <button type="submit" class="btn btn-success">💾 Enregistrer la livraison</button>
+  </div>
   {% endif %}
 </form>
 
