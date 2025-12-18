@@ -333,6 +333,43 @@ def historique_ventes(request):
         context
     )
 
+
+def historique_commandes_livraisons(request):
+    """
+    Affiche l'historique des commandes avec les livraisons associées,
+    la quantité totale livrée et la quantité restante.
+    """
+    commandes = Commandes.objects.select_related('produits').all().order_by('-datecmd')
+
+    historique = []
+
+    for cmd in commandes:
+        # Toutes les livraisons associées à cette commande
+        livraisons = LivraisonsProduits.objects.filter(commande=cmd).order_by('datelivrer')
+
+        # Quantité totale livrée
+        total_livree = livraisons.aggregate(total=Sum('qtelivrer'))['total'] or 0
+
+        # Quantité restante à livrer
+        qte_restante = max(cmd.qtecmd - total_livree, 0)
+
+        historique.append({
+            'commande': cmd,
+            'livraisons': livraisons,
+            'total_livree': total_livree,
+            'qte_restante': qte_restante
+        })
+
+    context = {
+        'historique': historique
+    }
+
+    return render(
+        request,
+        "gestion_produits/livraisons/historique_commandes_livraisons.html",
+        context
+    )
+
 #================================================================================================
 # Fonction pour éffectuer une nouvelle commande
 #================================================================================================
@@ -452,9 +489,7 @@ def reception_livraison(request):
 
         livraisons_effectuees = []
         numlivrer = f"LIV{timezone.now().strftime('%Y%m%d%H%M%S')}"
-
-        # 👉 Entrepôt principal
-        entrepot = Entrepot.objects.first()
+        entrepot = Entrepot.objects.first()  # Entrepôt principal
 
         for i in range(len(commande_ids)):
             try:
@@ -465,6 +500,20 @@ def reception_livraison(request):
 
             if qte_livree <= 0:
                 continue
+
+            # 🔹 Vérifier si la quantité totale livrée dépasse la commande
+            total_livree = (
+                LivraisonsProduits.objects.filter(produits=cmd.produits)
+                .aggregate(total=Sum('qtelivrer'))['total'] or 0
+            )
+
+            if total_livree + qte_livree > cmd.qtecmd:
+                messages.warning(
+                    request,
+                    f"Impossible de livrer {qte_livree} unités de {cmd.produits.desgprod}. "
+                    f"Quantité commandée : {cmd.qtecmd}, déjà livrée : {total_livree}."
+                )
+                continue  # Passe à la prochaine commande
 
             # ================= LIVRAISON =================
             LivraisonsProduits.objects.create(
@@ -528,7 +577,6 @@ def reception_livraison(request):
                 ).send()
 
             except Exception as e:
-                logger.error(f"Erreur email livraison : {e}")
                 messages.warning(request, "Livraison enregistrée mais email non envoyé.")
 
         messages.success(request, "Livraisons enregistrées et stock mis à jour avec succès.")
@@ -1120,14 +1168,31 @@ def listes_des_livraisons(request):
     total_livraison = 0
     
     try:
-        listes_livraisons = LivraisonsProduits.objects.all().order_by('-id')
+        # Récupérer toutes les livraisons avec les relations utiles
+        listes_livraisons = LivraisonsProduits.objects.select_related(
+            'commande', 'produits'
+        ).order_by('-id')
+
         total_livraison = listes_livraisons.count()
+
+        # Calcul des quantités livrées et restantes pour chaque élément
+        for elem in listes_livraisons:
+            total_livree = LivraisonsProduits.objects.filter(
+                produits=elem.produits,
+                commande=elem.commande
+            ).aggregate(total=Sum('qtelivrer'))['total'] or 0
+            elem.total_livree = total_livree
+            elem.qte_restante = elem.commande.qtecmd - total_livree
+
+        # Pagination si nécessaire
         listes_livraisons = pagination_liste(request, listes_livraisons)
-    except Exception as ex :
-        return messages.warning(request, f"Erreur de récupération des produits {str(ex)} !")
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des produits : {str(ex)} !")
+
     context = {
-        'listes_livraisons' : listes_livraisons,
-        'total_livraison' : total_livraison
+        'listes_livraisons': listes_livraisons,
+        'total_livraison': total_livraison
     }
     return render(request, "gestion_produits/livraisons/listes_livraisons.html", context)
 

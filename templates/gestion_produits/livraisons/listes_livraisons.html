@@ -52,7 +52,7 @@
             </div>
             <div class="col-md-6 text-right">
                 <a href="{% url 'produits:reception_livraison' %}" class="btn btn-danger">
-                    <i class="fa fa-plus"></i> NOUVELLE RECEPTION ?
+                    <i class="fa fa-plus"></i>  NOUVELLE RECEPTION ?
                 </a>
             </div>
         </div>
@@ -80,20 +80,20 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="panel panel-default">
-                    <div class="panel-heading">LISTE DES LIVRAISONS RECU</div>
+                    <div class="panel-heading">LISTE DES LIVRAISONS REÇUES</div>
                     <div class="panel-body">
 
                         <div class="row align-items-center mb-3">
                             <div class="col-md-6 col-sm-12">
                                 <small class="text-muted" style="font-size: 20px; font-weight: bold;">
                                     <i class="fa fa-users text-primary me-1"></i>
-                                    Total Livraisons Réçu :
+                                    Total Livraisons Réçues :
                                     <strong>{{ total_livraison }}</strong>
                                 </small>
                             </div>
                             <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
                                 <div class="input-group" style="max-width: 400px; margin-left: auto;">
-                                    <input type="text" class="form-control" placeholder="Rechercher une livraisons..." name="rechercher_informations" id="rechercher_informations">
+                                    <input type="text" class="form-control" placeholder="Rechercher une livraison..." name="rechercher_informations" id="rechercher_informations">
                                 </div>
                             </div>
                         </div>
@@ -111,6 +111,7 @@
                                         <th>Désignation</th>
                                         <th>Quantité Commandée</th>
                                         <th>Quantité Livrée</th>
+                                        <th>Quantité Restante</th>
                                         <th>Prix Unitaire</th>
                                         <th>Date de Livraison</th>
                                         <th>Actions</th>
@@ -126,7 +127,8 @@
                                         <td>{{ elem.produits.categorie.desgcategorie }}</td>
                                         <td>{{ elem.produits.desgprod }}</td>
                                         <td>{{ elem.commande.qtecmd }}</td>
-                                        <td>{{ elem.qtelivrer }}</td>
+                                        <td>{{ elem.total_livree }}</td>
+                                        <td>{{ elem.qte_restante }}</td>
                                         <td>{{ elem.produits.pu }}</td>
                                         <td>{{ elem.datelivrer|date:'d/m/Y' }}</td>
                                         <td>

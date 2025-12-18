@@ -47,7 +47,8 @@ urlpatterns = [
 
     path('livraions/reception_livraison/', reception_livraison, name='reception_livraison'),
     path('livraions/listes_des_livraisons/', listes_des_livraisons, name='listes_des_livraisons'),
-    path('supprimer_livraisons/supprimer_livraisons/', supprimer_livraisons, name='supprimer_livraisons'),
+    path('supprimer_livraisons/', supprimer_livraisons, name='supprimer_livraisons'),
+    path('historique_commandes_livraisons/', historique_commandes_livraisons, name='historique_commandes_livraisons'),
     
     #=============================================================================
     path('approv/approvisionner_produits/', approvisionner_produits, name='approvisionner_produits'),
