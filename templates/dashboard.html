@@ -81,7 +81,7 @@
             <div class="small-box bg-green">
                 <div class="inner">
                     <h3>{{ total_categories }}</h3>
-                    <p>Total Catégories</p>
+                    <p>Total Catégories Produit</p>
                 </div>
                 <div class="icon">
                     <i class="ion ion-pricetags"></i>
@@ -105,9 +105,11 @@
                 <div class="icon">
                     <i class="ion ion-bag"></i>
                 </div>
+                  {% if not request.user.type_utilisateur == 'Gerante' %} 
                 <a href="{% url 'produits:listes_des_commandes' %}" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
+                {% endif %}
             </div>
         </div>
                <div class="col-lg-3 col-xs-6">
@@ -119,9 +121,11 @@
                 <div class="icon">
                     <i class="ion ion-bag"></i>
                 </div>
+                  {% if not request.user.type_utilisateur == 'Gerante' %} 
                 <a href="{% url 'produits:listes_des_livraisons' %}" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
+                {% endif %}
             </div>
         </div>
 

@@ -84,22 +84,6 @@ class StockProduit(models.Model):
         return f"{self.produit.refprod} | {lieu}"
 
 #==================================================================================
-# Table Mouvement des Produits
-#==================================================================================
-class MouvementProduit(models.Model):
-    TYPE_MOUVEMENT = [
-        ('Entrer', 'Entrer'),
-        ('Sortie', 'Sortie'),
-        ('Transfert', 'Transfert'),
-    ]
-    produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='mouvement')
-    type_mouvement = models.CharField(max_length=45, choices=TYPE_MOUVEMENT)
-    quantite = models.IntegerField(default = 0)
-    date_vente = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"Références : {self.produit.refprod} Stock : {self.qtestock}"
-
-#==================================================================================
 # Table Ventes des Produits
 #==================================================================================
 class VenteProduit(models.Model):
@@ -112,6 +96,8 @@ class VenteProduit(models.Model):
     telclt_client = models.CharField(max_length=65, null=True)
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
 
+    class Meta:
+        ordering = ['-code']
     def __str__(self):
         return f"Vente {self.code} Par {self.utilisateur}"
 
@@ -126,10 +112,19 @@ class LigneVente(models.Model):
     montant_reduction = models.IntegerField(default=0)  # Prix unitaire en details
     sous_total = models.IntegerField(default=0)
     date_saisie = models.DateField(auto_now_add=True)
-
+    
     def __str__(self):
         return f"{self.produit.desgprod} (x{self.quantite})"
 
+    # Calcul du bénéfice
+    def calcul_benefice_ligne(ligne_vente):
+        prix_vente = ligne_vente.prix
+        quantite = ligne_vente.quantite
+        cout_total = ligne_vente.produit.pu * quantite
+        revenu_total = prix_vente * quantite
+        benefice = revenu_total - cout_total
+        
+        return benefice
    
 #==================================================================================
 # Table Commandes

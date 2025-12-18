@@ -12,6 +12,7 @@
         <th>Produit</th>
         <th>Fournisseur</th>
         <th>Quantité commandée</th>
+        <th>Date commande</th>
         <th>Quantité à livrer</th>
       </tr>
     </thead>
@@ -22,6 +23,7 @@
         <td>{{ cmd.produits.desgprod }}</td>
         <td>{{ cmd.nom_complet_fournisseur }}</td>
         <td>{{ cmd.qtecmd }}</td>
+        <td>{{ cmd.datecmd }}</td>
         <td>
           <input type="hidden" name="commande_id[]" value="{{ cmd.id }}">
           <input type="number" name="quantite_livree[]" min="0" max="{{ cmd.qtecmd }}" value="{{ cmd.qtecmd }}" class="form-control">

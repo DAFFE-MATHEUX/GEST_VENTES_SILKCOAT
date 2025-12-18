@@ -45,11 +45,15 @@
             <select name="type" id="type" class="form-control" required>
               <option value="">-- Sélectionner --</option>
 
-              <!-- SECTION COMMERCIALE -->
-              <option value="Ventes">Ventes</option>
-              <option value="Commandes">Commandes</option>
-              <option value="Produits">Produits en stock</option>
+              <!-- COMMERCIAL -->
+              <option value="VENTES">Ventes</option>
+              <option value="COMMANDES">Commandes</option>
+              <option value="LIVRAISONS">Livraisons</option>
+
+              <!-- STOCK -->
+              <option value="STOCKS">Stocks</option>
             </select>
+
           </div>
 
           <!-- PÉRIODE (pour la majorité des rapports) -->
@@ -77,41 +81,33 @@
 </div>
 
 <script>
-  // Masquer automatiquement les messages
-  setTimeout(() => {
-    document.querySelectorAll('.alert').forEach(el => {
-      el.style.transition = "0.4s";
-      el.style.opacity = "0";
-      setTimeout(() => el.remove(), 500);
-    });
-  }, 4000);
+const typeSelect = document.getElementById('type');
+const periodeContainer = document.getElementById('periode-container');
+const debut = document.getElementById('periode_debut');
+const fin = document.getElementById('periode_fin');
 
-  // Gestion automatique de l'affichage de la période
-  const typeSelect = document.getElementById('type');
-  const periodeContainer = document.getElementById('periode-container');
-  const debut = document.getElementById('periode_debut');
-  const fin = document.getElementById('periode_fin');
+function updatePeriodeVisibility() {
+  const typesAvecPeriode = [
+    'VENTES',
+    'COMMANDES',
+    'LIVRAISONS',
+    'STOCKS'
+  ];
 
-  const updatePeriodeVisibility = () => {
-    const typesAvecPeriode = [
-      'Inscription', 'Réinscription', 'Paiements',
-      'Ventes', 'Commandes'
-    ];
+  if (typesAvecPeriode.includes(typeSelect.value)) {
+    periodeContainer.style.display = 'block';
+    debut.required = true;
+    fin.required = true;
+  } else {
+    periodeContainer.style.display = 'none';
+    debut.required = false;
+    fin.required = false;
+  }
+}
 
-    if (typesAvecPeriode.includes(typeSelect.value)) {
-      periodeContainer.style.display = 'block';
-      debut.required = true;
-      fin.required = true;
-    } else {
-      // Exemple : Produits n'a pas besoin de période
-      periodeContainer.style.display = 'none';
-      debut.required = false;
-      fin.required = false;
-    }
-  };
-
-  typeSelect.addEventListener('change', updatePeriodeVisibility);
-  updatePeriodeVisibility();
+typeSelect.addEventListener('change', updatePeriodeVisibility);
+updatePeriodeVisibility();
 </script>
+
 
 {% endblock %}

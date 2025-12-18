@@ -4,27 +4,65 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ rapport.titre }}</title>
+
     <style>
         @page { size: A4; margin: 40px 30px 60px 30px; }
         body { font-family: DejaVu Sans, sans-serif; margin:0; font-size:12px; color:#333; }
+
         h1,h2,h3 { text-align:center; margin-bottom:10px; }
-        table { width:100%; border-collapse:collapse; margin-top:15px; }
-        th,td { border:1px solid #444; padding:6px; text-align:center; }
+
+        table {
+            width:100%;
+            border-collapse:collapse;
+            margin-top:15px;
+        }
+
+        th,td {
+            border:1px solid #444;
+            padding:6px;
+            text-align:center;
+        }
+
         th { background-color:#f2f2f2; }
-        .empty { text-align:center; color:#999; font-style:italic; padding:15px; }
-        .resume { margin-top:20px; border-top:2px solid #000; padding-top:10px; width:60%; margin:auto; }
-        .resume td { text-align:left; padding:4px; }
+
+        .empty {
+            text-align:center;
+            color:#999;
+            font-style:italic;
+            padding:15px;
+        }
+
+        .resume {
+            margin-top:20px;
+            border-top:2px solid #000;
+            padding-top:10px;
+            width:60%;
+            margin:auto;
+        }
+
+        .resume td {
+            text-align:left;
+            padding:4px;
+        }
+
         .resume strong { color:#0b6df0; }
-        .footer { position: fixed; bottom:10px; text-align:center; font-size:10px; color:#555; width:100%; }
+
+        .footer {
+            position: fixed;
+            bottom:10px;
+            text-align:center;
+            font-size:10px;
+            color:#555;
+            width:100%;
+        }
     </style>
 </head>
 <body>
 
-<!-- ENTÊTE ENTREPRISE -->
-<div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
-    
-    <!-- Infos gauche -->
-    <div style="font-size: 12px; line-height: 1.5;">
+<!-- ================= ENTÊTE ENTREPRISE ================= -->
+<div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:20px;">
+
+    <div style="font-size:12px; line-height:1.5;">
         <strong>Entreprise :</strong> {{ entreprise.nom_entrepriese|upper }} <br>
         <strong>Adresse :</strong> {{ entreprise.adresse|default:"-" }} <br>
         <strong>Contact 1 :</strong> {{ entreprise.contact1|default:"-" }} <br>
@@ -32,127 +70,234 @@
         <strong>Email :</strong> {{ entreprise.email|default:"Aucun" }}
     </div>
 
-    <!-- Logo + Nom -->
-    <div style="text-align: center; flex: 1;">
+    <div style="text-align:center; flex:1;">
         {% if entreprise.logo %}
-            <img src="{{ entreprise.logo.url }}" alt="Logo" style="width: 80px; height: 80px; object-fit: contain;"><br>
+            <img src="{{ entreprise.logo.url }}" style="width:80px;height:80px;object-fit:contain;"><br>
         {% endif %}
-        <h2 style="margin: 5px 0; font-size: 16px; color:#003366; text-transform: uppercase;">
+        <h2 style="margin:5px 0; font-size:16px; color:#003366;">
             {{ entreprise.nom_entrepriese }}
         </h2>
     </div>
-
 </div>
 
-<!-- TITRE -->
+<!-- ================= INFOS RAPPORT ================= -->
 <div class="header">
     <h1>{{ rapport.titre }}</h1>
-    <p><strong>Type :</strong> {{ rapport.type|upper }}</p>
+    <p><strong>Type :</strong> {{ rapport.type }}</p>
+
     {% if rapport.periode_debut %}
         <p><strong>Période :</strong> {{ rapport.periode_debut }} → {{ rapport.periode_fin }}</p>
     {% endif %}
+
     <p><strong>Généré par :</strong> {{ rapport.genere_par.username }}</p>
     <p><strong>Date :</strong> {{ rapport.date_generation|date:"d/m/Y H:i" }}</p>
 </div>
 
-<!-- CONTENU DYNAMIQUE -->
-{% if rapport.type == "Produits" %}
-    <h3>LISTE DES PRODUITS</h3>
+<!-- ================= CONTENU DYNAMIQUE ================= -->
+
+
+{% if rapport.type == "VENTES" %}
+<h3>LISTE DES VENTES (STOCK MAGASIN)</h3>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Code Vente</th>
+        <th>Produit</th>
+        <th>Quantité Vendue</th>
+        <th>Stock Magasin Actuel</th>
+        <th>Date Vente</th>
+        <th>Sous-total</th>
+    </tr>
+
+    {% for item in data %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.vente.code }}</td>
+        <td>{{ item.produit.desgprod }}</td>
+        <td>{{ item.quantite }}</td>
+
+        <!-- 🔹 STOCK MAGASIN -->
+        <td>
+                {{ stock_magasin.qtestock|default:"0" }}
+        </td>
+
+        <td>{{ item.vente.date_vente|date:"d/m/Y H:i" }}</td>
+        <td>{{ item.sous_total|floatformat:0 }} GNF</td>
+    </tr>
+
+    {% empty %}
+    <tr>
+        <td colspan="7" class="empty">Aucune vente trouvée.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if total_montant %}
+<div class="resume">
     <table>
         <tr>
-            <th>#</th>
-            <th>Références du produit</th>
-            <th>Nom du produit</th>
-            <th>Catégorie du produit</th>
-            <th>Prix unitaire</th>
-            <th>Stock disponible</th>
+            <td><strong>Total des ventes :</strong></td>
+            <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
         </tr>
-        {% for item in data %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ item.refprod }}</td>
-                <td>{{ item.categorie.desgcategorie }}</td>
-                <td>{{ item.desgprod }}</td>
-                <td>{{ item.pu|floatformat:0 }} GNF</td>
-                <td>{{ item.qtestock }}</td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="4" class="empty">Aucun produit trouvé.</td></tr>
-        {% endfor %}
     </table>
+</div>
+{% endif %}
 
-{% elif rapport.type == "Ventes" %}
-    <h3>LISTE DES VENTES</h3>
+
+{% if total_montant %}
+<div class="resume">
     <table>
         <tr>
-            <th>#</th>
-            <th>Catégories du Produit</th>
-            <th>Références du Produit</th>
-            <th>Désignation Produit</th>
-            <th>Quantités Vendues</th>
-            <th>Quantités Restantes</th>
-            <th>Date de la Vente</th>
-            <th>Total</th>
+            <td>Montant total vendu :</td>
+            <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
         </tr>
-        {% for item in data %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ item.vente.code }}</td>
-                <td>{{ item.produit.categorie.desgcategorie }}</td>
-                <td>{{ item.produit.desgprod }}</td>
-                <td>{{ item.quantite }}</td>
-                <td>{{ item.produit.qtestock }}</td>
-                <td>{{ item.vente.date_vente|date:"d/m/Y H:i" }}</td>
-                <td>{{ item.sous_total|floatformat:0 }} GNF</td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="5" class="empty">Aucune vente trouvée.</td></tr>
-        {% endfor %}
     </table>
+</div>
+{% endif %}
 
-    {% if total_montant %}
-    <div class="resume">
-        <table>
-            <tr><td>Montant Total Vendu :</td><td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td></tr>
-        </table>
-    </div>
-    {% endif %}
+{% elif rapport.type == "COMMANDES" %}
+<h3>LISTE DES COMMANDES</h3>
+<table>
+    <tr>
+        <th>#</th>
+        <th>Founisseur</th>
+        <th>Contact</th>
+        <th>Code commande</th>
+        <th>Catagorie</th>
+        <th>Produit</th>
+        <th>Quantité</th>
+        <th>Date</th>
+    </tr>
+    {% for item in data %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.nom_complet_fournisseur }}</td>
+        <td>{{ item.telephone_fournisseur }}</td>
+        <td>{{ item.numcmd }}</td>
+        <td>{{ item.produits.categorie.desgcategorie }}</td>
+        <td>{{ item.produits.desgprod }}</td>
+        <td>{{ item.qtecmd }}</td>
+        <td>{{ item.datecmd|date:"d/m/Y" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" class="empty">Aucune commande trouvée.</td></tr>
+    {% endfor %}
+</table>
 
-{% elif rapport.type == "Commandes" %}
-    <h3>LISTE DES COMMANDES</h3>
+    {% elif rapport.type == "STOCKS" %}
+<h3>ÉTAT DES STOCKS PAR LIEU</h3>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Référence</th>
+        <th>Produit</th>
+        <th>Lieu</th>
+        <th>Type</th>
+        <th>Quantité Dispoinble</th>
+        <th>Seuil</th>
+        <th>Date MAJ</th>
+    </tr>
+
+    {% for item in data %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.produit.refprod }}</td>
+        <td>{{ item.produit.desgprod }}</td>
+
+        <td>
+            {% if item.entrepot %}
+                {{ item.entrepot }}
+            {% else %}
+                {{ item.magasin }}
+            {% endif %}
+        </td>
+
+        <td>
+            {% if item.entrepot %}
+                Entrepôt
+            {% else %}
+                Magasin
+            {% endif %}
+        </td>
+
+        <td>{{ item.qtestock }}</td>
+        <td>{{ item.seuil }}</td>
+        <td>{{ item.date_maj|date:"d/m/Y H:i" }}</td>
+    </tr>
+
+    {% empty %}
+    <tr>
+        <td colspan="8" class="empty">Aucun stock trouvé pour cette période.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if total_montant %}
+<div class="resume">
     <table>
         <tr>
-            <th>#</th>
-            <th>Code Vente</th>
-            <th>Produit</th>
-            <th>Quantité Commandée</th>
-            <th>Prix Unitaire</th>
-            <th>Sous-total</th>
+            <td><strong>Stock total disponible :</strong></td>
+            <td><strong>{{ total_montant }}</strong></td>
         </tr>
-        {% for item in data %}
-        <tr>
-            <td>{{ forloop.counter }}</td>
-            <td>{{ item.vente.code }}</td>
-            <td>{{ item.produit.desgprod }}</td>
-            <td>{{ item.quantite }}</td>
-            <td>{{ item.prix|floatformat:0 }} GNF</td>
-            <td>{{ item.sous_total|floatformat:0 }} GNF</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="empty">Aucune commande trouvée ou effectuée.</td></tr>
-        {% endfor %}
     </table>
+</div>
+{% endif %}
 
-    {% if total_montant %}
-    <div class="resume">
-        <table>
-            <tr><td>Total commandes :</td><td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td></tr>
-        </table>
-    </div>
-    {% endif %}
+
+{% elif rapport.type == "LIVRAISONS" %}
+<h3>LISTE DES LIVRAISONS (STOCK ENTREPÔT)</h3>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Numéro Livraison</th>
+        <th>Produit</th>
+        <th>Quantité Livrée</th>
+        <th>Stock Entrepôt Actuel</th>
+        <th>Date Livraison</th>
+        <th>Statut</th>
+    </tr>
+
+    {% for item in data %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ item.numlivrer }}</td>
+        <td>{{ item.produits.desgprod }}</td>
+        <td>{{ item.qtelivrer }}</td>
+
+        <!-- 🔹 STOCK ENTREPÔT -->
+        <td>
+            {{ stock_entrepot.qtestock|default:"0" }}
+        </td>
+
+        <td>{{ item.datelivrer|date:"d/m/Y" }}</td>
+        <td>{{ item.statuts }}</td>
+    </tr>
+
+    {% empty %}
+    <tr>
+        <td colspan="7" class="empty">Aucune livraison trouvée.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if total_montant %}
+<div class="resume">
+    <table>
+        <tr>
+            <td><strong>Total livré :</strong></td>
+            <td><strong>{{ total_montant }}</strong></td>
+        </tr>
+    </table>
+</div>
 
 {% endif %}
 
+{% endif %}
+
+<!-- ================= FOOTER ================= -->
 <div class="footer">
     Rapport généré automatiquement – {{ rapport.date_generation|date:"d/m/Y" }}
 </div>

@@ -690,7 +690,6 @@ def supprimer_categorie(request):
 #================================================================================================
 # Fonction pour supprimer un produit donné
 #================================================================================================
-
 @login_required
 def supprimer_produits(request):
     if request.method == 'POST':
@@ -744,7 +743,6 @@ def supprimer_produits(request):
 #================================================================================================
 # Fonction pour supprimer un produit donné
 #================================================================================================
-
 @login_required
 def supprimer_produits_stock(request):
     if request.method == 'POST':
@@ -1126,7 +1124,6 @@ def listes_des_livraisons(request):
 #================================================================================================
 # Fonction pour afficher la liste des ventes
 #================================================================================================
-
 @login_required
 def listes_des_ventes(request):
     listes_ventes = []
@@ -1295,16 +1292,13 @@ def modifier_produit(request, id):
 #================================================================================================
 # Fonction gérer les réferenes de produit
 #================================================================================================
-
 def generate_references(prefix, date_str, numero):
     return f"{prefix}{date_str}{str(numero).zfill(4)}"
 
 #================================================================================================
 # Fonction pour ajouter un nouveau produit
 #================================================================================================
-
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-
 def nouveau_produit(request):
     prefix = "PROD"
     date_str = datetime.now().strftime("%Y%m%d")
@@ -1390,7 +1384,6 @@ def nouveau_produit(request):
 #================================================================================================
 # Fonction pour ajouter un nouveau produit
 #================================================================================================
-
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def ajouter_stock_multiple(request):
     produits = Produits.objects.all()
@@ -1493,7 +1486,6 @@ def choix_par_dates_produit_impression(request):
 #================================================================================================
 # Fonction pour imprimer la listes des produits
 #================================================================================================
-
 @login_required
 def listes_produits_impression(request):
     
@@ -1577,7 +1569,6 @@ def choix_par_dates_commandes_impression(request):
 #================================================================================================
 # Fonction pour imprimer la listes des Commandes
 #================================================================================================
-
 @login_required
 def listes_commandes_impression(request):
     

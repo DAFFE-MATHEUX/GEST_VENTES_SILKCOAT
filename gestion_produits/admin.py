@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    CategorieProduit, Produits, StockProduit, MouvementProduit,
+    CategorieProduit, Produits, StockProduit,
     VenteProduit, LigneVente, Commandes, LivraisonsProduits
 )
 
@@ -49,14 +49,6 @@ class AdminStock(admin.ModelAdmin):
 
     lieu_stockage.short_description = "Lieu de stockage"
 
-# ==========================
-# MOUVEMENT PRODUIT
-# ==========================
-@admin.register(MouvementProduit)
-class AdminMouvement(admin.ModelAdmin):
-    list_display = ('produit', 'type_mouvement', 'quantite', 'date_vente')
-    list_filter = ('type_mouvement',)
-    ordering = ('-date_vente',)
 
 # ==========================
 # VENTE PRODUIT

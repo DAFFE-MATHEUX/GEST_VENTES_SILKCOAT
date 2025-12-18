@@ -61,7 +61,7 @@
                     <li><a href="{% url 'produits:historique_ventes_par_date' %}"><i class="fa fa-list"></i> Historique Vente</a></li>
                 </ul>
             </li>
-
+  {% if not request.user.type_utilisateur == 'Gerante' %} 
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-building"></i>
@@ -73,7 +73,7 @@
                     <li><a href="{% url 'produits:listes_des_livraisons' %}"><i class="fa fa-list"></i> Gestion des Livraisons</a></li>
                 </ul>
             </li>
-
+{% endif %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-file-alt"></i>
