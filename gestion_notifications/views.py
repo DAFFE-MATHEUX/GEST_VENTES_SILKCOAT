@@ -6,6 +6,13 @@ from gestion_utilisateur.models import Utilisateur
 from .utils import pagination_liste
 from rest_framework import viewsets
 from .models_serializers import NotificationSerializer
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import Notification
+from gest_entreprise.models import Entreprise
+from django.utils import timezone
 #=================================================================================
 class Notification_View_Set(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
@@ -27,19 +34,6 @@ def liste_notifications_global(request, utilisateur):
     }
     return render(request, "gestion_notifications/liste_notifications.html", context)
 
-#==============================================================================
-
-@login_required
-def Dashboard_Notification(request):
-    notifications_qs = Notification.objects.filter(destinataire=request.user).order_by('-date')
-    nb_non_lus = notifications_qs.filter(lu=False).count()
-    notifications = notifications_qs[:5]  # slicing seulement ici
-
-    return render(request, 'dashboard_test.html', {
-        'notifications': notifications,
-        'nb_non_lus': nb_non_lus,
-        # autres variables ici
-    })
 
 @login_required
 def marquer_notification_lue(request, id):
@@ -52,13 +46,6 @@ def marquer_notification_lue(request, id):
 def marquer_tout_lu(request):
     Notification.objects.filter(destinataire=request.user, lu=False).update(lu=True)
     return redirect('gestionUtilisateur:tableau_bord')
-
-
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.core.mail import send_mail
-from django.conf import settings
-from .models import Notification
 
 
 @receiver(post_save, sender=Notification)
@@ -183,3 +170,41 @@ def filtrer_listes_notifications(request):
 
     return render(request, "gestion_notifications/listes_notifications_totale.html", context)
 
+
+#================================================================================================
+# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Notifications
+#================================================================================================
+@login_required
+def choix_par_dates_notification_impression(request):
+    return render(request, 'gestion_notifications/impression_listes/fiches_choix_impression_notifications.html')
+
+#================================================================================================
+# Fonction pour imprimer la listes des Notifications
+#================================================================================================
+@login_required
+def listes_notifications_impression(request):
+    
+    try:
+        date_debut = request.POST.get('date_debut')
+        date_fin = request.POST.get('date_fin')
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
+
+    except ValueError as ve:
+        messages.warning(request, f"Erreur de type de données : {str(ve)}")
+        
+    listes_notifications = Notification.objects.filter(
+        date__range=[date_debut, date_fin]
+    )
+
+    nom_entreprise = Entreprise.objects.first()
+    context = {
+        'nom_entreprise': nom_entreprise,
+        'today': timezone.now(),
+        'listes_notifications' : listes_notifications,
+    }
+    return render(
+        request,
+        'gestion_notifications/impression_listes/apercue_avant_impression_listes_notifications.html',
+        context
+    )
