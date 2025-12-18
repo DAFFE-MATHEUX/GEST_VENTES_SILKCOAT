@@ -1,40 +1,79 @@
 {% extends 'admin.html' %}
 {% block contents %}
-<h2>RECEPTION DES COMMANDES</h2>
+
+<h2 class="mb-3">📦 Réception des commandes</h2>
 <hr>
 
 <form method="post">
   {% csrf_token %}
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Numéro commande</th>
-        <th>Produit</th>
-        <th>Fournisseur</th>
-        <th>Quantité commandée</th>
-        <th>Date commande</th>
-        <th>Quantité à livrer</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for cmd in commandes %}
-      <tr>
-        <td>{{ cmd.numcmd }}</td>
-        <td>{{ cmd.produits.desgprod }}</td>
-        <td>{{ cmd.nom_complet_fournisseur }}</td>
-        <td>{{ cmd.qtecmd }}</td>
-        <td>{{ cmd.datecmd }}</td>
-        <td>
-          <input type="hidden" name="commande_id[]" value="{{ cmd.id }}">
-          <input type="number" name="quantite_livree[]" min="0" max="{{ cmd.qtecmd }}" value="{{ cmd.qtecmd }}" class="form-control">
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="text-center">Aucune commande à livrer.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
 
-  <button class="btn btn-success mt-3">Enregistrer la livraison</button>
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Numéro commande</th>
+          <th>Produit</th>
+          <th>Fournisseur</th>
+          <th>Qté commandée</th>
+          <th>Déjà livrée</th>
+          <th>Restante</th>
+          <th>Qté à livrer</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for item in commandes %}
+        <tr {% if item.qte_restante == 0 %} class="table-success" {% endif %}>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ item.commande.numcmd }}</td>
+          <td>{{ item.commande.produits.desgprod }}</td>
+          <td>{{ item.commande.nom_complet_fournisseur }}</td>
+          <td>{{ item.commande.qtecmd }}</td>
+          <td>
+            <span class="badge bg-info">
+              {{ item.total_livree }}
+            </span>
+          </td>
+          <td>
+            <span class="badge {% if item.qte_restante == 0 %}bg-success{% else %}bg-warning text-dark{% endif %}">
+              {{ item.qte_restante }}
+            </span>
+          </td>
+          <td style="width: 140px;">
+            {% if item.qte_restante > 0 %}
+              <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
+              <input
+                type="number"
+                name="quantite_livree[]"
+                class="form-control"
+                min="1"
+                max="{{ item.qte_restante }}"
+                value="{{ item.qte_restante }}"
+              >
+            {% else %}
+              <span class="text-success fw-bold">✔ Livrée</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center text-muted">
+            Aucune commande à réceptionner
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if commandes %}
+    <div class="mt-3">
+      <button type="submit" class="btn btn-success">
+        💾 Enregistrer la livraison
+      </button>
+    </div>
+  {% endif %}
 </form>
+
 {% endblock %}

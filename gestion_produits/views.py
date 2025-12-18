@@ -477,55 +477,69 @@ def nouvelle_commande(request):
 
 @login_required
 def reception_livraison(request):
-    commandes = Commandes.objects.all().order_by('-datecmd')
+    commandes_qs = Commandes.objects.all().order_by('-datecmd')
+    commandes = []
 
+    # ================= PRÉPARATION AFFICHAGE =================
+    for cmd in commandes_qs:
+        total_livree = (
+            LivraisonsProduits.objects
+            .filter(commande=cmd)
+            .aggregate(total=Sum('qtelivrer'))['total'] or 0
+        )
+
+        qte_restante = max(cmd.qtecmd - total_livree, 0)
+
+        commandes.append({
+            "commande": cmd,
+            "total_livree": total_livree,
+            "qte_restante": qte_restante
+        })
+
+    # ================= TRAITEMENT POST =================
     if request.method == "POST":
         commande_ids = request.POST.getlist("commande_id[]")
         quantites_livrees = request.POST.getlist("quantite_livree[]")
 
-        if not commande_ids:
-            messages.error(request, "Aucune commande sélectionnée pour la livraison.")
-            return redirect("produits:reception_livraison")
-
-        livraisons_effectuees = []
         numlivrer = f"LIV{timezone.now().strftime('%Y%m%d%H%M%S')}"
-        entrepot = Entrepot.objects.first()  # Entrepôt principal
+        entrepot = Entrepot.objects.first()
 
         for i in range(len(commande_ids)):
-            try:
-                cmd = Commandes.objects.get(id=commande_ids[i])
-                qte_livree = int(quantites_livrees[i])
-            except (Commandes.DoesNotExist, ValueError):
-                continue
+            cmd = Commandes.objects.get(id=commande_ids[i])
+            qte_livree = int(quantites_livrees[i])
 
             if qte_livree <= 0:
                 continue
 
-            # 🔹 Vérifier si la quantité totale livrée dépasse la commande
+            # 🔹 Calcul sécurisé
             total_livree = (
-                LivraisonsProduits.objects.filter(produits=cmd.produits)
+                LivraisonsProduits.objects
+                .filter(commande=cmd)
                 .aggregate(total=Sum('qtelivrer'))['total'] or 0
             )
 
-            if total_livree + qte_livree > cmd.qtecmd:
+            qte_restante = cmd.qtecmd - total_livree
+
+            if qte_livree > qte_restante:
                 messages.warning(
                     request,
-                    f"Impossible de livrer {qte_livree} unités de {cmd.produits.desgprod}. "
-                    f"Quantité commandée : {cmd.qtecmd}, déjà livrée : {total_livree}."
+                    f"Livraison refusée : {cmd.produits.desgprod} "
+                    f"(reste {qte_restante})"
                 )
-                continue  # Passe à la prochaine commande
+                continue
 
             # ================= LIVRAISON =================
             LivraisonsProduits.objects.create(
                 numlivrer=numlivrer,
+                commande=cmd,
                 produits=cmd.produits,
                 qtelivrer=qte_livree,
                 datelivrer=timezone.now().date(),
                 statuts="Livrée"
             )
 
-            # ================= STOCK ENTREPOT =================
-            stock_entrepot, created = StockProduit.objects.get_or_create(
+            # ================= STOCK =================
+            stock, created = StockProduit.objects.get_or_create(
                 produit=cmd.produits,
                 entrepot=entrepot,
                 magasin=None,
@@ -533,53 +547,20 @@ def reception_livraison(request):
             )
 
             if not created:
-                stock_entrepot.qtestock = F('qtestock') + qte_livree
-                stock_entrepot.save()
+                stock.qtestock = F('qtestock') + qte_livree
+                stock.save()
 
             # ================= STATUT COMMANDE =================
-            if hasattr(cmd, "statuts"):
+            total_livree_finale = total_livree + qte_livree
+
+            if total_livree_finale == cmd.qtecmd:
                 cmd.statuts = "Livrée"
-                cmd.save()
+            else:
+                cmd.statuts = "Partiellement livrée"
 
-            livraisons_effectuees.append({
-                "produit": cmd.produits.desgprod,
-                "quantite": qte_livree,
-                "fournisseur": cmd.nom_complet_fournisseur
-            })
+            cmd.save()
 
-            # ================= NOTIFICATION =================
-            Notification.objects.create(
-                destinataire=request.user,
-                titre="📦 Réception de livraison",
-                message=(
-                    f"Le produit {cmd.produits.desgprod} "
-                    f"a été livré ({qte_livree} unité(s)) "
-                    f"par {cmd.nom_complet_fournisseur}."
-                ),
-            )
-
-        # ================= EMAIL ADMIN =================
-        if livraisons_effectuees:
-            try:
-                contenu = "Nouvelle réception de livraison :\n\n"
-                for l in livraisons_effectuees:
-                    contenu += (
-                        f"- Produit : {l['produit']} | "
-                        f"Quantité : {l['quantite']} | "
-                        f"Fournisseur : {l['fournisseur']}\n"
-                    )
-
-                EmailMessage(
-                    "Réception de livraison enregistrée",
-                    contenu,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL],
-                ).send()
-
-            except Exception as e:
-                messages.warning(request, "Livraison enregistrée mais email non envoyé.")
-
-        messages.success(request, "Livraisons enregistrées et stock mis à jour avec succès.")
+        messages.success(request, "Livraison enregistrée avec succès.")
         return redirect("produits:listes_des_livraisons")
 
     return render(
