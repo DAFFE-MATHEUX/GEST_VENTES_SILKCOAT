@@ -239,6 +239,96 @@
 </div>
 
     <!-- =====================
+         3 DERNIERES COMMANDES
+         ===================== -->
+   <div class="row">
+    <div class="col-md-12">
+        <div class="box box-info">
+            <div class="box-header with-border"><h3 class="box-title">3 Dernières Commandes</h3></div>
+            <div class="box-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Num Commande</th>
+                            <th>Réf Produit</th>
+                            <th>Désignation</th>
+                            <th>Quantité Commandée</th>
+                            <th>Statut Commandé</th>
+                            <th>Prix Unitaire</th>
+                            <th>Catégorie</th>
+                            <th>Date Commande</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for elem in listes_commandes %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ elem.numcmd }}</td>
+                                <td>{{ elem.produits.refprod }}</td>
+                                <td>{{ elem.produits.desgprod }}</td>
+                                <td>{{ elem.qtecmd }}</td>
+                                <td>{{ elem.statuts }}</td>
+                                <td>{{ elem.produits.pu }}</td>
+                                <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                                <td>{{ elem.datecmd|date:'d/m/Y' }}</td>
+                            </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center">Aucune commande récente.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- =====================
+         3 DERNIERES LIVRAISONS
+         ===================== -->
+   <div class="row">
+    <div class="col-md-12">
+        <div class="box box-info">
+            <div class="box-header with-border"><h3 class="box-title">3 Dernières Livraisons</h3></div>
+            <div class="box-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Num Livraison</th>
+                            <th>Num Commande</th>
+                            <th>Catégorie</th>
+                            <th>Désignation</th>
+                            <th>Qte Commandée</th>
+                            <th>Qte Livrée</th>
+                            <th>Qte Restante</th>
+                            <th>Date Livraison</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for elem in listes_livraisons %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ elem.numlivrer }}</td>
+                                <td>{{ elem.commande.numcmd }}</td>
+                                <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                                <td>{{ elem.produits.desgprod }}</td>
+                                <td>{{ elem.commande.qtecmd }}</td>
+                                <td>{{ elem.total_livree }}</td>
+                                <td>{{ elem.qte_restante }}</td>
+                                <td>{{ elem.datelivrer|date:'d/m/Y' }}</td>
+                            </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center">Aucune livraisons récente.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- =====================
          DERNIERS AUDITS
          ===================== -->
     <div class="row">

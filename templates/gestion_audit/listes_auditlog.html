@@ -88,7 +88,9 @@
                 <th>Ancienne valeur</th>
                 <th>Nouvelle valeur</th>
                 <th>Date</th>
+                {% if not request.user.type_utilisateur == 'Gerante' %}
                 <th>Action</th>
+                {% endif %}
               </tr>
             </thead>
             <tbody id="my_table">
@@ -107,14 +109,17 @@
                 <td><pre>{{ a.ancienne_valeur|default:"-" }}</pre></td>
                 <td><pre>{{ a.nouvelle_valeur|default:"-" }}</pre></td>
                 <td>{{ a.date_action|date:"d/m/Y H:i" }}</td>
-                <td>
-                                  <!-- Supprimer -->
+                
+                  {% if not request.user.type_utilisateur == 'Gerante' %}
+                  <td> 
+                    <!-- Supprimer -->
                 <button type="button" class="btn btn-danger btn-sm btn-audit-sup" data-toggle="modal" data-target="#supprimer_audit"
                     data-id="{{ a.id }}">
                     <i class="fa fa-trash"></i>
                 </button>
 
                 </td>
+                {% endif %}
               </tr>
               {% empty %}
               <tr>
@@ -173,7 +178,7 @@
           <button type="button" class="close" data-dismiss="modal">&times;</button>
           <h4 class="modal-title">SUPPRESSION DE CET AUDIT </h4>
         </div>
-        <form method="POST" action="">
+        <form method="POST" action="{% url 'audit:supprimer_audit' %}">
           {% csrf_token %}
           <div class="modal-body">
             <input type="hidden" name="id_supprimer" id="id_supprimer">

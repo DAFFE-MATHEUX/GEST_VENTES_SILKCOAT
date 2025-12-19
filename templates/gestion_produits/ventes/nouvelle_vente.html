@@ -44,7 +44,6 @@
         <th>Quantité</th>
         <th>Réduction / unité</th>
         <th>Sous-total</th>
-        <th>Détails</th>
       </tr>
     </thead>
 
@@ -83,14 +82,6 @@
 
         <!-- Sous-total -->
         <td class="sous-total">0</td>
-
-        <!-- Détails -->
-        <td>
-          <a href="{% url 'produits:details_vente' p.id %}"
-             class="btn btn-primary btn-sm">
-            <i class="fa fa-eye"></i>
-          </a>
-        </td>
 
       </tr>
       {% empty %}

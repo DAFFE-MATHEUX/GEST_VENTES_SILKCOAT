@@ -47,11 +47,28 @@ def home(request):
     # -------------------
     audits = AuditLog.objects.order_by('-date_action')[:5]
 
+    # -------------------
+    # Commandes récentes
+    # -------------------
+    listes_commandes = Commandes.objects.order_by('-datecmd')
+
+    # -------------------
+    # Livraisons récentes
+    # -------------------
+    listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')
+
+        # Calcul des quantités livrées et restantes pour chaque élément
+    for elem in listes_livraisons:
+        total_livree = LivraisonsProduits.objects.filter(
+            produits=elem.produits,
+            commande=elem.commande
+        ).aggregate(total=Sum('qtelivrer'))['total'] or 0
+        elem.total_livree = total_livree
+        elem.qte_restante = elem.commande.qtecmd - total_livree
     # ---------------------------------------
     # Ventes récentes (dernières ventes)
     # ---------------------------------------
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')
-
     # ----------------------------------------------
     # Les produits les plus vendus dans la semaine
     # ----------------------------------------------
@@ -128,16 +145,6 @@ def home(request):
         ]
     )
     total_ventes = ventes_semaines.count()
-    
-    # ----------------------------------------------
-    # Total de audits éffectué dans la semaine
-    # ----------------------------------------------
-    audit_semaines = AuditLog.objects.filter(
-        date_action__range = [
-            debut_semaine, fin_semaine
-        ]
-    )
-    total_audit = audit_semaines.count()
 
     # -------------------------------------
     # Contexte pour le template
@@ -148,14 +155,15 @@ def home(request):
         'non_lues': non_lues,
         'lues': lues,
         'derniers_audits': audits,
+        'listes_commandes' : listes_commandes[:3],
+        'listes_livraisons' : listes_livraisons,
         'dernieres_ventes': dernieres_ventes[:5],
         'dernieeres_notification': notifications[:5],
-        'produits_plus_vendus' : produits_plus_vendus,
+        'produits_plus_vendus' : produits_plus_vendus[:5],
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_commandes': total_commandes,
         'total_livraisons': total_livraisons,
-        'total_audit' : total_audit,
         'total_ventes': total_ventes,
         'total_stock_entrepot' : total_stock_entrepot,
         'total_stock_magasin' : total_stock_magasin,

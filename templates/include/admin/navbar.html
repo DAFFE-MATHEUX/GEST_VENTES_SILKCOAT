@@ -12,40 +12,6 @@
     <div class="navbar-right">
         <ul class="nav navbar-nav">
 
-            <!-- Messages -->
-            <li class="dropdown messages-menu">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                    <i class="fa fa-envelope"></i>
-                    {% if messages_list %}<span class="label label-success">{{ messages_list|length }}</span>{% endif %}
-                </a>
-                <ul class="dropdown-menu">
-                    <li class="header">
-                        {% if messages_list %}Vous avez {{ messages_list|length }} messages{% else %}Aucun message{% endif %}
-                    </li>
-                    <li>
-                        <ul class="menu">
-                            {% for msg in messages_list %}
-                                <li>
-                                    <a href="{{ msg.link|default:'#' }}">
-                                        <div class="pull-left">
-                                            <img src="{{ msg.avatar }}" class="img-circle" alt="User Image"/>
-                                        </div>
-                                        <h4>
-                                            {{ msg.sender|default:"Inconnu" }}
-                                            <small><i class="fa fa-clock-o"></i> {{ msg.date|default:"-" }}</small>
-                                        </h4>
-                                        <p>{{ msg.content|truncatechars:50|default:"-" }}</p>
-                                    </a>
-                                </li>
-                            {% empty %}
-                                <li><a>Aucun message</a></li>
-                            {% endfor %}
-                        </ul>
-                    </li>
-                    <li class="footer"><a href="#">Voir tous les messages</a></li>
-                </ul>
-            </li>
-
             <!-- Notifications -->
             <li class="dropdown notifications-menu">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">
@@ -84,40 +50,6 @@
                 </ul>
             </li>
 
-            <!-- Tasks -->
-            <li class="dropdown tasks-menu">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                    <i class="fa fa-tasks"></i>
-                    {% if tasks_list %}<span class="label label-danger">{{ tasks_list|length }}</span>{% endif %}
-                </a>
-                <ul class="dropdown-menu">
-                    <li class="header">
-                        {% if tasks_list %}Vous avez {{ tasks_list|length }} tâches{% else %}Aucune tâche{% endif %}
-                    </li>
-                    <li>
-                        <ul class="menu">
-                            {% for task in tasks_list %}
-                                <li>
-                                    <a href="{{ task.link|default:'#' }}">
-                                        <h3>
-                                            {{ task.title|default:"Sans titre" }}
-                                            <small class="pull-right">{{ task.progress|default:0 }}%</small>
-                                        </h3>
-                                        <div class="progress xs">
-                                            <div class="progress-bar {{ task.color|default:'progress-bar-aqua' }}" style="width: {{ task.progress|default:0 }}%" role="progressbar">
-                                                <span class="sr-only">{{ task.progress|default:0 }}% Complete</span>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                            {% empty %}
-                                <li><a>Aucune tâche</a></li>
-                            {% endfor %}
-                        </ul>
-                    </li>
-                    <li class="footer"><a href="#">Voir toutes les tâches</a></li>
-                </ul>
-            </li>
 
             <!-- User Account -->
             <li class="dropdown user user-menu">

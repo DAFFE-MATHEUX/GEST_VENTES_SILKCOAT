@@ -165,7 +165,6 @@ def approvisionner_produits(request):
 #================================================================================================
 
 @login_required
-
 def vendre_produit(request):
     produits = Produits.objects.all()
     
@@ -226,7 +225,6 @@ def vendre_produit(request):
         if not lignes:
             messages.error(request, "Aucun produit sélectionné pour la vente.")
             return redirect("produits:vendre_produit")
-
         # Création vente globale
         code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
         vente = VenteProduit.objects.create(
@@ -237,7 +235,6 @@ def vendre_produit(request):
             telclt_client=telephone,
             adresseclt_client=adresse
         )
-
         # Création lignes de vente et mise à jour stock magasin
         for prod, qte, pu, reduction, st in lignes:
             LigneVente.objects.create(
@@ -248,7 +245,6 @@ def vendre_produit(request):
                 sous_total=st,
                 montant_reduction=reduction,
             )
-
             stock_magasin = StockProduit.objects.filter(produit=prod, magasin__isnull=False).first()
             stock_magasin.qtestock -= qte
             stock_magasin.save()
@@ -279,9 +275,8 @@ def vendre_produit(request):
 # Fonction pour afficher l'historique des ventes par date
 #================================================================================================
 @login_required
-
 def historique_ventes(request):
-    # Récupérer toutes les ventes avec utilisateur et lignes
+    # Récupérer toutes les ventes avec utilisateur et lignes + produits
     ventes = (
         VenteProduit.objects
         .select_related("utilisateur")
@@ -302,23 +297,34 @@ def historique_ventes(request):
     for date, ventes_du_jour in ventes_par_date.items():
         total_montant = 0
         total_quantite = 0
-        total_categories = set()
-        # Calcul du profit par ligne et total de la vente
-        for v in ventes_du_jour:
-            v.total_profit = 0
-            for ligne in v.lignes.all():
-                ligne.profit = (ligne.produit.pu - ligne.produit.prix_en_gros) * ligne.quantite
-                v.total_profit += ligne.profit
+        categories_vendues = set()
+        total_profit_jour = 0
+
+        for vente in ventes_du_jour:
+            vente.total_profit = 0
+            for ligne in vente.lignes.all():
+                # Calcul exact du profit par ligne
+                prix_achat = getattr(ligne.produit, "prix_en_gros", 0)
+                ligne.profit = (ligne.produit.pu - prix_achat) * ligne.quantite
+
+                # Accumulation
+                vente.total_profit += ligne.profit
+                total_profit_jour += ligne.profit
                 total_quantite += ligne.quantite
-                total_categories.add(ligne.produit.categorie.id)
-            total_montant += v.total
+
+                # Ajouter la catégorie du produit (assurer qu'elle existe)
+                if ligne.produit.categorie:
+                    categories_vendues.add(ligne.produit.categorie.id)
+
+            total_montant += vente.total
 
         historique.append({
             "date": date,
             "ventes": ventes_du_jour,
             "total_montant": total_montant,
-            "total_quantite": total_quantite,
-            "total_categories": len(total_categories),
+            "total_quantite": total_quantite,          # Nombre exact de produits vendus
+            "total_categories": len(categories_vendues), # Nombre de catégories différentes vendues
+            "total_profit": total_profit_jour,         # Bénéfice exact du jour
         })
 
     context = {
@@ -331,9 +337,10 @@ def historique_ventes(request):
         context
     )
 
-
+#================================================================================================
+# Fonction pour afficher l'historique des commandes et livraisons par date
+#================================================================================================
 @login_required 
-
 def historique_commandes_livraisons(request):
     """
     Vue pour afficher l'historique des commandes et livraisons
@@ -477,7 +484,9 @@ def nouvelle_commande(request):
     }
     return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
 
-
+#================================================================================================
+# Fonction pour éffectuer une receptin de livraisons des commandes
+#================================================================================================
 @login_required
 def reception_livraison(request):
     """
@@ -635,18 +644,8 @@ def reception_livraison(request):
         }
     )
 
-#================================================================================================
-# Fonction pour voir le details de produit lors de la vente
-#================================================================================================
-@login_required
-def details_vente(request, id):
-    vente = get_object_or_404(VenteProduit, id=id)
-    lignes = vente.lignes.select_related('produit').all()
-    return render(request, "gestion_produits/ventes/details_vente.html", {"vente": vente, "lignes": lignes})
-
-
 #=============================================================================================
-# Fonction pour gérer les réçu Global de Paiement
+# Fonction pour gérer les réçu Global de Ventes
 #=============================================================================================
 @login_required
 def recu_vente_global(request, vente_code):
@@ -776,11 +775,11 @@ def supprimer_categorie(request):
 
             # ----- Audit : suppression -----
             enregistrer_audit(
-                utilisateur=request.user,
-                action="Suppression catégorie",
-                table="CategorieProduit",
-                ancienne_valeur=ancienne_valeur,
-                nouvelle_valeur=None
+                utilisateur = request.user,
+                action = "Suppression catégorie",
+                table = "CategorieProduit",
+                ancienne_valeur = ancienne_valeur,
+                nouvelle_valeur = None
             )
 
             messages.success(request, "Catégorie supprimée avec succès !")
@@ -813,6 +812,40 @@ def supprimer_produits(request):
                     "Veuillez d'abord supprimer les ventes associées."
                 )
                 return redirect('produits:listes_produits')
+            
+            # Vérifier si le produit est lié à des Stocks
+            if StockProduit.objects.filter(
+                produit = prod_id
+                ).exists():
+                messages.warning(
+                    request,
+                    "Impossible de supprimer ce produit car il est déjà utilisé dans un Stock. "
+                    "Veuillez d'abord supprimer les Stocks Produits."
+                )
+                return redirect('produits:listes_produits')
+
+            # Vérifier si le produit est lié à des commandes
+            if Commandes.objects.filter(
+                produits = prod_id
+                ).exists():
+                messages.warning(
+                    request,
+                    "Impossible de supprimer ce produit car il est déjà utilisé dans une commande. "
+                    "Veuillez d'abord supprimer les commandes associées."
+                )
+                return redirect('produits:listes_produits')
+
+
+            # Vérifier si le produit est lié à des Livraisons
+            if LivraisonsProduits.objects.filter(
+                produits = prod_id
+                ).exists():
+                messages.warning(
+                    request,
+                    "Impossible de supprimer ce produit car il est déjà utilisé dans une Livraisons. "
+                    "Veuillez d'abord supprimer les Livraisons."
+                )
+                return redirect('produits:listes_produits')
 
             # ----- Ancienne valeur pour l'audit -----
             ancienne_valeur = {
@@ -820,7 +853,6 @@ def supprimer_produits(request):
                 "refprod": produit.refprod if hasattr(produit, "refprod") else "",
                 "desgprod": produit.desgprod,
                 "pu": float(produit.pu),
-                "qtestock": produit.qtestock,
                 "categorie": str(produit.categorie) if produit.categorie else None,
             }
 
@@ -1019,7 +1051,6 @@ def supprimer_commandes(request):
 # Fonction pour supprimer une livraisons donnée
 #================================================================================================
 @login_required
-
 def supprimer_livraisons(request):
     if request.method == 'POST':
         livraison_id = request.POST.get('id_supprimer')
@@ -1221,7 +1252,6 @@ Les stocks ont été restaurés automatiquement.
 #================================================================================================
 # Fonction pour afficher la liste de tout les produits
 #================================================================================================
-
 @login_required
 def listes_produits(request):
     listes_produits = []
@@ -1244,7 +1274,6 @@ def listes_produits(request):
 #================================================================================================
 
 @login_required
-
 def listes_produits_stock(request):
     try:
         listes_stock = StockProduit.objects.select_related('produit', 'entrepot', 'magasin').all().order_by('-id')
@@ -1283,8 +1312,8 @@ def listes_des_livraisons(request):
         # Calcul des quantités livrées et restantes pour chaque élément
         for elem in listes_livraisons:
             total_livree = LivraisonsProduits.objects.filter(
-                produits=elem.produits,
-                commande=elem.commande
+                produits = elem.produits,
+                commande = elem.commande
             ).aggregate(total=Sum('qtelivrer'))['total'] or 0
             elem.total_livree = total_livree
             elem.qte_restante = elem.commande.qtecmd - total_livree
@@ -1346,7 +1375,6 @@ def listes_des_ventes(request):
     }
 
     return render(request, "gestion_produits/ventes/listes_ventes.html", context)
-
 
 #================================================================================================
 # Fonction pour afficher les ventes du jours
@@ -1416,7 +1444,6 @@ def ventes_du_jour(request):
 #================================================================================================
 # Fonction pour afficher la liste des commandes éffectuées
 #================================================================================================
-
 @login_required
 def listes_des_commandes(request):
     listes_commandes = []
@@ -1813,6 +1840,7 @@ def listes_ventes_impression(request):
 
     ventes_dict = {}
     benefice_global = 0
+    benefice_ligne = 0
 
     # Regrouper les lignes par vente
     for ligne in lignes:
@@ -1824,8 +1852,7 @@ def listes_ventes_impression(request):
                 'total_vente': 0,
                 'benefice_vente': 0
             }
-
-        prix_achat = ligne.produit.pu_achat if hasattr(ligne.produit, 'pu_achat') else 0
+        prix_achat = ligne.produit.prix_en_gros if hasattr(ligne.produit, 'prix_en_gros') else 0
         benefice_ligne = ligne.sous_total - (prix_achat * ligne.quantite)
         ligne.benefice = benefice_ligne
 
@@ -1845,6 +1872,7 @@ def listes_ventes_impression(request):
         'date_debut': date_debut,
         'date_fin': date_fin,
         'benefice_global': benefice_global,
+        'benefice_ligne' : benefice_ligne
     }
 
     return render(

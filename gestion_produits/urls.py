@@ -3,9 +3,9 @@ from .views import *
 app_name = 'produits'
 
 urlpatterns = [
-    #==========================================================================
+    #=================================================================================================================================================
     # Gestion des produits
-    #==========================================================================
+    #=================================================================================================================================================
     
     path('produits/listes_produits/', listes_produits, name='listes_produits'),
     path('produits/nouveau_produit/', nouveau_produit, name='nouveau_produit'),    
@@ -14,17 +14,17 @@ urlpatterns = [
     path('produits/modifier/<int:id>/', modifier_produit, name="modifier_produit"),
     path('produits/consulter_produit/<int:id>/', consulter_produit, name="consulter_produit"),
 
-    #==========================================================================
+    #=================================================================================================================================================
     # Gestion des produits en Stocks
-    #======================================================================================================================
+    #==================================================================================================================================================
     
     path('stock/listes_produits_stock/', listes_produits_stock, name='listes_produits_stock'),
     path('stock/ajouter_stock_multiple/', ajouter_stock_multiple, name='ajouter_stock_multiple'),  
     path('stock/supprimer_produits_stock/', supprimer_produits_stock, name='supprimer_produits_stock'),
      
-    #==========================================================================
+    #=================================================================================================================================================
     # Gestion des Ventes 
-    #==========================================================================
+    #=================================================================================================================================================
     
     path('vente/listes_des_ventes/', listes_des_ventes, name='listes_des_ventes'),
     path('vente/filtrer_listes_ventes/', filtrer_listes_ventes, name='filtrer_listes_ventes'),
@@ -32,41 +32,42 @@ urlpatterns = [
     path('vente/supprimer_ventes/', supprimer_ventes, name='supprimer_ventes'),
     path('vente/vendre_produit/', vendre_produit, name='vendre_produit'),
     path('vente/historique_ventes_par_date/', historique_ventes, name='historique_ventes_par_date'),
-    path('vente/details_vente/<int:id>/', details_vente, name='details_vente'),
     path('vente/recu_vente_global/<str:vente_code>/', recu_vente_global, name='recu_vente_global'),
         
-    #=============================================================================
+    #====================================================================================================================================================
     # Gestion des Commandes
-    #=============================================================================
+    #====================================================================================================================================================
 
     path('commandes/listes_des_commandes/', listes_des_commandes, name='listes_des_commandes'),
     path('commandes/nouvelle_commande/', nouvelle_commande, name='nouvelle_commande'),
     path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
-    #=============================================================================
+    #====================================================================================================================================================
     # Gestion des Livraisons
-    #=============================================================================
+    #====================================================================================================================================================
 
     path('livraions/reception_livraison/', reception_livraison, name='reception_livraison'),
     path('livraions/listes_des_livraisons/', listes_des_livraisons, name='listes_des_livraisons'),
     path('supprimer_livraisons/', supprimer_livraisons, name='supprimer_livraisons'),
     path('historique_commandes_livraisons/', historique_commandes_livraisons, name='historique_commandes_livraisons'),
     
-    #=============================================================================
+    #====================================================================================================================================================
+    # Gestion des Approvisionnements
+    #====================================================================================================================================================
+
     path('approv/approvisionner_produits/', approvisionner_produits, name='approvisionner_produits'),
     
-    
-    #==========================================================================
+    #=================================================================================================================================================
     # Gestion des catégories de produits
-    #==========================================================================
+    #=================================================================================================================================================
     
     path('ajouter_categorie/', ajouter_categorie, name='ajouter_categorie'),
     path('supprimer_categorie/', supprimer_categorie, name='supprimer_categorie'), 
     path('listes_categorie/', listes_categorie, name='listes_categorie'), 
     path('modifier_categorie/', modifier_categorie, name='modifier_categorie'), 
     
-    #==========================================================================
+    #=================================================================================================================================================
     # Impression listes
-    #==========================================================================
+    #=================================================================================================================================================
     
     path('produits/choix_par_dates_produit_impression/', choix_par_dates_produit_impression, name="choix_par_dates_produit_impression"),
     path('produits/listes_produits_impression/', listes_produits_impression, name="listes_produits_impression"),
@@ -83,9 +84,9 @@ urlpatterns = [
     path('ventes/choix_par_dates_ventes_impression/', choix_par_dates_ventes_impression, name="choix_par_dates_ventes_impression"),
     path('ventes/listes_ventes_impression/', listes_ventes_impression, name="listes_ventes_impression"),
 
-    #==========================================================================
+    #=================================================================================================================================================
     # Exportation des données vers Excel 
-    #==========================================================================
+    #=================================================================================================================================================
     path('confirmation_exportation_vente/', confirmation_exportation_vente, name='confirmation_exportation_vente'),
     path('confirmation_exportation_produits/', confirmation_exportation_produits, name='confirmation_exportation_produits'),
     path('confirmation_exportation_livraison/', confirmation_exportation_livraison, name='confirmation_exportation_livraison'),
@@ -97,6 +98,6 @@ urlpatterns = [
     path('export_commandes_excel/', export_commandes_excel, name='export_commandes_excel'),
     path('export_livraisons_excel/', export_livraisons_excel, name='export_livraisons_excel'),
     
-    #==========================================================================
+    #=================================================================================================================================================
     
 ]

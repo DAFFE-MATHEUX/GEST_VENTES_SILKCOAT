@@ -6,7 +6,8 @@
     <title>Reçu Vente - {{ entreprise.nom_entreprise }}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
 
-    <style>
+  <style>
+        /* Styles généraux */
         body { 
             background: #f8f9fa;
             font-family: "Poppins", sans-serif;
@@ -32,32 +33,12 @@
             margin-bottom: 20px;
         }
 
-        .header-left, .header-right {
-            font-size: 14px;
-            line-height: 1.5;
-        }
+        .header-left, .header-right { font-size: 14px; line-height: 1.5; }
+        .header-center { text-align: center; flex: 1; }
+        .header-center h2 { font-weight: bold; color: #003366; text-transform: uppercase; margin-bottom: 5px; }
+        .header-center p { margin: 0; font-size: 13px; }
 
-        .header-center { 
-            text-align: center;
-            flex: 1;
-        }
-
-        .header-center h2 {
-            font-weight: bold;
-            color: #003366;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .header-center p {
-            margin: 0;
-            font-size: 13px;
-        }
-
-        .logo {
-            width: 130px;
-            height: 80px;
-        }
+        .logo { width: 130px; height: 80px; }
 
         .section-title {
             text-align: center;
@@ -70,60 +51,27 @@
             text-transform: uppercase;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 8px 10px; border: 1px solid #ccc; font-size: 14px; }
 
-        th, td {
-            padding: 8px 10px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
+        .signature-section { margin-top: 40px; display: flex; justify-content: flex-end; }
+        .signature-box { border-top: 2px solid #003366; width: 250px; text-align: center; padding-top: 10px; }
 
-        th {
-            background-color: #f1f5f9;
-            color: #003366;
-        }
-
-        .signature-section {
-            margin-top: 40px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .signature-box {
-            border-top: 2px solid #003366;
-            width: 250px;
-            text-align: center;
-            padding-top: 10px;
-        }
-
-        .footer {
-            text-align: center;
-            border-top: 2px solid #003366;
-            margin-top: 25px;
-            padding-top: 10px;
-            font-size: 13px;
-            color: #555;
-        }
-
-        /* 🔵 Correction pour imprimer les couleurs */
+        /* 🔵 Styles pour impression avec couleurs exactes */
         @media print {
             * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            body {
-                background: white !important;
-            }
+            body { background: white !important; color: #000 !important; }
+            .recu-container { box-shadow: none !important; border: 1px solid #000 !important; }
 
-            .recu-container {
-                box-shadow: none !important;
-            }
+            .section-title { background-color: #003366 !important; color: #fff !important; }
+            .signature-box { border-top: 2px solid #003366 !important; }
         }
     </style>
+    
 </head>
 
 <body>
@@ -145,7 +93,6 @@
                 <img src="{{ entreprise.logo.url }}" class="logo"><br>
             {% endif %}
             <h2>{{ entreprise.nom_entreprise|upper }}</h2>
-            <p>Reçu Officiel de Vente</p>
         </div>
 
         <div class="header-right">
@@ -222,11 +169,6 @@
             <p><strong>Le Responsable</strong></p>
             <p style="font-size:12px;">{{ today|date:"d/m/Y" }}</p>
         </div>
-    </div>
-
-    <!-- 🔵 PIED DE PAGE -->
-    <div class="footer">
-        <p>Document généré automatiquement — {{ entreprise.nom_entrepriese|upper }}</p>
     </div>
 
 </div>

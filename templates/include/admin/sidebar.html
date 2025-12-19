@@ -86,7 +86,7 @@
                     <li><a href="{% url 'rapports:creer_rapport' %}"><i class="fa fa-list"></i> Générer des Rapports</a></li>
                 </ul>
             </li>
-
+{% if not request.user.type_utilisateur == 'Gerante' %} 
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-user-cog"></i>
@@ -98,7 +98,7 @@
                     <li><a href="{% url 'gestionUtilisateur:deconnexion_utilisateur' %}"><i class="fa fa-sign-out-alt"></i> Déconnexion</a></li>
                 </ul>
             </li>
-
+{% endif %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-users"></i>
