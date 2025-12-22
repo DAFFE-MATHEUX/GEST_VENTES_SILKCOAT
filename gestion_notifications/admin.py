@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import *
-# Register your models here.
+from simple_history.admin import SimpleHistoryAdmin
+from .models import Notification
 
-admin.site.register(Notification)
+@admin.register(Notification)
+class NotificationAdmin(SimpleHistoryAdmin):
+    list_display = ('id', 'titre', 'message','destinataire', 'lu', 'date')
+    list_editable = ('lu',)
+    search_fields = ('titre', 'message', 'destinataire')
+    ordering = ('-date',)

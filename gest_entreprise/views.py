@@ -41,7 +41,7 @@ def liste_entreprise(request, *args, **kwargs):
     context = {
         'liste_entreprise' : liste_entreprise
     }
-    return render(request, 'gestion_entreprise/listes_entreprise.html', context)
+    return render(request, 'gest_entreprise/listes_entreprise.html', context)
 
 #==================================================================================================================
 #Fonction pour supprimer un Entreprise
@@ -63,20 +63,22 @@ def supprimer_entreprise(request):
 @login_required
 def modifier_entreprise(request):
     try:
-            identifiant_etablissement = request.POST.get('identifiant_etablissement')
-            entreprise = get_object_or_404(Entreprise, id=identifiant_etablissement)
+            id_modif = request.POST.get('id_modif')
+            entreprise = get_object_or_404(Entreprise, id=id_modif)
             
             entreprise.nom_entrepriese = request.POST.get("nom_entrepriese")
             entreprise.adresse = request.POST.get("adresse")
             entreprise.email = request.POST.get("email")
             entreprise.contact1 = request.POST.get("contact1")
             entreprise.contact2 = request.POST.get("contact2")
+            
             if request.FILES.get("logo"):
                 entreprise.logo = request.FILES.get("logo")
             entreprise.save()
             messages.success(request, "Modification effectuée avec succès ! ")
-            return redirect('liste_etablissement')
+            return redirect('liste_entreprise')
     except Exception as ex:
             messages.warning(request, f"Erreur de Modiication des Informations {ex}")
-    return render(request, "gestion_entreprise/liste_entreprise.html")
+    return redirect('liste_entreprise')
+
 

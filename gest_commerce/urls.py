@@ -15,32 +15,36 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
-from django.urls import include
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from gest_commerce.views import dashboard
-from .views import handler404,handler404, handler500 
+from .views import handler404, handler403, handler500
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('dashboard/', dashboard, name='dashboard'), 
-     
-    path('accounts/', include('allauth.urls')),  # Pour django allauth
-    path('auth/', include('social_django.urls', namespace='social')),  # Pour social auth
-    
-    path('gest_entreprise', include('gest_entreprise.urls')),
+    # Admin
+    path('secure-admin-2025/', admin.site.urls),
+
+    # Gestion utilisateur (login, logout, tableau de bord utilisateur)
+    path('', include('gestion_utilisateur.urls', namespace='gestionUtilisateur')),
+
+    # Allauth (social login)
+    path('accounts/', include('allauth.urls')),
+
+    # Social auth
+    path('auth/', include('social_django.urls', namespace='social')),
+
+    # Autres apps
+    path('gest_entreprise/', include('gest_entreprise.urls')),
     path('produits/', include('gestion_produits.urls')),
     path('rapports/', include('gestion_rapports.urls')),
-    path('', include('gestion_utilisateur.urls')),
     path('audit/', include('gestion_audit.urls')),
     path('notifications/', include('gestion_notifications.urls')),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
 
-# ======================================================================================
+# Media
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+# Gestion des erreurs
 handler404 = 'gest_commerce.views.handler404'
 handler403 = 'gest_commerce.views.handler403'
 handler500 = 'gest_commerce.views.handler500'
-
-# =======================================================================================

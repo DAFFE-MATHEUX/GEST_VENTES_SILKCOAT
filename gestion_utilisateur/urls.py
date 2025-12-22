@@ -18,8 +18,13 @@ urlpatterns = [
     path('inscription_utilisateur/', inscriptionutilisateur, name="inscription_utilisateur"),
     path('supprimer_utilisateur/', supprimerutilisateur, name="supprimerutilisateur"),
     path('tableau_bord/', home, name='tableau_bord'),
-    path('', login_user, name='connexion_utilisateur'),
+    path('connexion/', login_user, name='connexion_utilisateur'),
     path('deconnexion/', Logoutuser, name='deconnexion_utilisateur'),
+
+        # Page publique d'accueil / bienvenue
+    path('', page_bienvenue, name='page_bienvenue'),
+
+    #=========================================================================
 
     # ===== Flow mot de passe =====
     # 1️⃣ Formulaire pour demander réinitialisation

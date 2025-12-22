@@ -45,7 +45,7 @@ def home(request):
     # -------------------
     # Audits récents
     # -------------------
-    audits = AuditLog.objects.order_by('-date_action')[:5]
+    audits = AuditLog.objects.order_by('-date_action')[:3]
 
     # -------------------
     # Commandes récentes
@@ -65,21 +65,57 @@ def home(request):
         ).aggregate(total=Sum('qtelivrer'))['total'] or 0
         elem.total_livree = total_livree
         elem.qte_restante = elem.commande.qtecmd - total_livree
+        
     # ---------------------------------------
     # Ventes récentes (dernières ventes)
     # ---------------------------------------
-    dernieres_ventes = VenteProduit.objects.order_by('-date_vente')
+    dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
+
     # ----------------------------------------------
     # Les produits les plus vendus dans la semaine
     # ----------------------------------------------
 
     produits_plus_vendus = (
-        VenteProduit.objects
-        .filter(date_vente__date__range=[debut_semaine, fin_semaine])
-        .prefetch_related('lignes', 'lignes__produit')
-        .annotate(qte_totale=Sum('lignes__quantite'))
-        .order_by('-qte_totale')
+        LigneVente.objects
+            .filter(
+                vente__date_vente__date__range=[debut_semaine, fin_semaine]
+            )
+            .values(
+                'produit__id',
+                'produit__desgprod',
+                'produit__categorie__desgcategorie',
+                'produit__refprod'
+            )
+            .annotate(
+                qte_totale=Sum('quantite')
+            )
+            .order_by('-qte_totale')[:5]
+        )
+            # Données pour le graphique
+    labels_produits = [p['produit__desgprod'] for p in produits_plus_vendus]
+    quantites_produits = [p['qte_totale'] for p in produits_plus_vendus]
+
+    # ---------------------------------------
+    # Top des 5 produits les plus 5 rendables
+    # ---------------------------------------
+    top_produits_rentables = (
+        LigneVente.objects
+        .filter(
+            vente__date_vente__date__range=[debut_semaine, fin_semaine]
+        )
+        .values(
+            'produit__refprod',
+            'produit__desgprod',
+            'produit__categorie__desgcategorie',
+        )
+        .annotate(
+            benefice_total=Sum('benefice'),
+            qte_vendue=Sum('quantite')
+        )
+        .order_by('-benefice_total')[:5]
     )
+    labels_rentables = [p['produit__desgprod'] for p in top_produits_rentables]
+    benefices = [p['benefice_total'] for p in top_produits_rentables]
 
     # ----------------------------------------
     # Statistiques sur le total des produits
@@ -151,15 +187,21 @@ def home(request):
     # -------------------------------------
     context = {
         'profil': profil,
+        'labels_produits' : labels_produits,
+        'quantites_produits' : quantites_produits,
+        'top_produits_rentables' : top_produits_rentables,
+        'labels_rentables': labels_rentables,
+        'benefices': benefices,
+        
         'notifications': notifications,
         'non_lues': non_lues,
         'lues': lues,
         'derniers_audits': audits,
         'listes_commandes' : listes_commandes[:3],
         'listes_livraisons' : listes_livraisons,
-        'dernieres_ventes': dernieres_ventes[:5],
+        'dernieres_ventes': dernieres_ventes,
         'dernieeres_notification': notifications[:5],
-        'produits_plus_vendus' : produits_plus_vendus[:5],
+        'produits_plus_vendus' : produits_plus_vendus,
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_commandes': total_commandes,
@@ -170,7 +212,7 @@ def home(request):
         'now': date.today(),
     }
 
-    return render(request, 'dashboard.html', context)
+    return render(request, 'gestion_utilisateur/dashboard.html', context)
 
 # ===============================================
 # Connexion
@@ -197,7 +239,7 @@ def login_user(request):
             messages.error(request, "Identifiant ou mot de passe incorrect !")
             return redirect('gestionUtilisateur:connexion_utilisateur')
 
-    return render(request, 'gestion_utilisateurs/login.html')
+    return render(request, 'gestion_utilisateur/login.html')
 
 # ===============================================
 # Déconnexion
@@ -207,6 +249,8 @@ def Logoutuser(request):
     messages.success(request, 'Vous êtes maintenant déconnecté')
     return redirect('/')
 
+def page_bienvenue(request):
+        return render(request, 'gestion_utilisateur/page_bienvenue.html')
 
 # ===============================================
 # Inscription
@@ -261,7 +305,7 @@ def inscriptionutilisateur(request):
     context = {
         'choix_utilisateur' : choix_utilisateur,
     }
-    return render(request, 'gestion_utilisateurs/inscription_utilisateur.html', context)
+    return render(request, 'gestion_utilisateur/inscription_utilisateur.html', context)
 
 
 # ===============================================
@@ -274,7 +318,7 @@ def liste_utilisateur(request):
     numpage = request.GET.get('page')
     listeuser = pageuser.get_page(numpage)
     context = {'listeuser': listeuser, 'total_utilisateur': listeuser_qs.count()}
-    return render(request, 'gestion_utilisateurs/liste_utilisateur.html', context)
+    return render(request, 'gestion_utilisateur/liste_utilisateur.html', context)
 
 
 # ===============================================

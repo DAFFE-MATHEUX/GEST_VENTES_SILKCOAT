@@ -89,41 +89,105 @@
     <h3>Date de Début Livraisons : {{date_debut }}</h3>
     <h3>Date de Fin Livraisons : {{date_fin }}</h3>
 
-    <!-- TABLEAU DES PRODUITS -->
+            <!-- Totaux par catégorie -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h4>Totaux par Catégorie</h4>
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Catégorie</th>
+                            <th>Nombre Livraisons</th>
+                            <th>Total Quantité Livrée</th>
+                            <th>Valeur Livrée</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in total_par_categorie %}
+                        <tr>
+                            <td>{{ cat.produits__categorie__desgcategorie }}</td>
+                            <td>{{ cat.nombre_livraisons }}</td>
+                            <td>{{ cat.total_qtelivree }}</td>
+                            <td>{{ cat.valeur_livraison }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center">Aucune livraison.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+                <!-- Totaux par produit -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h4>Totaux par Produit</h4>
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Catégorie</th>
+                            <th>Réf Produit</th>
+                            <th>Désignation</th>
+                            <th>Nombre Livraisons</th>
+                            <th>Total Quantité Livrée</th>
+                            <th>Valeur Livrée</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prod in total_par_produit %}
+                        <tr>
+                            <td>{{ prod.produits__categorie__desgcategorie }}</td>
+                            <td>{{ prod.produits__refprod }}</td>
+                            <td>{{ prod.produits__desgprod }}</td>
+                            <td>{{ prod.nombre_livraisons }}</td>
+                            <td>{{ prod.total_qtelivree }}</td>
+                            <td>{{ prod.valeur_livraison }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center">Aucune livraison.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tableau principal des livraisons -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Références Livraisons</th>
-                <th>Références Produit</th>
-                <th>Désignation</th>
+                <th>Num Livraison</th>
+                <th>Num Commande</th>
+                <th>Réf Produit</th>
                 <th>Catégorie</th>
-                <th>PU (GNF)</th>
-                <th>Prix en Gros</th>
-                <th>Quantité Livrées</th>
-                <th>Statut Livraisons</th>
-                <th>Date Livraisons</th>
+                <th>Désignation</th>
+                <th>Qte Commandée</th>
+                <th>Qte Livrée</th>
+                <th>Qte Restante</th>
+                <th>Prix Unitaire</th>
+                 <th>Date de Livraison</th>
                 <th>Photo</th>
             </tr>
         </thead>
 
         <tbody>
-        {% for l in listes_livraisons %}
+        {% for elem in listes_livraisons %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ l.numlivrer }}</td>
-                <td>{{ l.produits.refprod }}</td>
-                <td>{{ l.produits.desgprod }}</td>
-                <td>{{ l.produits.categorie.desgcategorie|default:"-" }}</td>
-                <td>{{ l.produits.pu }}</td>
-                <td>{{ l.produits.prix_en_gros }}</td>
-                <td>{{ l.qtelivrer }}</td>
-                <td>{{ l.statuts }}</td>
-                <td>{{ l.datelivrer }}</td>
+                <td>{{ elem.numlivrer }}</td>
+                <td>{{ elem.commande.numcmd }}</td>
+                <td>{{ elem.produits.refprod }}</td>
+                <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                <td>{{ elem.produits.desgprod }}</td>
+                <td>{{ elem.commande.qtecmd }}</td>
+                <td>{{ elem.total_livree }}</td>
+                <td>{{ elem.qte_restante }}</td>
+                <td>{{ elem.produits.pu }}</td>
+                <td>{{ elem.datelivrer|date:'d/m/Y' }}</td>
 
                 <td style="text-align:center;">
-                    {% if l.produits.photoprod %}
-                        <img src="{{ l.produits.photoprod.url }}" class="photo-preview">
+                    {% if elem.produits.photoprod %}
+                        <img src="{{ elem.produits.photoprod.url }}" class="photo-preview">
                     {% else %}
                         -
                     {% endif %}

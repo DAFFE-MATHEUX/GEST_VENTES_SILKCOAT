@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES COMMANDES</title>
+    <title>LISTE DES PRODUITS COMMANDES</title>
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
@@ -74,7 +74,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES COMMANDES</h2>
+            <h2>LISTE DES PRODUITS COMMANDES</h2>
         </div>
 
         <div class="header-right">
@@ -85,49 +85,37 @@
     </div>
 
     <!-- TITRE -->
-    <h4>CATALOGUE COMPLET DES PRODUITS COMMANDEES</h4>
+    <h4>CATALOGUE COMPLET DES PRODUITS DEJA COMMANDES</h4>
 
     <!-- TABLEAU DES PRODUITS -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Références Commande</th>
-                <th>Références Produit</th>
+                <th>Num Commande</th>
+                <th>Réf Produit</th>
                 <th>Désignation</th>
+                <th>Quantité Commandée</th>
+                <th>Statut Commandé</th>
+                <th>Prix Unitaire</th>
                 <th>Catégorie</th>
-                <th>PU (GNF)</th>
-            {% if not request.user.type_utilisateur == 'Gerante' %}
-                <th>Prix en Gros</th>
-            {% endif %}
-                <th>Quantité Commandé</th>
                 <th>Date Commande</th>
-                <th>Photo</th>
+                <th>Photo Produit</th>
             </tr>
         </thead>
 
         <tbody>
-        {% for c in listes_commandes %}
+        {% for elem in listes_commandes %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ c.numcmd }}</td>
-                <td>{{ c.produits.refprod }}</td>
-                <td>{{ c.produits.desgprod }}</td>
-                <td>{{ c.produits.categorie.desgcategorie|default:"-" }}</td>
-                <td>{{ c.produits.pu }}</td>
-            {% if not request.user.type_utilisateur == 'Gerante' %}
-                <td>{{ c.produits.prix_en_gros }}</td>
-            {% endif %}
-                <td>{{ c.qtecmd }}</td>
-                <td>{{ c.datecmd }}</td>
-
-                <td style="text-align:center;">
-                    {% if c.produits.photoprod %}
-                        <img src="{{ c.produits.photoprod.url }}" class="photo-preview">
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
+                <td>{{ elem.numcmd }}</td>
+                <td>{{ elem.produits.refprod }}</td>
+                <td>{{ elem.produits.desgprod }}</td>
+                <td>{{ elem.qtecmd }}</td>
+                <td>{{ elem.statuts }}</td>
+                <td>{{ elem.produits.pu }}</td>
+                <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                <td>{{ elem.datecmd|date:'d/m/Y' }}</td>
             </tr>
         {% empty %}
             <tr>
@@ -136,6 +124,33 @@
         {% endfor %}
         </tbody>
     </table>
+
+                             <h4 class="mt-4">Commandes par catégorie</h4>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Catégorie</th>
+            <th>Nombre de commandes</th>
+            <th>Total quantité</th>
+            <th>Valeur totale</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ cat.produits__categorie__desgcategorie }}</td>
+            <td>{{ cat.nombre_commandes|default:0 }}</td>
+            <td>{{ cat.total_quantite|default:0 }}</td>
+            <td>{{ cat.valeur_commandes|default:0|floatformat:0 }} GNF</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center">Aucune donnée</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 
     <!-- Signature -->
     <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">

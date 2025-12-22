@@ -108,7 +108,7 @@
                 {% endfor %}
                 <!-- Bénéfice global -->
                 <tr class="total-row">
-                    <td colspan="6" style="text-align:right;">Bénéfice Global :</td>
+                    <td colspan="7" style="text-align:right;">Bénéfice Global :</td>
                     <td>{{ benefice_global }} GNF</td>
                     <td colspan="2"></td>
                 </tr>
@@ -119,6 +119,35 @@
             {% endif %}
         </tbody>
     </table>
+<br>
+    <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ cat.produit__categorie__desgcategorie }}</td>
+            <td>{{ cat.total_quantite }}</td>
+            <td><strong>{{ cat.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">
+                Aucune vente par catégorie
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 
     <!-- Signature -->
     <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">

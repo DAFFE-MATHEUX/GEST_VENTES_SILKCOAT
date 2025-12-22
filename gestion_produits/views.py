@@ -20,7 +20,7 @@ from django.core.mail import EmailMessage
 from django.utils import timezone
 from django.conf import settings
 from django.http import HttpResponse
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Count, Q
 from openpyxl import Workbook
 
 from django.db import transaction
@@ -163,7 +163,6 @@ def approvisionner_produits(request):
 #================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
-
 @login_required
 def vendre_produit(request):
     produits = Produits.objects.all()
@@ -228,22 +227,22 @@ def vendre_produit(request):
         # Création vente globale
         code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
         vente = VenteProduit.objects.create(
-            code=code,
-            total=total_general,
+            code = code,
+            total = total_general,
             utilisateur = request.user,
-            nom_complet_client=nom_complet,
-            telclt_client=telephone,
-            adresseclt_client=adresse
+            nom_complet_client = nom_complet,
+            telclt_client = telephone,
+            adresseclt_client = adresse
         )
         # Création lignes de vente et mise à jour stock magasin
         for prod, qte, pu, reduction, st in lignes:
             LigneVente.objects.create(
-                vente=vente,
-                produit=prod,
-                quantite=qte,
-                prix=pu,
-                sous_total=st,
-                montant_reduction=reduction,
+                vente = vente,
+                produit = prod,
+                quantite = qte,
+                prix = pu,
+                sous_total = st,
+                montant_reduction = reduction,
             )
             stock_magasin = StockProduit.objects.filter(produit=prod, magasin__isnull=False).first()
             stock_magasin.qtestock -= qte
@@ -292,7 +291,6 @@ def historique_ventes(request):
         ventes_par_date[date].append(vente)
 
     historique = []
-
     # Calculs par date
     for date, ventes_du_jour in ventes_par_date.items():
         total_montant = 0
@@ -326,16 +324,12 @@ def historique_ventes(request):
             "total_categories": len(categories_vendues), # Nombre de catégories différentes vendues
             "total_profit": total_profit_jour,         # Bénéfice exact du jour
         })
-
     context = {
         "historique": historique
     }
-
     return render(
         request,
-        "gestion_produits/ventes/historique_ventes.html",
-        context
-    )
+        "gestion_produits/ventes/historique_ventes.html",context)
 
 #================================================================================================
 # Fonction pour afficher l'historique des commandes et livraisons par date
@@ -488,9 +482,11 @@ def nouvelle_commande(request):
 # Fonction pour éffectuer une receptin de livraisons des commandes
 #================================================================================================
 @login_required
+
+@transaction.atomic
 def reception_livraison(request):
     """
-    Vue pour réceptionner les commandes avec possibilité de livrer en magasin,
+    Vue pour réceptionner les commandes avec livraison en magasin,
     en entrepôt ou les deux, uniquement si la quantité restante > 0.
     Envoi un email à l'administrateur après la livraison.
     """
@@ -505,7 +501,7 @@ def reception_livraison(request):
             .filter(commande=cmd)
             .aggregate(total=Sum("qtelivrer"))["total"] or 0
         )
-        qte_restante = max(cmd.qtecmd - total_livree, 0)  # jamais négatif
+        qte_restante = max(cmd.qtecmd - total_livree, 0)
 
         if qte_restante > 0:
             commandes_data.append({
@@ -520,7 +516,6 @@ def reception_livraison(request):
     # 🔹 Traitement POST
     if request.method == "POST":
         commande_ids = request.POST.getlist("commande_id[]")
-        destinations = request.POST.getlist("destination[]")
         qte_magasin_list = request.POST.getlist("qte_magasin[]")
         qte_entrepot_list = request.POST.getlist("qte_entrepot[]")
 
@@ -533,7 +528,6 @@ def reception_livraison(request):
             qte_entrepot = int(qte_entrepot_list[i])
             qte_total = qte_magasin + qte_entrepot
 
-            # 🔹 Recalcul côté serveur
             total_livree = (
                 LivraisonsProduits.objects
                 .filter(commande=cmd)
@@ -542,10 +536,7 @@ def reception_livraison(request):
             qte_restante = cmd.qtecmd - total_livree
 
             if qte_restante <= 0:
-                messages.warning(
-                    request,
-                    f"La commande {cmd.numcmd} est déjà totalement livrée."
-                )
+                messages.warning(request, f"La commande {cmd.numcmd} est déjà livrée.")
                 continue
 
             if qte_total > qte_restante:
@@ -556,7 +547,7 @@ def reception_livraison(request):
                 continue
 
             if qte_total <= 0:
-                continue  # rien à livrer
+                continue
 
             # 🔹 Enregistrer livraison
             LivraisonsProduits.objects.create(
@@ -570,7 +561,7 @@ def reception_livraison(request):
 
             # 🔹 Stock Magasin
             if qte_magasin > 0:
-                magasin = Magasin.objects.first()  # adapter selon choix réel
+                magasin = Magasin.objects.first()
                 stock, created = StockProduit.objects.get_or_create(
                     produit=cmd.produits,
                     magasin=magasin,
@@ -578,12 +569,13 @@ def reception_livraison(request):
                     defaults={"qtestock": qte_magasin}
                 )
                 if not created:
-                    stock.qtestock = F("qtestock") + qte_magasin
-                    stock.save(update_fields=["qtestock"])
+                    StockProduit.objects.filter(pk=stock.pk).update(
+                        qtestock=F("qtestock") + qte_magasin
+                    )
 
             # 🔹 Stock Entrepôt
             if qte_entrepot > 0:
-                entrepot = Entrepot.objects.first()  # adapter selon choix réel
+                entrepot = Entrepot.objects.first()
                 stock, created = StockProduit.objects.get_or_create(
                     produit=cmd.produits,
                     entrepot=entrepot,
@@ -591,8 +583,9 @@ def reception_livraison(request):
                     defaults={"qtestock": qte_entrepot}
                 )
                 if not created:
-                    stock.qtestock = F("qtestock") + qte_entrepot
-                    stock.save(update_fields=["qtestock"])
+                    StockProduit.objects.filter(pk=stock.pk).update(
+                        qtestock=F("qtestock") + qte_entrepot
+                    )
 
             # 🔹 Mise à jour statut commande
             if total_livree + qte_total == cmd.qtecmd:
@@ -601,7 +594,6 @@ def reception_livraison(request):
                 cmd.statuts = "Partiellement livrée"
             cmd.save(update_fields=["statuts"])
 
-            # 🔹 Préparer liste pour email
             livraisons_effectuees.append({
                 "commande": cmd.numcmd,
                 "produit": cmd.produits.desgprod,
@@ -610,7 +602,7 @@ def reception_livraison(request):
                 "fournisseur": cmd.nom_complet_fournisseur
             })
 
-        # 🔹 Envoi email à l'administrateur
+        # 🔹 Email admin
         if livraisons_effectuees:
             contenu = "📦 Nouvelle réception de livraison :\n\n"
             for l in livraisons_effectuees:
@@ -629,7 +621,7 @@ def reception_livraison(request):
                     to=[settings.ADMIN_EMAIL]
                 ).send()
             except Exception as e:
-                messages.warning(request, f"Livraison enregistrée mais email non envoyé : {str(e)}")
+                messages.warning(request, f"Email non envoyé : {e}")
 
         messages.success(request, "Livraison enregistrée avec succès.")
         return redirect("produits:listes_des_livraisons")
@@ -1254,20 +1246,48 @@ Les stocks ont été restaurés automatiquement.
 #================================================================================================
 @login_required
 def listes_produits(request):
-    listes_produits = []
-    total_produit = 0
-    
     try:
-        listes_produits = Produits.objects.all().order_by('-id')
-        total_produit = listes_produits.count()
-        listes_produits = pagination_liste(request, listes_produits)
-    except Exception as ex :
-        return messages.warning(request, f"Erreur de récupération des produits {str(ex)} !")
+        # ================= LISTE DES PRODUITS =================
+        produits = (
+            Produits.objects
+            .select_related('categorie')
+            .order_by('-id')
+        )
+
+        total_produit = produits.count()
+
+        # ================= TOTAL PAR CATÉGORIE =================
+        total_par_categorie = (
+            produits
+            .values('categorie__desgcategorie')
+            .annotate(
+                nombre_produits=Count('id', distinct=True),
+                quantite_stock=Sum('stocks__qtestock'),
+                valeur_stock=Sum(F('stocks__qtestock') * F('pu'))
+            )
+            .order_by('categorie__desgcategorie')
+        )
+
+        # Pagination
+        listes_produits = pagination_liste(request, produits)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des produits : {str(ex)}")
+        listes_produits = []
+        total_produit = 0
+        total_par_categorie = []
+
     context = {
-        'listes_produits' : listes_produits,
-        'total_produit' : total_produit
+        'listes_produits': listes_produits,
+        'total_produit': total_produit,
+        'total_par_categorie': total_par_categorie,  # 👈 clé importante
     }
-    return render(request, "gestion_produits/lites_produits.html", context)
+
+    return render(
+        request,
+        "gestion_produits/lites_produits.html",
+        context
+    )
 
 #================================================================================================
 # Fonction pour afficher la liste de tout les produits
@@ -1275,60 +1295,469 @@ def listes_produits(request):
 
 @login_required
 def listes_produits_stock(request):
+    listes_stock = []
     try:
-        listes_stock = StockProduit.objects.select_related('produit', 'entrepot', 'magasin').all().order_by('-id')
+        # ================= LISTE DES STOCKS =================
+        listes_stock = (
+            StockProduit.objects
+            .select_related(
+                'produit',
+                'produit__categorie',
+                'entrepot',
+                'magasin'
+            )
+            .order_by('-id')
+        )
+
         total_produit = listes_stock.count()
 
-        # Appliquer la pagination
+        # ================= TOTAL PAR CATÉGORIE COMBINÉ =================
+        total_par_categorie = (
+            StockProduit.objects
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                # Totaux par entrepôt
+                nombre_produits_entrepot=Count('produit', filter=Q(entrepot__isnull=False), distinct=True),
+                quantite_stock_entrepot=Sum('qtestock', filter=Q(entrepot__isnull=False)),
+                valeur_stock_entrepot=Sum(F('qtestock') * F('produit__pu'), filter=Q(entrepot__isnull=False)),
+                
+                # Totaux par magasin
+                nombre_produits_magasin=Count('produit', filter=Q(magasin__isnull=False), distinct=True),
+                quantite_stock_magasin=Sum('qtestock', filter=Q(magasin__isnull=False)),
+                valeur_stock_magasin=Sum(F('qtestock') * F('produit__pu'), filter=Q(magasin__isnull=False)),
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
         listes_stock = pagination_liste(request, listes_stock)
 
     except Exception as ex:
-        messages.warning(request, f"Erreur de récupération des produits en stock : {str(ex)} !")
-        return redirect('produits:listes_produits_stock')  # Retourner un HttpResponse
+        messages.error(
+            request,
+            f"Erreur de récupération des produits en stock global : {str(ex)}"
+        )
+        return redirect('produits:listes_produits_stock')
 
     context = {
         'listes_produits': listes_stock,
-        'total_produit': total_produit
+        'total_produit': total_produit,
+        'total_par_categorie': total_par_categorie,
+    }
+    return render(
+        request,
+        "gestion_produits/stocks/lites_produits_stocks.html",context )
+
+#================================================================================================
+# Fonction pour filter la liste des produits en stocks selon un intervalle de date donnée
+#================================================================================================
+@login_required
+
+def filtrer_listes_produits_stock(request):
+    """
+    Filtre les produits en stock selon la date
+    et affiche les statistiques + pagination
+    """
+
+    date_debut = request.GET.get("date_debut")
+    date_fin = request.GET.get("date_fin")
+
+    total_produit = 0
+    total_par_categorie = []
+    listes_produits = []
+
+    try:
+        # ================== QUERYSET DE BASE ==================
+        produits_qs = (
+            StockProduit.objects
+            .select_related('produit', 'produit__categorie', 'entrepot', 'magasin')
+            .order_by('-id')
+        )
+
+        # ================== FILTRE PAR DATE ==================
+        if date_debut and date_fin:
+            produits_qs = produits_qs.filter(date_maj__range=[date_debut, date_fin])
+        elif date_debut:
+            produits_qs = produits_qs.filter(date_maj=date_debut)
+        elif date_fin:
+            produits_qs = produits_qs.filter(date_maj=date_fin)
+
+        # ================== TOTAL DES PRODUITS ==================
+        total_produit = produits_qs.count()
+
+        # ================== TOTAL PAR CATÉGORIE ==================
+        total_par_categorie = (
+            produits_qs.values('produit__categorie__desgcategorie')
+            .annotate(
+                # Totaux par entrepôt
+                nombre_produits_entrepot=Count(
+                    'produit', filter=Q(entrepot__isnull=False), distinct=True
+                ),
+                quantite_stock_entrepot=Sum('qtestock', filter=Q(entrepot__isnull=False)),
+                valeur_stock_entrepot=Sum(F('qtestock') * F('produit__pu'), filter=Q(entrepot__isnull=False)),
+                
+                # Totaux par magasin
+                nombre_produits_magasin=Count(
+                    'produit', filter=Q(magasin__isnull=False), distinct=True
+                ),
+                quantite_stock_magasin=Sum('qtestock', filter=Q(magasin__isnull=False)),
+                valeur_stock_magasin=Sum(F('qtestock') * F('produit__pu'), filter=Q(magasin__isnull=False)),
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+
+        # ================== PAGINATION ==================
+        listes_produits = pagination_liste(request, produits_qs)
+
+    except Exception as ex:
+        messages.warning(
+            request,
+            f"Erreur lors du filtrage des produits en stock : {str(ex)}"
+        )
+        return redirect('produits:listes_produits_stock')
+
+    context = {
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "listes_produits": listes_produits,
+        "total_produit": total_produit,
+        "total_par_categorie": total_par_categorie,
     }
 
-    return render(request, "gestion_produits/stocks/lites_produits_stocks.html", context)
+    return render(
+        request,
+        "gestion_produits/stocks/lites_produits_stocks.html",
+        context
+    )
+
+#================================================================================================
+# Fonction pour afficher la liste de tout les produits dans le Magasin
+#================================================================================================
+@login_required
+def listes_produits_stock_magasin(request):
+    try:
+        produits_qs = (
+            StockProduit.objects
+            .select_related('produit', 'produit__categorie', 'magasin')
+            .filter(magasin__isnull=False)
+            .order_by('-id')
+        )
+
+        total_produit = produits_qs.count()
+
+        total_par_categorie = (
+            produits_qs
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                nombre_produits=Count('produit', distinct=True),
+                quantite_stock=Sum('qtestock'),
+                valeur_stock=Sum(F('qtestock') * F('produit__pu')),
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+
+        listes_produits = pagination_liste(request, produits_qs)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur : {str(ex)}")
+        return redirect('produits:listes_produits_stock_magasin')
+
+    return render(
+        request,
+        "gestion_produits/stocks/produits_stock_magasin/lites_produits_stocks_magasin.html",
+        {
+            'listes_produits': listes_produits,
+            'total_produit': total_produit,
+            'total_par_categorie': total_par_categorie,
+        }
+    )
+
+#================================================================================================
+# Fonction pour filter la liste des produits en stocks dans le Magasin selon un intervalle de date donnée
+#================================================================================================
+@login_required
+def filtrer_listes_produits_stock_magasin(request):
+    date_debut = request.GET.get("date_debut")
+    date_fin = request.GET.get("date_fin")
+
+    try:
+        produits_qs = (
+            StockProduit.objects
+            .select_related('produit', 'produit__categorie', 'magasin')
+            .filter(magasin__isnull=False)
+        )
+
+        if date_debut and date_fin:
+            produits_qs = produits_qs.filter(date_maj__date__range=[date_debut, date_fin])
+        elif date_debut:
+            produits_qs = produits_qs.filter(date_maj__date=date_debut)
+
+        produits_qs = produits_qs.order_by('-id')
+
+        total_produit = produits_qs.count()
+
+        total_par_categorie = (
+            produits_qs
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                nombre_produits=Count('produit', distinct=True),
+                quantite_stock=Sum('qtestock'),
+                valeur_stock=Sum(F('qtestock') * F('produit__pu')),
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+
+        listes_produits = pagination_liste(request, produits_qs)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur filtre : {str(ex)}")
+        return redirect('produits:listes_produits_stock_magasin')
+
+    return render(
+        request,
+        "gestion_produits/stocks/produits_stock_magasin/lites_produits_stocks_magasin.html",
+        {
+            "date_debut": date_debut,
+            "date_fin": date_fin,
+            "listes_produits": listes_produits,
+            "total_produit": total_produit,
+            "total_par_categorie": total_par_categorie,
+        }
+    )
+
+#================================================================================================
+# Fonction pour afficher la liste de tout les produits dans l'Entrepôt
+#================================================================================================
+@login_required
+def listes_produits_stocks_entrepot(request):
+    try:
+        produits_qs = (
+            StockProduit.objects
+            .select_related('produit', 'produit__categorie', 'entrepot')
+            .filter(entrepot__isnull=False)
+            .order_by('-id')
+        )
+
+        total_produit = produits_qs.count()
+
+        total_par_categorie = (
+            produits_qs
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                nombre_produits_entrepot=Count('produit', distinct=True),
+                quantite_stock_entrepot=Sum('qtestock'),
+                valeur_stock_entrepot=Sum(F('qtestock') * F('produit__pu')),
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+
+        listes_produits = pagination_liste(request, produits_qs)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur stock entrepôt : {str(ex)}")
+        return redirect('produits:listes_produits_stocks_entrepot')
+
+    return render(
+        request,
+        "gestion_produits/stocks/produits_stock_entrepot/lites_produits_stocks_entrepot.html",
+        {
+            'listes_produits': listes_produits,
+            'total_produit': total_produit,
+            'total_par_categorie': total_par_categorie
+        }
+    )
+
+#================================================================================================
+# Fonction pour filter la liste des produits en stocks dans l'Entrepôt selon un intervalle de date donnée
+#================================================================================================
+@login_required
+def filtrer_listes_produits_stock_entrepot(request):
+
+    date_debut = request.GET.get("date_debut")
+    date_fin = request.GET.get("date_fin")
+
+    try:
+        produits_qs = (
+            StockProduit.objects
+            .select_related('produit', 'produit__categorie', 'entrepot')
+            .filter(entrepot__isnull=False)
+        )
+
+        if date_debut and date_fin:
+            produits_qs = produits_qs.filter(
+                date_maj__date__range=[date_debut, date_fin]
+            )
+        elif date_debut:
+            produits_qs = produits_qs.filter(date_maj__date=date_debut)
+
+        produits_qs = produits_qs.order_by('-id')
+
+        total_produit = produits_qs.count()
+
+        total_par_categorie = (
+            produits_qs
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                nombre_produits_entrepot=Count('produit', distinct=True),
+                quantite_stock_entrepot=Sum('qtestock'),
+                valeur_stock_entrepot=Sum(F('qtestock') * F('produit__pu')),
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+
+        listes_produits = pagination_liste(request, produits_qs)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur filtre entrepôt : {str(ex)}")
+        return redirect('produits:listes_produits_stocks_entrepot')
+
+    return render(
+        request,
+        "gestion_produits/stocks/produits_stock_entrepot/lites_produits_stocks_entrepot.html",
+        {
+            "date_debut": date_debut,
+            "date_fin": date_fin,
+            "listes_produits": listes_produits,
+            "total_produit": total_produit,
+            "total_par_categorie": total_par_categorie,
+        }
+    )
 
 #================================================================================================
 # Fonction pour afficher la liste de tout les livraisons
 #================================================================================================
 @login_required
 def listes_des_livraisons(request):
-    listes_livraisons = []
-    total_livraison = 0
-    
     try:
-        # Récupérer toutes les livraisons avec les relations utiles
+        # ------------------ LISTE DES LIVRAISONS ------------------
         listes_livraisons = LivraisonsProduits.objects.select_related(
             'commande', 'produits'
         ).order_by('-id')
 
         total_livraison = listes_livraisons.count()
 
-        # Calcul des quantités livrées et restantes pour chaque élément
+        # Calcul des quantités livrées et restantes pour chaque livraison
         for elem in listes_livraisons:
             total_livree = LivraisonsProduits.objects.filter(
-                produits = elem.produits,
-                commande = elem.commande
+                produits=elem.produits,
+                commande=elem.commande
             ).aggregate(total=Sum('qtelivrer'))['total'] or 0
             elem.total_livree = total_livree
             elem.qte_restante = elem.commande.qtecmd - total_livree
 
-        # Pagination si nécessaire
+        # ------------------ TOTAL PAR CATEGORIE ------------------
+        total_par_categorie = (
+            LivraisonsProduits.objects
+            .values('produits__categorie__desgcategorie')
+            .annotate(
+                nombre_livraisons=Count('id', distinct=True),
+                total_qtelivree=Sum('qtelivrer'),
+                valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+            )
+            .order_by('produits__categorie__desgcategorie')
+        )
+        # ------------------ TOTAL PAR PRODUIT ------------------
+        total_par_produit = (
+            LivraisonsProduits.objects
+            .values('produits__categorie__desgcategorie', 'produits__refprod', 'produits__desgprod')
+            .annotate(
+                nombre_livraisons=Count('id', distinct=True),
+                total_qtelivree=Sum('qtelivrer'),
+                valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+            )
+            .order_by('produits__categorie__desgcategorie', 'produits__refprod'))
+
         listes_livraisons = pagination_liste(request, listes_livraisons)
 
     except Exception as ex:
-        messages.warning(request, f"Erreur de récupération des produits : {str(ex)} !")
+        messages.warning(request, f"Erreur de récupération des livraisons : {str(ex)} !")
+        listes_livraisons = []
+        total_livraison = 0
+        total_par_categorie = []
+        total_par_produit = []
 
     context = {
         'listes_livraisons': listes_livraisons,
-        'total_livraison': total_livraison
+        'total_livraison': total_livraison,
+        'total_par_categorie': total_par_categorie,
+        'total_par_produit': total_par_produit
     }
+
     return render(request, "gestion_produits/livraisons/listes_livraisons.html", context)
+
+#================================================================================================
+# Fonction pour filtrer la liste des livraisons par date
+#================================================================================================
+@login_required
+
+def filtrer_listes_livraisons(request):
+    """
+    Filtre les livraisons selon la date
+    (DateField : date unique ou intervalle)
+    """
+
+    date_debut = request.GET.get("date_debut")
+    date_fin = request.GET.get("date_fin")
+
+    total_livraison = 0
+    total_par_categorie = []
+    listes_livraisons_filtre = []
+
+    try:
+        # ================== QUERYSET DE BASE ==================
+        livraison_qs = LivraisonsProduits.objects.select_related(
+            'produits',
+            'produits__categorie',
+            'commande'
+        ).order_by("-datelivrer")
+
+        # ================== FILTRE PAR DATE (DateField OK) ==================
+        if date_debut and date_fin:
+            livraison_qs = livraison_qs.filter(
+                datelivrer__range=[date_debut, date_fin]
+            )
+        elif date_debut:
+            livraison_qs = livraison_qs.filter(
+                datelivrer=date_debut
+            )
+        elif date_fin:
+            livraison_qs = livraison_qs.filter(
+                datelivrer=date_fin
+            )
+
+        # ================== TOTAL DES LIVRAISONS ==================
+        total_livraison = livraison_qs.count()
+
+        # ================== TOTAL PAR CATÉGORIE ==================
+        total_par_categorie = (
+            livraison_qs
+            .values('produits__categorie__desgcategorie')
+            .annotate(
+                total_quantite=Sum('qtelivrer')
+            )
+            .order_by('produits__categorie__desgcategorie')
+        )
+
+        # ================== PAGINATION ==================
+        listes_livraisons_filtre = pagination_liste(request, livraison_qs)
+
+    except Exception as ex:
+        messages.warning(
+            request,
+            f"Erreur lors du filtrage des livraisons : {str(ex)}"
+        )
+
+    context = {
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "listes_livraisons_filtre": listes_livraisons_filtre,
+        "total_livraison": total_livraison,
+        "total_par_categorie": total_par_categorie,
+    }
+
+    return render(
+        request,
+        "gestion_produits/livraisons/listes_livraisons.html",
+        context
+    )
 
 #================================================================================================
 # Fonction pour afficher la liste des ventes
@@ -1336,28 +1765,38 @@ def listes_des_livraisons(request):
 @login_required
 def listes_des_ventes(request):
     try:
-        # Récupération des lignes de vente
-        lignes = LigneVente.objects.select_related('vente', 'produit').order_by('-id')
-
+        # ================= LIGNES DE VENTE =================
+        lignes = (
+            LigneVente.objects
+            .select_related('vente', 'produit', 'produit__categorie')
+            .order_by('-id')
+        )
         total_ventes = lignes.count()
         total_montant_ventes = 0
         benefice_global = 0
         listes_ventes = []
 
         for ligne in lignes:
-            # Prix d'achat du produit (assure-toi que ce champ existe)
-            prix_achat = ligne.produit.pu_achat if hasattr(ligne.produit, 'pu_achat') else 0
+            # Prix d'achat
+            prix_achat = getattr(ligne.produit, 'pu_achat', 0)
 
-            # Calcul du bénéfice pour cette ligne
+            # Calcul bénéfice
             benefice = ligne.sous_total - (prix_achat * ligne.quantite)
+            ligne.benefice = benefice
+
             benefice_global += benefice
             total_montant_ventes += ligne.sous_total
 
-            # Ajouter le bénéfice à la ligne pour le template
-            ligne.benefice = benefice
             listes_ventes.append(ligne)
-
-        # Pagination si nécessaire
+        # ================= TOTAL PAR CATÉGORIE =================
+        total_par_categorie = (
+            lignes
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                total_montant=Sum('sous_total'),
+                total_quantite=Sum('quantite')
+            )
+            .order_by('produit__categorie__desgcategorie'))
         listes_ventes = pagination_lis(request, listes_ventes)
 
     except Exception as ex:
@@ -1366,103 +1805,137 @@ def listes_des_ventes(request):
         total_ventes = 0
         total_montant_ventes = 0
         benefice_global = 0
+        total_par_categorie = []
 
+    # ================= CONTEXT =================
     context = {
         'listes_ventes': listes_ventes,
         'total_ventes': total_ventes,
         'total_montant_ventes': total_montant_ventes,
         'benefice_global': benefice_global,
-    }
-
-    return render(request, "gestion_produits/ventes/listes_ventes.html", context)
-
-#================================================================================================
-# Fonction pour afficher les ventes du jours
-#================================================================================================
-@login_required
-def ventes_du_jour(request):
-    """
-    Affiche toutes les ventes du jour avec totaux et bénéfices.
-    """
-    total_ventes = 0
-    total_montant_ventes = 0
-    benefice_global = 0
-    listes_ventes_du_jour = []
-
-    try:
-        # Date actuelle
-        today = timezone.localdate()  # date du jour selon le fuseau
-
-        # Filtrage des ventes du jour
-        listes_ventes_du_jour = VenteProduit.objects.filter(
-            date_vente__date=today
-        ).order_by('-date_vente')
-
-        # Calcul des totaux via les lignes de chaque vente
-        total_montant_ventes = listes_ventes_du_jour.aggregate(
-            total=Sum('lignes__sous_total')
-        )['total'] or 0
-
-        benefice_global = listes_ventes_du_jour.aggregate(
-            total=Sum('lignes__benefice')
-        )['total'] or 0
-
-        # Pagination
-        listes_ventes_du_jour = pagination_liste(request, listes_ventes_du_jour)
-
-        # Nombre de ventes
-        try:
-            total_ventes = listes_ventes_du_jour.paginator.count
-        except AttributeError:
-            total_ventes = len(listes_ventes_du_jour)
-
-    except Exception as ex:
-        messages.warning(
-            request,
-            f"Erreur lors de la récupération des ventes du jour : {str(ex)}"
-        )
-        listes_ventes_du_jour = []
-        total_ventes = 0
-        total_montant_ventes = 0
-        benefice_global = 0
-
-    context = {
-        "date_debut": today,
-        "date_fin": today,
-        "listes_ventes_filtre": listes_ventes_du_jour,
-        "total_ventes": total_ventes,
-        "total_montant_ventes": total_montant_ventes,
-        "benefice_global": benefice_global,
+        'total_par_categorie': total_par_categorie, 
     }
 
     return render(
         request,
-        "gestion_produits/ventes/listes_ventes.html",
-        context
-    )
+        "gestion_produits/ventes/listes_ventes.html",context)
 
 #================================================================================================
 # Fonction pour afficher la liste des commandes éffectuées
 #================================================================================================
 @login_required
 def listes_des_commandes(request):
-    listes_commandes = []
-    total_commandes = None
     try:
-        listes_commandes = Commandes.objects.all().order_by('-id')
+        # ------------------ LISTE DES COMMANDES ------------------
+        listes_commandes = Commandes.objects.select_related('produits').order_by('-id')
         total_commandes = listes_commandes.count()
         
-        listes_commandes = pagination_lis(request,listes_commandes)
-    except Exception as ex :
-        return messages.warning(request, f"Erreur de récupération des commandes {str(ex)} !")
-    except ValueError as ve:
-        return messages.warning(request, f"Erreur de valeur {str(ve)} !")
+        # Pagination
+        listes_commandes = pagination_lis(request, listes_commandes)
         
+        # ------------------ TOTAL PAR CATEGORIE ------------------
+        total_par_categorie = (
+            Commandes.objects
+            .values('produits__categorie__desgcategorie')
+            .annotate(
+                nombre_commandes=Count('id', distinct=True),
+                total_quantite=Sum('qtecmd'),
+                valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
+            )
+            .order_by('produits__categorie__desgcategorie'))
+                # ------------------ TOTAL PAR PRODUIT ------------------
+        total_par_produit = (
+            Commandes.objects
+            .values('produits__categorie__desgcategorie', 'produits__refprod', 'produits__desgprod')
+            .annotate(
+                nombre_commande=Count('id', distinct=True),
+                total_qtecmd=Sum('qtecmd'),
+                valeur_cmd =Sum(F('qtecmd') * F('produits__pu'))
+            )
+            .order_by('produits__categorie__desgcategorie', 'produits__refprod'))
+
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des commandes : {str(ex)} !")
+        listes_commandes = []
+        total_commandes = 0
+        total_par_produit = []
+        total_par_categorie = []
+
     context = {
-        'listes_commandes' : listes_commandes,
-        'total_commandes' : total_commandes
+        'listes_commandes': listes_commandes,
+        'total_commandes': total_commandes,
+        'total_par_categorie': total_par_categorie,
+        'total_par_produit' : total_par_produit,
     }
+
     return render(request, "gestion_produits/commandes/listes_commandes.html", context)
+
+#================================================================================================
+# Fonction pour filter la liste des commandes selon un intervalle de date donnée
+#================================================================================================
+@login_required
+def filtrer_listes_commandes(request):
+    """
+    Filtre les commandes selon la date
+    (DateField : une date ou intervalle)
+    """
+
+    date_debut = request.GET.get("date_debut")
+    date_fin = request.GET.get("date_fin")
+
+    total_commande = 0
+    total_par_categorie = []
+    listes_commandes_filtre = []
+
+    try:
+        # ================== QUERYSET DE BASE ==================
+        commande_qs = Commandes.objects.prefetch_related(
+            'produits',
+            'produits__categorie'
+        ).order_by("-datecmd")
+
+        # ================== FILTRE PAR DATE (CORRECT DateField) ==================
+        if date_debut and date_fin:
+            commande_qs = commande_qs.filter(
+                datecmd__range=[date_debut, date_fin]
+            )
+        elif date_debut:
+            commande_qs = commande_qs.filter(
+                datecmd=date_debut
+            )
+        elif date_fin:
+            commande_qs = commande_qs.filter(
+                datecmd=date_fin
+            )
+
+        # ================== TOTAL DES COMMANDES ==================
+        total_commande = commande_qs.count()
+
+        # ================== TOTAL PAR CATÉGORIE ==================
+        total_par_categorie = commande_qs.values(
+            'produits__categorie__desgcategorie'
+        ).annotate(
+            total_quantite=Sum('qtecmd')
+        ).order_by('produits__categorie__desgcategorie')
+
+        listes_commandes_filtre = pagination_liste(request, commande_qs)
+
+    except Exception as ex:
+        messages.warning(
+            request,
+            f"Erreur lors du filtrage des commandes : {str(ex)}"
+        )
+
+    context = {
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "listes_commandes_filtre": listes_commandes_filtre,
+        "total_commande": total_commande,
+        "total_par_categorie": total_par_categorie,
+    }
+    return render( request,
+        "gestion_produits/commandes/listes_commandes.html",context)
 
 #================================================================================================
 # Fonction pour filter la liste des vente selon un intervalle de date donnée
@@ -1470,50 +1943,77 @@ def listes_des_commandes(request):
 @login_required
 def filtrer_listes_ventes(request):
     """
-    Filtre les ventes selon la date,
-    puis applique la pagination.
+    Filtre les ventes selon la date
+    et affiche les statistiques + pagination
     """
-    total_ventes = 0
-    listes_ventes_filtre = []
+
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
 
-    try:
-        # Récupération de tous les paiements
-        listes_ventes = VenteProduit.objects.all().order_by("-date_vente")
-        listes_ventes_filtre = listes_ventes
+    total_ventes = 0
+    total_montant_ventes = 0
+    benefice_global = 0
+    total_par_categorie = []
+    listes_ventes_filtre = []
 
-        # Filtre par date si défini
+    try:
+        # ================== QUERYSET DE BASE ==================
+        ventes_qs = LigneVente.objects.select_related(
+            'produit',
+            'vente',
+            'produit__categorie'
+        ).order_by("-vente__date_vente")
+
+        # ================== FILTRE PAR DATE (CORRIGÉ) ==================
         if date_debut and date_fin:
-            listes_ventes_filtre = listes_ventes_filtre.filter(
-                date_vente__range=(date_debut, date_fin)
+            ventes_qs = ventes_qs.filter(
+                vente__date_vente__date__range=[date_debut, date_fin]
             )
 
-        # Pagination
-        listes_ventes_filtre = pagination_liste(
-            request, listes_ventes_filtre
-        )
+        # ================== TOTAL DES VENTES ==================
+        total_ventes = ventes_qs.count()
 
-        # Calcul du total (avant pagination)
-        try:
-            total_ventes = listes_ventes_filtre.paginator.count
-        except AttributeError:
-            # Si la pagination n'a pas été appliquée ou est une liste
-            total_ventes = len(listes_ventes_filtre)
+        # ================== TOTAL PAR CATÉGORIE ==================
+        total_par_categorie = ventes_qs.values(
+            'produit__categorie__desgcategorie'
+        ).annotate(
+            total_quantite=Sum('quantite'),
+            total_montant=Sum('sous_total')
+        ).order_by('produit__categorie__desgcategorie')
 
-    except TemplateDoesNotExist as tdne:
-        messages.warning(request, f"Erreur de template non retrouvé : {str(tdne)}")
+        # ================== CALCUL BÉNÉFICE ==================
+        for ligne in ventes_qs:
+            prix_achat = ligne.produit.prix_en_gros or 0
+            benefice = ligne.sous_total - (prix_achat * ligne.quantite)
+            ligne.benefice = benefice
+
+            benefice_global += benefice
+            total_montant_ventes += ligne.sous_total
+
+        # ================== PAGINATION ==================
+        listes_ventes_filtre = pagination_liste(request, ventes_qs)
+
     except Exception as ex:
-        messages.warning(request, f"Erreur de filtrage des données : {str(ex)}")
+        messages.warning(
+            request,
+            f"Erreur lors du filtrage des ventes : {str(ex)}"
+        )
 
     context = {
         "date_debut": date_debut,
         "date_fin": date_fin,
         "listes_ventes_filtre": listes_ventes_filtre,
         "total_ventes": total_ventes,
+        "benefice_global": benefice_global,
+        "total_par_categorie": total_par_categorie,
+        "total_montant_ventes": total_montant_ventes,
     }
 
-    return render(request, "gestion_produits/ventes/listes_ventes.html", context)
+    return render(
+        request,
+        "gestion_produits/ventes/listes_ventes.html",
+        context
+    )
 
 #================================================================================================
 # Fonction pour consulter un produit donnée
@@ -1772,41 +2272,59 @@ def ajouter_stock_multiple(request):
         "magasins": magasins,
     })
 
-#================================================================================================
-# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des produit
-#================================================================================================
-@login_required
-def choix_par_dates_produit_impression(request):
-    return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_produits.html')
 
 #================================================================================================
 # Fonction pour imprimer la listes des produits
 #================================================================================================
 @login_required
 def listes_produits_impression(request):
-    
-    try:
-        date_debut = request.POST.get('date_debut')
-        date_fin = request.POST.get('date_fin')
-    except Exception as ex:
-        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
 
-    except ValueError as ve:
-        messages.warning(request, f"Erreur de type de données : {str(ve)}")
-        
-    listes_produits = Produits.objects.filter(
-        date_maj__range=[date_debut, date_fin]
-    )
+    listes_produits = Produits.objects.all()
+    
+            # ================= TOTAL PAR CATÉGORIE =================
+    total_par_categorie = (
+        listes_produits
+        .values('categorie__desgcategorie')
+        .annotate(
+            nombre_produits=Count('id', distinct=True),
+            quantite_stock=Sum('stocks__qtestock'),
+            valeur_stock=Sum(F('stocks__qtestock') * F('pu'))
+            )
+            .order_by('categorie__desgcategorie')
+        )
 
     nom_entreprise = Entreprise.objects.first()
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
         'listes_produits' : listes_produits,
+        'total_par_categorie' : total_par_categorie,
     }
     return render(
         request,
         'gestion_produits/impression_listes/apercue_avant_impression_listes_produits.html',
+        context
+    )
+
+#================================================================================================
+# Fonction pour imprimer la listes des Catégories Produits
+#================================================================================================
+@login_required
+def listes_categorie_produits_impression(request):
+    listes_categorie_produits = []
+    try:
+        listes_categorie_produits = CategorieProduit.objects.all()
+    except Exception as ex:
+        messages.warning(request, f"Erreur de récupération des données {str(ex)}")
+    nom_entreprise = Entreprise.objects.first()
+    context = {
+        'nom_entreprise': nom_entreprise,
+        'today': timezone.now(),
+        'listes_categorie_produits' : listes_categorie_produits,
+    }
+    return render(
+        request,
+        'gestion_produits/impression_listes/apercue_avant_impression_listes_categorieproduits.html',
         context
     )
 
@@ -1820,9 +2338,7 @@ def choix_par_dates_ventes_impression(request):
 #================================================================================================
 # Fonction pour imprimer la listes des ventes
 #================================================================================================
-
 @login_required
-
 def listes_ventes_impression(request):
     try:
         date_debut = request.POST.get('date_debut')
@@ -1837,6 +2353,16 @@ def listes_ventes_impression(request):
         lignes = LigneVente.objects.select_related('vente', 'produit').filter(
             date_saisie__range=[date_debut, date_fin]
         ).order_by('-id')
+            # ================= TOTAL PAR CATÉGORIE =================
+        total_par_categorie = (
+            lignes
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                total_montant=Sum('sous_total'),
+                total_quantite=Sum('quantite')
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
 
     ventes_dict = {}
     benefice_global = 0
@@ -1872,14 +2398,12 @@ def listes_ventes_impression(request):
         'date_debut': date_debut,
         'date_fin': date_fin,
         'benefice_global': benefice_global,
-        'benefice_ligne' : benefice_ligne
+        'benefice_ligne' : benefice_ligne,
+        'total_par_categorie' : total_par_categorie,
     }
 
-    return render(
-        request,
-        'gestion_produits/impression_listes/apercue_avant_impression_listes_ventes.html',
-        context
-    )
+    return render(request,
+        'gestion_produits/impression_listes/apercue_avant_impression_listes_ventes.html',context)
 
 #================================================================================================
 # Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Commandes
@@ -1905,9 +2429,18 @@ def listes_commandes_impression(request):
         
     listes_commandes = Commandes.objects.filter(
         datecmd__range=[
-            date_debut, date_fin
-    ]
-    )
+            date_debut, date_fin])
+            # ------------------ TOTAL PAR CATEGORIE ------------------
+    total_par_categorie = (
+        Commandes.objects
+        .values('produits__categorie__desgcategorie')
+        .annotate(
+            nombre_commandes=Count('id', distinct=True),
+            total_quantite=Sum('qtecmd'),
+            valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
+            )
+            .order_by('produits__categorie__desgcategorie')
+        )
     nom_entreprise = Entreprise.objects.first()
     context = {
         'nom_entreprise': nom_entreprise,
@@ -1915,13 +2448,13 @@ def listes_commandes_impression(request):
         'listes_commandes' : listes_commandes,
         'date_debut' : date_debut,
         'date_fin' : date_fin,
+        'total_par_categorie' : total_par_categorie,
     }
     return render(
         request,
         'gestion_produits/impression_listes/apercue_avant_impression_listes_produits.html',
         context
     )
-
 
 #================================================================================================
 # Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Stocks
@@ -1933,7 +2466,6 @@ def choix_par_dates_stocks_impression(request):
 #================================================================================================
 # Fonction pour imprimer la listes des Produits en Stocks
 #================================================================================================
-
 @login_required
 def listes_stocks_impression(request):
 
@@ -1989,9 +2521,8 @@ def choix_par_dates_livraisons_impression(request):
     return render(request, 'gestion_produits/impression_listes/fiches_choix_impression_livraisons.html')
 
 #================================================================================================
-# Fonction pour imprimer la listes des Commandes
+# Fonction pour imprimer la listes des Livraisons
 #================================================================================================
-
 @login_required
 def listes_livraisons_impression(request):
     
@@ -2006,9 +2537,40 @@ def listes_livraisons_impression(request):
         
     listes_livraisons = LivraisonsProduits.objects.filter(
         datelivrer__range=[
-            date_debut, date_fin
-    ]
-    )
+            date_debut, date_fin])
+    
+    # Calcul des quantités livrées et restantes pour chaque livraison
+    for elem in listes_livraisons:
+        total_livree = LivraisonsProduits.objects.filter(
+        produits=elem.produits,
+        commande=elem.commande
+        ).aggregate(total=Sum('qtelivrer'))['total'] or 0
+        elem.total_livree = total_livree
+        elem.qte_restante = elem.commande.qtecmd - total_livree
+
+        # ------------------ TOTAL PAR CATEGORIE ------------------
+    total_par_categorie = (
+        LivraisonsProduits.objects
+        .values('produits__categorie__desgcategorie')
+        .annotate(
+        nombre_livraisons=Count('id', distinct=True),
+        total_qtelivree=Sum('qtelivrer'),
+        valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+        )
+        .order_by('produits__categorie__desgcategorie')
+        )
+
+        # ------------------ TOTAL PAR PRODUIT ------------------
+    total_par_produit = (
+        LivraisonsProduits.objects
+        .values('produits__categorie__desgcategorie', 'produits__refprod', 'produits__desgprod')
+        .annotate(
+            nombre_livraisons=Count('id', distinct=True),
+            total_qtelivree=Sum('qtelivrer'),
+            valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+            )
+            .order_by('produits__categorie__desgcategorie', 'produits__refprod')
+        )
 
     nom_entreprise = Entreprise.objects.first()
     context = {
@@ -2017,6 +2579,8 @@ def listes_livraisons_impression(request):
         'listes_livraisons' : listes_livraisons,
         'date_debut' : date_debut,
         'date_fin' : date_fin,
+        'total_par_produit' : total_par_produit,
+        'total_par_categorie' : total_par_categorie,
     }
     return render(
         request,
@@ -2075,6 +2639,56 @@ def export_ventes_excel(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response['Content-Disposition'] = 'attachment; filename=ventes_produits.xlsx'
+    wb.save(response)
+    return response
+
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+@login_required
+def confirmation_exportation_categorie(request):
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_categories.html')
+
+#=============================================================================================
+# Fonction pour exporter les données des Catégories Produits
+#==============================================================================================
+@login_required
+def export_categories_excel(request):
+    # 1️⃣ Récupération des catégorie (OPTIMISÉ)
+    categories = CategorieProduit.objects.all()
+
+    # 2️⃣ Création du fichier Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Liste des Catégories Produits"
+
+    # 3️⃣ En-têtes
+    headers = [
+        "Catégorie",
+        "Description",
+        "Date de Mise à Jour"
+    ]
+
+    for col_num, header in enumerate(headers, 1):
+        ws[f"{get_column_letter(col_num)}1"] = header
+
+    # 4️⃣ Données
+    ligne = 2
+    for elems in categories:
+        ws[f"A{ligne}"] = elems.desgcategorie
+        ws[f"B{ligne}"] = elems.description
+        ws[f"C{ligne}"] = elems.date_maj.strftime("%d/%m/%Y %H:%M") if elems.date_maj else ""
+        ligne += 1
+
+    # 5️⃣ Ajuster largeur colonnes
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 25
+
+    # 6️⃣ Téléchargement
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=liste_categories_produits.xlsx'
     wb.save(response)
     return response
 

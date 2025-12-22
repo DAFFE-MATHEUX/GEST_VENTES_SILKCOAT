@@ -1,0 +1,138 @@
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
+
+<style>
+        .table-responsive { overflow-x: auto; }
+        .table td, .table th { white-space: nowrap; }
+        .table img { max-width: 60px; }
+        </style>
+
+        <div id="page-wrapper">
+        <div id="page-inner">
+
+        <h2>PRODUITS EN STOCK ENTREPÔT</h2>
+        <hr>
+
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="alert alert-{{ msg.tags }}">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- FILTRE DATE -->
+            <form method="get" class="row mb-4">
+                <div class="col-md-3">
+                    <label>Date Début</label>
+                    <input type="date" class="form-control" name="date_debut" value="{{ date_debut }}">
+                </div>
+                <div class="col-md-3">
+                    <label>Date Fin</label>
+                    <input type="date" class="form-control" name="date_fin" value="{{ date_fin }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100">🔍 Filtrer</button>
+                    <a href="{% url 'produits:listes_produits_stocks_entrepot' %}"
+                    class="btn btn-secondary w-100 ms-2">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+
+            {% if listes_produits %}
+
+            <!-- TOTAL PAR CATÉGORIE -->
+            <div class="panel panel-default">
+            <div class="panel-heading">TOTAL PAR CATÉGORIE</div>
+            <div class="panel-body">
+            <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Catégorie</th>
+                <th>Produits</th>
+                <th>Quantité</th>
+                <th>Valeur</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for cat in total_par_categorie %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ cat.produit__categorie__desgcategorie }}</td>
+                <td>{{ cat.nombre_produits_entrepot }}</td>
+                <td>{{ cat.quantite_stock_entrepot }}</td>
+                <td>{{ cat.valeur_stock_entrepot|floatformat:0 }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            </table>
+            </div>
+            </div>
+
+            <br>
+
+            <!-- TABLEAU -->
+            <strong>Total Stock : {{ total_produit }}</strong>
+            <br><br>
+
+            <table class="table table-bordered table-striped">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Catégorie</th>
+                <th>Réf</th>
+                <th>Désignation</th>
+                <th>PU</th>
+                <th>Entrepôt</th>
+                <th>Qté</th>
+                <th>Seuil</th>
+                <th>Date</th>
+            </tr>
+            </thead>
+            <tbody id="my_table">
+            {% for elem in listes_produits %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ elem.produit.categorie.desgcategorie }}</td>
+                <td>{{ elem.produit.refprod }}</td>
+                <td>{{ elem.produit.desgprod }}</td>
+                <td>{{ elem.produit.pu }}</td>
+                <td>{{ elem.entrepot.nom_entrepot }}</td>
+                <td>{{ elem.qtestock }}</td>
+                <td>{{ elem.seuil }}</td>
+                <td>{{ elem.date_maj|date:"d/m/Y" }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            </table>
+
+            <!-- PAGINATION -->
+            <ul class="pagination justify-content-center">
+            {% if listes_produits.has_previous %}
+            <li class="page-item">
+            <a class="page-link"
+            href="?pages={{ listes_produits.previous_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">
+            Précédent</a></li>
+            {% endif %}
+            <li class="page-item active">
+            <span class="page-link">
+            Page {{ listes_produits.number }} / {{ listes_produits.paginator.num_pages }}
+            </span>
+            </li>
+            {% if listes_produits.has_next %}
+            <li class="page-item">
+            <a class="page-link"
+            href="?pages={{ listes_produits.next_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">
+            Suivant</a></li>
+            {% endif %}
+            </ul>
+
+            {% else %}
+            <p class="text-center text-muted">Aucun stock trouvé.</p>
+            {% endif %}
+
+            </div>
+            </div>
+
+            {% endblock %}

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEST_VENTES</title>
+    <link rel="shortcut icon" href="{% static 'images/logo.png' %}" type="image/x-icon">
+
+    <style>
+        * {margin:0; padding:0; box-sizing:border-box; font-family:"Poppins",sans-serif;}
+        body {background:linear-gradient(120deg, #1e3c72, #2a5298); min-height:100vh; color:white;}
+        header {width:100%; padding:15px 40px; position:fixed; top:0; background:rgba(255,255,255,0.10); backdrop-filter:blur(10px); z-index:100;}
+        nav {display:flex; justify-content:space-between; align-items:center; max-width:1300px; margin:auto;}
+        nav h1 a {color:white; font-size:26px; text-decoration:none; font-weight:700;}
+        nav ul {list-style:none; display:flex; gap:20px;}
+        nav ul li a {text-decoration:none; color:white; padding:10px 20px; border-radius:8px; transition:0.3s; font-weight:500;}
+        .btn {background:#00b4ff;}
+        .btn:hover {background:#0090cc;}
+        .btn-outline {border:1px solid white;}
+        .btn-outline:hover {background:white; color:#1e3c72;}
+        .hero {padding-top:130px; display:flex; justify-content:center; padding-bottom:50px;}
+        .card {background:rgba(255,255,255,0.15); width:90%; max-width:950px; padding:40px; border-radius:20px; backdrop-filter:blur(12px); text-align:center;}
+        .welcome {font-size:50px; font-weight:700; margin-bottom:10px; text-transform:uppercase;}
+        .subtitle {font-size:20px; margin-bottom:20px;}
+        .section-title {margin-top:50px; font-size:30px; font-weight:600; text-align:center;}
+        .content-block {background:rgba(255,255,255,0.12); padding:40px; margin:30px auto; border-radius:12px; line-height:1.9; font-size:18px; max-width:1100px; width:90%;}
+        .content-block strong {color:#00eaff; font-size:19px;}
+        .messages-container {position:fixed; top:90px; right:20px; z-index:200;}
+        .alert {padding:12px 18px; margin-bottom:10px; border-radius:6px; color:white; font-weight:500; box-shadow:0px 4px 12px rgba(0,0,0,0.2);}
+        .alert-success {background:#28a745;}
+        .alert-danger {background:#e74c3c;}
+        .alert-info {background:#3498db;}
+        footer {text-align:center; padding:20px; margin-top:40px; background:rgba(255,255,255,0.10); backdrop-filter:blur(10px); font-size:15px;}
+        @media (max-width:768px) {.welcome{font-size:34px;} .subtitle{font-size:17px;} .content-block{padding:25px; font-size:16px;} nav ul li a{padding:8px 12px;}}
+        @media (max-width:480px) {.welcome{font-size:28px;} .subtitle{font-size:15px;} .content-block{padding:20px; font-size:15px;}}
+    </style>
+
+</head>
+
+<body>
+
+{% if messages %}
+<div class="messages-container">
+    {% for mgs in messages %}
+    <div class="alert 
+        {% if mgs.tags == 'success' %} alert-success 
+        {% elif mgs.tags == 'error' %} alert-danger 
+        {% else %} alert-info 
+        {% endif %}">
+        {{ mgs }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<header>
+    <nav>
+        <h1><a href="#">GEST_VENTES</a></h1>
+        <ul>
+            <li><a href="{% url 'gestionUtilisateur:connexion_utilisateur' %}" class="btn">Connexion</a></li>
+            <li><a href="{% url 'gestionUtilisateur:inscription_utilisateur' %}" class="btn-outline">Inscription</a></li>
+        </ul>
+    </nav>
+</header>
+
+<section class="hero">
+    <div class="card">
+        <h1 class="welcome">Bienvenue sur GEST_VENTES</h1>
+        <p class="subtitle">
+            Votre plateforme numérique dédiée à la gestion complète des ventes, produits, commandes et livraisons.
+        </p>
+    </div>
+</section>
+
+<h2 class="section-title">Pourquoi choisir GEST_VENTES ?</h2>
+<div class="content-block">
+    <strong>1. Gestion des produits :</strong> Ajout, modification, stock et catégories.<br><br>
+    <strong>2. Gestion des ventes :</strong> Enregistrement des ventes, paiements et reçus.<br><br>
+    <strong>3. Gestion des commandes :</strong> Suivi des commandes et états de traitement.<br><br>
+    <strong>4. Gestion des livraisons :</strong> Planification, suivi et notifications.<br><br>
+    <strong>5. Notifications et alertes :</strong> Alertes stock faible, commandes en retard, etc.<br><br>
+    <strong>6. Rapports et statistiques :</strong> Analyses des ventes, profits et performances.
+</div>
+
+<h2 class="section-title">Avantages de GEST_VENTES</h2>
+<div class="content-block">
+    ✔ Interface moderne et intuitive<br>
+    ✔ Gestion sécurisée et centralisée<br>
+    ✔ Automatisation des tâches commerciales<br>
+    ✔ Suivi en temps réel des ventes et commandes<br>
+    ✔ Rapports détaillés et exportables
+</div>
+
+<footer>
+    © 2025 - Tous droits réservés | GEST_VENTES
+</footer>
+
+<script>
+setTimeout(function () {
+    let messages = document.querySelectorAll('.alert');
+    messages.forEach(function (elem) {
+        elem.style.transition = 'opacity 0.5s ease-out';
+        elem.style.opacity = '0';
+        setTimeout(() => elem.remove(), 500);
+    });
+}, 4000);
+</script>
+
+</body>
+</html>

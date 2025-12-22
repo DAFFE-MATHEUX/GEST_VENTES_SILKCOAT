@@ -76,11 +76,6 @@
                     <i class="fa fa-refresh"></i> Annuler
                 </a>
             </div>
-                <div class="col-md-3 text-center">
-        <!-- Nouveau bouton Ventes du jour -->
-        <a href="{% url 'produits:ventes_du_jour' %}" class="btn btn-warning">
-            <i class="fa fa-calendar-day"></i> Ventes du jour
-        </a>
     </div>
         </form>
 <br>
@@ -121,8 +116,8 @@
             <th>Prix Vente</th>
             <th>Sous-total</th>
             <th>Bénéfice</th>
-            <th>Bénéfice Total</th> <!-- Nouvelle colonne cumul -->
-            <th>Date</th>
+            <th>Bénéfice Total</th> 
+            <th>Date Vente</th>
             <th>Photo</th>
             <th>Imprimer</th>
             <th>Actions</th>
@@ -175,6 +170,36 @@
         {% endwith %}
         </tbody>
         </table>
+        <br>
+<h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ cat.produit__categorie__desgcategorie }}</td>
+            <td>{{ cat.total_quantite }}</td>
+            <td><strong>{{ cat.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">
+                Aucune vente par catégorie
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
         </div>
 
         {% elif listes_ventes_filtre %}
@@ -224,7 +249,7 @@
 
         <tbody id="my_table">
         {% with cumul_benefice=0 %}
-        {% for elem in listes_ventes %}
+        {% for elem in listes_ventes_filtre %}
         {% with cumul_benefice=cumul_benefice|add:elem.benefice %}
         <tr class="{% if elem.benefice < 0 %}table-danger{% endif %}">
             <td>{{ forloop.counter }}</td>
@@ -268,6 +293,36 @@
         {% endwith %}
         </tbody>
         </table>
+
+        <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ cat.produit__categorie__desgcategorie }}</td>
+            <td>{{ cat.total_quantite }}</td>
+            <td><strong>{{ cat.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">
+                Aucune vente par catégorie
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
         </div>
 
         {% else %}

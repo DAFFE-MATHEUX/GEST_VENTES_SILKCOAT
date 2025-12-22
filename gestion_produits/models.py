@@ -1,6 +1,8 @@
 from django.db import models
 from gestion_utilisateur.models import Utilisateur
 from gest_entreprise.models import Entrepot, Magasin
+from simple_history.models import HistoricalRecords
+
 #==================================================================================
 # Table Categorie Produit
 #==================================================================================
@@ -61,7 +63,7 @@ class StockProduit(models.Model):
 
     qtestock = models.IntegerField(default=0)
     seuil = models.IntegerField(default=0)
-
+    history = HistoricalRecords()
     date_maj = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -96,7 +98,8 @@ class VenteProduit(models.Model):
     adresseclt_client = models.CharField(max_length=60, null=True)
     telclt_client = models.CharField(max_length=65, null=True)
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
-
+    history = HistoricalRecords()  # <-- Ajoute l'historique
+    
     class Meta:
         ordering = ['-code']
     def __str__(self):
@@ -143,7 +146,7 @@ class Commandes(models.Model):
     datecmd = models.DateField(auto_now_add = True)
     statuts = models.CharField(max_length=60, null=True, default="Non Livrer")
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
-    
+    history = HistoricalRecords()  # <-- Ajoute l'historique
     # Information du Fournisseur
     nom_complet_fournisseur = models.CharField(max_length=70, null=True)
     adresse_fournisseur = models.CharField(max_length=60, null=True)
@@ -162,7 +165,7 @@ class LivraisonsProduits(models.Model):
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
     datelivrer = models.DateField(auto_now_add = True)
     statuts = models.CharField(max_length=60, null=True)
-    
+    history = HistoricalRecords()  # <-- Ajoute l'historique
     def __str__(self):
         return f"Produits : {self.produits} | Statuts : {self.statuts}"
     

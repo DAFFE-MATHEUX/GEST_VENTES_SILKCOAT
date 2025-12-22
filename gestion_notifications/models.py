@@ -1,5 +1,5 @@
 from django.db import models
-
+from simple_history.models import HistoricalRecords
 class Notification(models.Model):
     # 🔹 L'administrateur ou un utilisateur connecté
     destinataire = models.EmailField(
@@ -16,7 +16,8 @@ class Notification(models.Model):
     message = models.TextField()
     date = models.DateTimeField(auto_now_add=True, null=True)
     lu = models.BooleanField(default=False)
-
+    history = HistoricalRecords()  # <-- historique activé
+    
     def __str__(self):
         if self.destinataire:
             return f"{self.titre} → {self.destinataire}"

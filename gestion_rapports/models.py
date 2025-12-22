@@ -1,6 +1,6 @@
 from django.db import models
 from gestion_utilisateur.models import Utilisateur
-# Create your models here.
+from simple_history.models import HistoricalRecords
 # ============================
 # 9. TABLE : Rapports
 # ============================
@@ -20,3 +20,4 @@ class Rapport(models.Model):
     date_generation = models.DateTimeField(auto_now_add = True)
     fichier_pdf = models.FileField(upload_to='rapports/', blank = True, null = True)
 
+    history = HistoricalRecords()  # <-- Ajoute l'historique

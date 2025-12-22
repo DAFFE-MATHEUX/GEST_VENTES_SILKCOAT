@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block contents %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- ===========================
      PAGE D'ACCUEIL ADMINISTRATION
@@ -33,6 +34,21 @@
     <div class="row">
 
         <div class="col-lg-3 col-xs-6">
+            <div class="small-box bg-green">
+                <div class="inner">
+                    <h3>{{ total_categories }}</h3>
+                    <p>Total Catégories Produit</p>
+                </div>
+                <div class="icon">
+                    <i class="ion ion-pricetags"></i>
+                </div>
+                <a href="{% url 'produits:listes_categorie' %}" class="small-box-footer">
+                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-xs-6">
             <div class="small-box bg-aqua">
                 <div class="inner">
                     <h3>{{ total_produits }}</h3>
@@ -51,12 +67,12 @@
             <div class="small-box bg-red">
                 <div class="inner">
                     <h3>{{ total_stock_entrepot }}</h3>
-                    <p>Total Stock Entrepot</p>
+                    <p>Total Stock Entrepôt</p>
                 </div>
                 <div class="icon">
                     <i class="ion ion-cash"></i>
                 </div>
-                <a href="{% url 'produits:listes_produits_stock' %}" class="small-box-footer">
+                <a href="{% url 'produits:listes_produits_stocks_entrepot' %}" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
             </div>
@@ -71,26 +87,12 @@
                 <div class="icon">
                     <i class="ion ion-bag"></i>
                 </div>
-                <a href="{% url 'produits:listes_des_commandes' %}" class="small-box-footer">
+                <a href="{% url 'produits:listes_produits_stock_magasin' %}" class="small-box-footer">
                     Voir Plus <i class="fa fa-arrow-circle-right"></i>
                 </a>
             </div>
         </div>
 
-        <div class="col-lg-3 col-xs-6">
-            <div class="small-box bg-green">
-                <div class="inner">
-                    <h3>{{ total_categories }}</h3>
-                    <p>Total Catégories Produit</p>
-                </div>
-                <div class="icon">
-                    <i class="ion ion-pricetags"></i>
-                </div>
-                <a href="{% url 'produits:listes_categorie' %}" class="small-box-footer">
-                    Voir Plus <i class="fa fa-arrow-circle-right"></i>
-                </a>
-            </div>
-        </div>
 
     </div>
 
@@ -150,10 +152,12 @@
     <!-- =====================
          DERNIERS VENTES
          ===================== -->
-   <div class="row">
+<div class="row">
     <div class="col-md-12">
         <div class="box box-info">
-            <div class="box-header with-border"><h3 class="box-title">5 Dernières Ventes</h3></div>
+            <div class="box-header with-border">
+                <h3 class="box-title">5 Dernières Ventes</h3>
+            </div>
             <div class="box-body table-responsive">
                 <table class="table table-bordered table-striped">
                     <thead>
@@ -161,10 +165,10 @@
                             <th>#</th>
                             <th>Code Vente</th>
                             <th>Référence Produit</th>
-                            <th>Date</th>
-                            <th>Total</th>
                             <th>Produit</th>
+                            <th>Date</th>
                             <th>Quantité Vendue</th>
+                            <th>Total Vente</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -174,14 +178,16 @@
                                 <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
                                 <td>{{ vente.code }}</td>
                                 <td>{{ ligne.produit.refprod }}</td>
-                                <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
-                                <td>{{ vente.total|floatformat:0 }} GNF</td>
                                 <td>{{ ligne.produit.desgprod }}</td>
+                                <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
                                 <td>{{ ligne.quantite }}</td>
+                                <td>{{ vente.total|floatformat:0 }} GNF</td>
                             </tr>
                             {% endfor %}
                         {% empty %}
-                        <tr><td colspan="7" class="text-center">Aucune vente récente.</td></tr>
+                            <tr>
+                                <td colspan="7" class="text-center">Aucune vente récente.</td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -190,42 +196,45 @@
     </div>
 </div>
 
+
     <!-- ==============================================
          LES PRODUITS LES PLUS VENDUS CETTE SEMEMAINE
          ===================== ========================-->
-   <div class="row">
+ <div class="row">
     <div class="col-md-12">
         <div class="box box-info">
-            <div class="box-header with-border"><h3 class="box-title">LES PRODUITS LES PLUS VENDUS CETTE SEMEMAINE</h3></div>
+            <div class="box-header with-border">
+                <h3 class="box-title">
+                    LES 5 PRODUITS LES PLUS VENDUS CETTE SEMAINE
+                </h3>
+            </div>
+
             <div class="box-body table-responsive">
                 <table class="table table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Code Vente</th>
                             <th>Référence Produit</th>
-                            <th>Date</th>
-                            <th>Total</th>
-                            <th>Produit</th>
+                            <th>Catégorie</th>
+                            <th>Désignation</th>
                             <th>Quantité Vendue</th>
                         </tr>
                     </thead>
-                  <tbody>
-                        {% for vente in produits_plus_vendus %}
-                            {% for ligne in vente.lignes.all %}
+
+                    <tbody>
+                        {% for elem in produits_plus_vendus %}
                             <tr>
-                                <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
-                                <td>{{ vente.code }}</td>
-                                <td>{{ ligne.produit.refprod }}</td>
-                                <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
-                                <td>{{ vente.total|floatformat:0 }} GNF</td>
-                                <td>{{ ligne.produit.desgprod }}</td>
-                                <td><strong>{{ ligne.quantite }}</strong></td>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ elem.produit__refprod }}</td>
+                                <td>{{ elem.produit__categorie__desgcategorie }}</td>
+                                <td>{{ elem.produit__desgprod }}</td>
+                                <td>
+                                    <strong>{{ elem.qte_totale }}</strong>
+                                </td>
                             </tr>
-                            {% endfor %}
                         {% empty %}
                             <tr>
-                                <td colspan="7" class="text-center">
+                                <td colspan="4" class="text-center">
                                     Aucune vente enregistrée cette semaine.
                                 </td>
                             </tr>
@@ -233,6 +242,88 @@
                     </tbody>
 
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="box box-warning">
+            <div class="box-header with-border">
+                <h3 class="box-title">
+                    💰 TOP 5 PRODUITS LES PLUS RENTABLES (SEMAINE)
+                </h3>
+            </div>
+
+            <div class="box-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Référence</th>
+                            <th>Catégorie</th>
+                            <th>Produit</th>
+                            <th>Quantité vendue</th>
+                            <th>Bénéfice total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in top_produits_rentables %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ p.produit__refprod }}</td>
+                            <td>{{ p.produit__categorie__desgcategorie }}</td>
+                            <td>{{ p.produit__desgprod }}</td>
+                            <td>{{ p.qte_vendue }}</td>
+                            <td>
+                                <strong class="text-success">
+                                    {{ p.benefice_total|floatformat:0 }} GNF
+                                </strong>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                Aucun produit rentable cette semaine.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="box box-success">
+            <div class="box-header with-border">
+                <h3 class="box-title">
+                    📊 Rentabilité des produits (Top 5)
+                </h3>
+            </div>
+            <div class="box-body">
+                <canvas id="chartRentabilite" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="box box-success">
+            <div class="box-header with-border">
+                <h3 class="box-title">
+                    📊 Top 5 Produits les plus vendus cette semaine
+                </h3>
+            </div>
+
+            <div class="box-body">
+                <canvas id="chartTopProduits" height="100"></canvas>
             </div>
         </div>
     </div>
@@ -253,7 +344,7 @@
                             <th>Num Commande</th>
                             <th>Réf Produit</th>
                             <th>Désignation</th>
-                            <th>Quantité Commandée</th>
+                            <th>Qte Commandée</th>
                             <th>Statut Commandé</th>
                             <th>Prix Unitaire</th>
                             <th>Catégorie</th>
@@ -274,7 +365,7 @@
                                 <td>{{ elem.datecmd|date:'d/m/Y' }}</td>
                             </tr>
                         {% empty %}
-                        <tr><td colspan="7" class="text-center">Aucune commande récente.</td></tr>
+                        <tr><td colspan="8" class="text-center">Aucune commande récente.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -319,7 +410,7 @@
                                 <td>{{ elem.datelivrer|date:'d/m/Y' }}</td>
                             </tr>
                         {% empty %}
-                        <tr><td colspan="7" class="text-center">Aucune livraisons récente.</td></tr>
+                        <tr><td colspan="8" class="text-center">Aucune livraisons récente.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -334,7 +425,7 @@
     <div class="row">
         <div class="col-md-12">
             <div class="box box-info">
-                <div class="box-header with-border"><h3 class="box-title">5 Derniers Audits</h3></div>
+                <div class="box-header with-border"><h3 class="box-title">3 Derniers Audits</h3></div>
                 <div class="box-body table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead>
@@ -399,5 +490,63 @@
     </div>
 
 </section>
+
+<script>
+const ctx = document.getElementById('chartTopProduits').getContext('2d');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: {{ labels_produits|safe }},
+        datasets: [{
+            label: 'Quantité vendue',
+            data: {{ quantites_produits|safe }},
+            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+
+<script>
+const ctxRent = document.getElementById('chartRentabilite').getContext('2d');
+
+new Chart(ctxRent, {
+    type: 'bar',
+    data: {
+        labels: {{ labels_rentables|safe }},
+        datasets: [{
+            label: 'Bénéfice (GNF)',
+            data: {{ benefices|safe }},
+            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+            borderColor: 'rgba(40, 167, 69, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
 
 {% endblock %}

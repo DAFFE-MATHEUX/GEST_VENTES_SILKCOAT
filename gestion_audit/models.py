@@ -3,6 +3,7 @@
 # models.py
 from django.db import models
 from gestion_utilisateur.models import Utilisateur
+from simple_history.models import HistoricalRecords
 
 class AuditLog(models.Model):
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True)
@@ -12,6 +13,7 @@ class AuditLog(models.Model):
     nouvelle_valeur = models.TextField(blank=True, null=True)
     date_action = models.DateTimeField(auto_now_add=True)
     
+    history = HistoricalRecords()  # <-- historique activé
     def __str__(self):
         return f"{self.utilisateur} - {self.action}"
     
