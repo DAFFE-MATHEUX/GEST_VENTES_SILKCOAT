@@ -77,225 +77,200 @@
                 </a>
             </div>
         </form>
-<br>
+        <br>
 
-{% if listes_produits %}
-    <!-- Tableau stocks -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">LISTE DES PRODUITS EN STOCKS</div>
-                <div class="panel-body">
+        {% if listes_produits %}
+        <!-- Tableau stocks -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">LISTE DES PRODUITS EN STOCKS</div>
+                    <div class="panel-body">
 
-                    <!-- Info total et recherche -->
-                    <div class="row align-items-center mb-3">
-                        <div class="col-md-6 col-sm-12">
-                            <small class="text-muted" style="font-size: 20px; font-weight: bold;">
-                                <i class="fa fa-users text-primary me-1"></i>
-                                Total Stocks : <strong>{{ total_produit }}</strong>
-                            </small>
-                        </div>
-                        <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
-                            <div class="input-group" style="max-width: 400px; margin-left: auto;">
-                                <input type="text" class="form-control" placeholder="Rechercher..." id="rechercher_informations">
+                        <!-- Info total et recherche -->
+                        <div class="row align-items-center mb-3">
+                            <div class="col-md-6 col-sm-12">
+                                <small class="text-muted" style="font-size: 20px; font-weight: bold;">
+                                    <i class="fa fa-users text-primary me-1"></i>
+                                    Total Stocks : <strong>{{ total_produit }}</strong>
+                                </small>
+                            </div>
+                            <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
+                                <div class="input-group" style="max-width: 400px; margin-left: auto;">
+                                    <input type="text" class="form-control" placeholder="Rechercher..." id="rechercher_informations">
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Tableau -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Catégorie</th>
+                                        <th>Réf Produit</th>
+                                        <th>Désignation</th>
+                                        <th>Prix Unitaire</th>
+                                        <th>Quantité</th>
+                                        <th>Seuil</th>
+                                        <th>Date Stock</th>
+                                        <th>Photo</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="my_table">
+                                    {% for elem in listes_produits %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ elem.produit.categorie.desgcategorie }}</td>
+                                        <td>{{ elem.produit.refprod }}</td>
+                                        <td>{{ elem.produit.desgprod }}</td>
+                                        <td>{{ elem.produit.pu }}</td>
+                                        <td>{{ elem.qtestock }}</td>
+                                        <td>{{ elem.seuil }}</td>
+                                        <td>{{ elem.date_maj|date:'d/m/Y' }}</td>
+                                        <td>
+                                            {% if elem.produit.photoprod %}
+                                                <img src="{{ elem.produit.photoprod.url }}">
+                                            {% else %}
+                                                Photo indisponible
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-bs-toggle="modal" data-bs-target="#supprimer" data-id="{{ elem.id }}">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr><td colspan="10" class="text-center">Aucun stock enregistré.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <!-- Totaux par catégorie -->
+                            <h4 class="mt-4">Stock par catégorie</h4>
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Catégorie</th>
+                                        <th>Nb Produits</th>
+                                        <th>Quantité</th>
+                                        <th>Valeur Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in total_par_categorie %}
+                                    <tr>
+                                        <td>{{ cat.produit__categorie__desgcategorie }}</td>
+                                        <td>{{ cat.nombre_produits|default:0 }}</td>
+                                        <td>{{ cat.quantite_stock|default:0 }}</td>
+                                        <td>{{ cat.valeur_stock|default:0|floatformat:0 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">Aucune donnée</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <!-- Pagination -->
+                            <div class="row mt-4">
+                                <div class="col-md-8 offset-md-2">
+                                    <nav aria-label="Page navigation">
+                                        <ul class="pagination justify-content-center">
+                                            {% if listes_produits.has_previous %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?pages=1">&laquo; Première</a>
+                                                </li>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?pages={{ listes_produits.previous_page_number }}">Précédent</a>
+                                                </li>
+                                            {% endif %}
+                                            <li class="page-item active">
+                                                <span class="page-link">Page {{ listes_produits.number }} / {{ listes_produits.paginator.num_pages }}</span>
+                                            </li>
+                                            {% if listes_produits.has_next %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?pages={{ listes_produits.next_page_number }}">Suivant</a>
+                                                </li>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?pages={{ listes_produits.paginator.num_pages }}">Dernière &raquo;</a>
+                                                </li>
+                                            {% endif %}
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+
+                        </div> <!-- .table-responsive -->
+
                     </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
-                    <!-- Tableau -->
-                    <div class="table-responsive">
-                        <table class="table table-striped table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Catégorie</th>
-                                    <th>Réf Produit</th>
-                                    <th>Désignation</th>
-                                    <th>Prix Unitaire</th>
-                                    <th>Entrepôt</th>
-                                    <th>Quantité</th>
-                                    <th>Seuil</th>
-                                    <th>Magasin</th>
-                                    <th>Quantité</th>
-                                    <th>Seuil</th>
-                                    <th>Date Stock</th>
-                                    <th>Photo</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="my_table">
-                                {% for elem in listes_produits %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
-                                    <td>{{ elem.produit.categorie.desgcategorie }}</td>
-                                    <td>{{ elem.produit.refprod }}</td>
-                                    <td>{{ elem.produit.desgprod }}</td>
-                                    <td>{{ elem.produit.pu }}</td>
-
-                                    <!-- Stock Entrepôt -->
-                                    {% if elem.entrepot %}
-                                        <td>{{ elem.entrepot.nom_entrepot }}</td>
-                                        <td>{{ elem.qtestock }}</td>
-                                        <td>{{ elem.seuil }}</td>
-                                    {% else %}
-                                        <td colspan="3" class="text-center">Aucun stock entrepôt</td>
-                                    {% endif %}
-
-                                    <!-- Stock Magasin -->
-                                    {% if elem.magasin %}
-                                        <td>{{ elem.magasin.nom_magasin }}</td>
-                                        <td>{{ elem.qtestock }}</td>
-                                        <td>{{ elem.seuil }}</td>
-                                    {% else %}
-                                        <td colspan="3" class="text-center">Aucun stock magasin</td>
-                                    {% endif %}
-
-                                    <td>{{ elem.date_maj|date:'d/m/Y' }}</td>
-                                    <td>
-                                        {% if elem.produit.photoprod %}
-                                            <img src="{{ elem.produit.photoprod.url }}">
-                                        {% else %}
-                                            Photo indisponible
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <!-- Bouton Supprimer -->
-                                        <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-bs-toggle="modal" data-bs-target="#supprimer" data-id="{{ elem.id }}">
-                                            <i class="fa fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="14" class="text-center">Aucun stock enregistré.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-
-                        <!-- Totaux par catégorie -->
-                        <h4 class="mt-4">Stock par catégorie (Entrepôt & Magasin)</h4>
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Catégorie</th>
-                                    <th>Nb Produits (Entrepôt)</th>
-                                    <th>Quantité (Entrepôt)</th>
-                                    <th>Valeur Stock (Entrepôt)</th>
-                                    <th>Nb Produits (Magasin)</th>
-                                    <th>Quantité (Magasin)</th>
-                                    <th>Valeur Stock (Magasin)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for cat in total_par_categorie %}
-                                <tr>
-                                    <td>{{ cat.produit__categorie__desgcategorie }}</td>
-                                    <td>{{ cat.nombre_produits_entrepot|default:0 }}</td>
-                                    <td>{{ cat.quantite_stock_entrepot|default:0 }}</td>
-                                    <td>{{ cat.valeur_stock_entrepot|default:0|floatformat:0 }}</td>
-                                    <td>{{ cat.nombre_produits_magasin|default:0 }}</td>
-                                    <td>{{ cat.quantite_stock_magasin|default:0 }}</td>
-                                    <td>{{ cat.valeur_stock_magasin|default:0|floatformat:0 }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center">Aucune donnée</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-
-                        <!-- Pagination -->
-                        <div class="row mt-4">
-                            <div class="col-md-8 offset-md-2">
-                                <nav aria-label="Page navigation">
-                                    <ul class="pagination justify-content-center">
-                                        {% if listes_produits.has_previous %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?pages=1">&laquo; Première</a>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="?pages={{ listes_produits.previous_page_number }}">Précédent</a>
-                                            </li>
-                                        {% endif %}
-                                        <li class="page-item active">
-                                            <span class="page-link">Page {{ listes_produits.number }} / {{ listes_produits.paginator.num_pages }}</span>
-                                        </li>
-                                        {% if listes_produits.has_next %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?pages={{ listes_produits.next_page_number }}">Suivant</a>
-                                            </li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="?pages={{ listes_produits.paginator.num_pages }}">Dernière &raquo;</a>
-                                            </li>
-                                        {% endif %}
-                                    </ul>
-                                </nav>
-                            </div>
+        <!-- Modal Suppression -->
+        <div class="modal fade" id="supprimer" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h4 class="modal-title">SUPPRESSION D'UN STOCK</h4>
+                    </div>
+                    <form method="POST" action="{% url 'produits:supprimer_produits_stock' %}">
+                        {% csrf_token %}
+                        <div class="modal-body">
+                            <input type="hidden" name="id_supprimer" id="id_supprimer">
+                            <p>Êtes-vous sûr de vouloir supprimer définitivement ce stock ?</p>
                         </div>
-
-                    </div> <!-- .table-responsive -->
-
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-danger">Supprimer</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
-{% endif %}
 
-<!-- Modal Suppression -->
-<div class="modal fade" id="supprimer" tabindex="-1" role="dialog">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger">
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                <h4 class="modal-title">SUPPRESSION D'UN STOCK</h4>
-            </div>
-            <form method="POST" action="{% url 'produits:supprimer_produits_stock' %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <input type="hidden" name="id_supprimer" id="id_supprimer">
-                    <p>Êtes-vous sûr de vouloir supprimer définitivement ce stock ?</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-danger">Supprimer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Modal Supprimer
-    document.querySelectorAll('.btn-produit-sup').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
-        });
-    });
-
-    // Recherche table
-    const search = document.querySelector("#rechercher_informations");
-    const my_table = document.querySelectorAll("#my_table tr");
-    window.addEventListener("load", function () {
-        search.addEventListener("keyup", function () {
-            var value_input = search.value.toLowerCase();
-            my_table.forEach(function (ligne) {
-                ligne.classList.toggle(
-                    "hidden",
-                    ligne.textContent.toLowerCase().indexOf(value_input) === -1
-                );
+        <script>
+            // Modal Supprimer
+            document.querySelectorAll('.btn-produit-sup').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
+                });
             });
-        });
-    });
 
-    // Faire disparaître les messages après 4 secondes
-    setTimeout(function() {
-        let messages = document.querySelectorAll('.alert');
-        messages.forEach(function(el) {
-            el.style.transition = "opacity 0.5s";
-            el.style.opacity = "0";
-            setTimeout(() => el.remove(), 500);
-        });
-    }, 4000);
-</script>
+            // Recherche table
+            const search = document.querySelector("#rechercher_informations");
+            const my_table = document.querySelectorAll("#my_table tr");
+            window.addEventListener("load", function () {
+                search.addEventListener("keyup", function () {
+                    var value_input = search.value.toLowerCase();
+                    my_table.forEach(function (ligne) {
+                        ligne.classList.toggle(
+                            "hidden",
+                            ligne.textContent.toLowerCase().indexOf(value_input) === -1
+                        );
+                    });
+                });
+            });
+
+            // Faire disparaître les messages après 4 secondes
+            setTimeout(function() {
+                let messages = document.querySelectorAll('.alert');
+                messages.forEach(function(el) {
+                    el.style.transition = "opacity 0.5s";
+                    el.style.opacity = "0";
+                    setTimeout(() => el.remove(), 500);
+                });
+            }, 4000);
+        </script>
+
+</div> <!-- #page-inner -->
+</div> <!-- #page-wrapper -->
 
 {% endblock %}

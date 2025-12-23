@@ -17,9 +17,7 @@
           <th>Qté commandée</th>
           <th>Déjà livrée</th>
           <th>Restante</th>
-          <th>Destination</th>
-          <th>Qté Magasin</th>
-          <th>Qté Entrepôt</th>
+          <th>Qté Livrée</th>
         </tr>
       </thead>
 
@@ -40,28 +38,20 @@
 
           {% if item.qte_restante > 0 %}
           <td>
-            <select name="destination[]" class="form-select">
-              <option value="MAGASIN">Magasin</option>
-              <option value="ENTREPOT">Entrepôt</option>
-              <option value="DEUX">Les deux</option>
-            </select>
+            <input type="number" name="qte_livree[]" class="form-control" min="0" max="{{ item.qte_restante }}" value="0">
           </td>
-
-          <td>
-            <input type="number" name="qte_magasin[]" class="form-control" min="0" max="{{ item.qte_restante }}" value="0">
-          </td>
-          <td>
-            <input type="number" name="qte_entrepot[]" class="form-control" min="0" max="{{ item.qte_restante }}" value="{{ item.qte_restante }}">
-          </td>
-
           <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
           {% else %}
-          <td colspan="3" class="text-success fw-bold text-center">✔ Livraison complète</td>
+          <td>
+            <input type="hidden" name="qte_livree[]" value="0">
+            <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
+            ✔ Livraison complète
+          </td>
           {% endif %}
         </tr>
         {% empty %}
         <tr>
-          <td colspan="10" class="text-center text-muted">Aucune commande à réceptionner</td>
+          <td colspan="8" class="text-center text-muted">Aucune commande à réceptionner</td>
         </tr>
         {% endfor %}
       </tbody>

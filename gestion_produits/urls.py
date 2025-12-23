@@ -20,10 +20,6 @@ urlpatterns = [
     
     path('listes_produits_stock/', listes_produits_stock, name='listes_produits_stock'),
     path('filtrer_listes_produits_stock/', filtrer_listes_produits_stock, name='filtrer_listes_produits_stock'),
-    path('listes_produits_stock_magasin/', listes_produits_stock_magasin, name='listes_produits_stock_magasin'),
-    path('filtrer_listes_produits_stock_magasin/', filtrer_listes_produits_stock_magasin, name='filtrer_listes_produits_stock_magasin'),
-    path('listes_produits_stocks_entrepot/', listes_produits_stocks_entrepot, name='listes_produits_stocks_entrepot'),
-    path('filtrer_listes_produits_stock_entrepot/', filtrer_listes_produits_stock_entrepot, name='filtrer_listes_produits_stock_entrepot'),
     path('ajouter_stock_multiple/', ajouter_stock_multiple, name='ajouter_stock_multiple'),  
     path('supprimer_produits_stock/', supprimer_produits_stock, name='supprimer_produits_stock'),
      

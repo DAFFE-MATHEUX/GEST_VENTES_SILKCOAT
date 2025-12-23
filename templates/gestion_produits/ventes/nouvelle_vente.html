@@ -68,7 +68,8 @@
                  min="0"
                  max="{{ p.qtestock_magasin }}"
                  value="0"
-                 data-pu="{{ p.pu }}">
+                 data-pu="{{ p.pu }}"
+                 data-stock="{{ p.qtestock_magasin }}">
         </td>
 
         <!-- Réduction -->
@@ -86,7 +87,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="7" class="text-center">Aucun produit en stock magasin disponible.</td>
+        <td colspan="6" class="text-center">Aucun produit en stock magasin disponible.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -106,9 +107,9 @@ function recalc() {
   let total = 0;
 
   document.querySelectorAll(".produit-row").forEach(row => {
-
     const qteInput = row.querySelector(".qte");
-    const qte = parseInt(qteInput.value || 0);
+    let qte = parseInt(qteInput.value || 0);
+    const stock = parseInt(qteInput.dataset.stock || 0);
     const pu = parseInt(qteInput.dataset.pu || 0);
 
     const reductionInput = row.querySelector(".reduction");
@@ -120,22 +121,27 @@ function recalc() {
       reductionInput.value = pu;
     }
 
-    const puFinal = Math.max(0, pu - reduction);
-    const sousTotal = qte * puFinal;
+    // Limiter la quantité au stock disponible
+    if (qte > stock) {
+      alert(`Stock insuffisant pour ce produit. Disponible: ${stock}`);
+      qte = stock;
+      qteInput.value = stock;
+    }
 
-    row.querySelector(".sous-total").textContent = sousTotal;
+    const sousTotal = qte * (pu - reduction);
+    row.querySelector(".sous-total").textContent = sousTotal.toLocaleString();
     total += sousTotal;
   });
 
-  document.getElementById("total-general").textContent = total;
+  document.getElementById("total-general").textContent = total.toLocaleString();
 }
 
-// Événements pour recalcul
+// Événements pour recalcul automatique
 document.querySelectorAll(".qte, .reduction").forEach(input => {
   input.addEventListener("input", recalc);
 });
 
-// Recherche produit
+// Recherche dynamique des produits
 document.getElementById("search").addEventListener("input", function () {
   const q = this.value.toLowerCase();
   document.querySelectorAll(".produit-row").forEach(row => {
@@ -143,6 +149,7 @@ document.getElementById("search").addEventListener("input", function () {
   });
 });
 
+// Initialisation
 recalc();
 </script>
 

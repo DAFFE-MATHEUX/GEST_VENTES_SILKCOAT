@@ -123,16 +123,27 @@ class AdminProduits(SimpleHistoryAdmin):
 # ==========================
 # STOCK PRODUIT
 # ==========================
+
 @admin.register(StockProduit)
 class AdminStock(SimpleHistoryAdmin):
-    list_display = ('produit', 'lieu_stockage', 'qtestock', 'seuil', 'date_maj')
-    list_editable = ('qtestock', 'seuil')
-    list_filter = ('entrepot', 'magasin')
-    search_fields = ('produit__refprod',)
+    list_display = (
+        'produit',
+        'qtestock',
+        'seuil',
+        'date_maj',
+    )
 
-    def lieu_stockage(self, obj):
-        return obj.entrepot if obj.entrepot else obj.magasin
-    lieu_stockage.short_description = "Lieu de stockage"
+    list_editable = (
+        'qtestock',
+        'seuil',
+    )
+
+    search_fields = (
+        'produit__refprod',
+        'produit__desgprod',
+    )
+
+    ordering = ('produit__refprod',)
 
 # ==========================
 # VENTE PRODUIT

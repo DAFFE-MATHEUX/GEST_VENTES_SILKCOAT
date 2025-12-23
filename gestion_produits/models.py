@@ -38,53 +38,38 @@ class Produits(models.Model):
 #==================================================================================
 # Table Stock des Produits
 #==================================================================================
+
 class StockProduit(models.Model):
-    produit = models.ForeignKey(
+    produit = models.OneToOneField(
         Produits,
         on_delete=models.CASCADE,
         related_name='stocks'
     )
 
-    entrepot = models.ForeignKey(
-        Entrepot,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='stocks'
-    )
-
-    magasin = models.ForeignKey(
-        Magasin,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='stocks'
-    )
-
     qtestock = models.IntegerField(default=0)
     seuil = models.IntegerField(default=0)
+
+    date_maj = models.DateTimeField(auto_now=True)
     history = HistoricalRecords()
-    date_maj = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                    models.Q(entrepot__isnull=False, magasin__isnull=True) |
-                    models.Q(entrepot__isnull=True, magasin__isnull=False)
-                ),
-                name="stock_entrepot_ou_magasin"
-            ),
-            models.UniqueConstraint(
-                fields=["produit", "entrepot", "magasin"],
-                name="unique_stock_produit_lieu"
-            )
-        ]
+        verbose_name = "Stock Produit"
+        verbose_name_plural = "Stocks Produits"
 
     def __str__(self):
-        lieu = self.entrepot or self.magasin
-        return f"{self.produit.refprod} | {lieu}"
+        return f"{self.produit.refprod} | Stock: {self.qtestock}"
 
+""" 
+    class Meta:
+        verbose_name = "Stock Produit"
+        verbose_name_plural = "Stocks Produits"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["produit"],
+                name="unique_stock_produit"
+            )
+        ]
+    """
 #==================================================================================
 # Table Ventes des Produits
 #==================================================================================

@@ -107,21 +107,31 @@
         <th>Stock Magasin Actuel</th>
         <th>Date Vente</th>
         <th>Sous-total</th>
+        <th>Bénéfice</th>
     </tr>
 
-    {% for ligne in data %}
-    <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ ligne.vente.code }}</td>
-        <td>{{ ligne.produit.desgprod }}</td>
-        <td>{{ ligne.quantite }}</td>
-        <td>{{ ligne.stock_magasin|default:"0" }}</td>
-        <td>{{ ligne.vente.date_vente|date:"d/m/Y H:i" }}</td>
-        <td>{{ ligne.sous_total|floatformat:0 }} GNF</td>
-    </tr>
+    {% for vente_data in data %}
+        {% for ligne in vente_data.lignes %}
+        <tr>
+            <td>{{ forloop.parentloop.counter }}-{{ forloop.counter }}</td>
+            <td>{{ vente_data.vente.code }}</td>
+            <td>{{ ligne.produit.desgprod }}</td>
+            <td>{{ ligne.quantite }}</td>
+            <td>{{ ligne.stock_magasin|default:"0" }}</td>
+            <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
+            <td>{{ ligne.sous_total|floatformat:0 }} GNF</td>
+            <td>{{ ligne.benefice|floatformat:0 }} GNF</td>
+        </tr>
+        {% endfor %}
+        <!-- Totaux par vente -->
+        <tr class="resume">
+            <td colspan="6" style="text-align:right;"><strong>Total Vente {{ vente_data.vente.code }} :</strong></td>
+            <td><strong>{{ vente_data.total_vente|floatformat:0 }} GNF</strong></td>
+            <td><strong>{{ vente_data.benefice_vente|floatformat:0 }} GNF</strong></td>
+        </tr>
     {% empty %}
     <tr>
-        <td colspan="7" class="empty">Aucune vente trouvée.</td>
+        <td colspan="8" class="empty">Aucune vente trouvée.</td>
     </tr>
     {% endfor %}
 </table>
@@ -147,9 +157,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="4" class="text-center text-muted">
-                Aucune vente par catégorie
-            </td>
+            <td colspan="4" class="text-center text-muted">Aucune vente par catégorie</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -166,7 +174,7 @@
 </div>
 {% endif %}
 
-
+<!-- ================= COMMANDES ================= -->
 {% elif rapport.type == "COMMANDES" %}
 <h3>LISTE DES COMMANDES</h3>
 <table>
@@ -196,19 +204,7 @@
     {% endfor %}
 </table>
 
-{% if total_montant %}
-<div class="resume">
-    <table>
-        <tr>
-            <td><strong>Total Commande :</strong></td>
-            <td><strong>{{ total_montant }}</strong></td>
-        </tr>
-    </table>
-</div>
-{% endif %}
-
-
-    <h4 class="mt-4">Commandes par catégorie</h4>
+<h4 class="mt-4">Commandes par catégorie</h4>
 <table class="table table-bordered table-striped">
     <thead>
         <tr>
@@ -227,13 +223,12 @@
             <td>{{ cat.valeur_commandes|default:0|floatformat:0 }} GNF</td>
         </tr>
         {% empty %}
-        <tr>
-            <td colspan="4" class="text-center">Aucune donnée</td>
-        </tr>
+        <tr><td colspan="4" class="text-center">Aucune donnée</td></tr>
         {% endfor %}
     </tbody>
 </table>
 
+<!-- ================= STOCKS ================= -->
 {% elif rapport.type == "STOCKS" %}
 <h3>ÉTAT DES STOCKS PAR LIEU</h3>
 
@@ -254,20 +249,8 @@
         <td>{{ forloop.counter }}</td>
         <td>{{ item.produit.refprod }}</td>
         <td>{{ item.produit.desgprod }}</td>
-        <td>
-            {% if item.entrepot %}
-                {{ item.entrepot }}
-            {% else %}
-                {{ item.magasin }}
-            {% endif %}
-        </td>
-        <td>
-            {% if item.entrepot %}
-                Entrepôt
-            {% else %}
-                Magasin
-            {% endif %}
-        </td>
+        <td>{% if item.entrepot %}{{ item.entrepot }}{% else %}{{ item.magasin }}{% endif %}</td>
+        <td>{% if item.entrepot %}Entrepôt{% else %}Magasin{% endif %}</td>
         <td>{{ item.qtestock }}</td>
         <td>{{ item.seuil }}</td>
         <td>{{ item.date_maj|date:"d/m/Y H:i" }}</td>
@@ -279,18 +262,7 @@
     {% endfor %}
 </table>
 
-{% if total_montant %}
-<div class="resume">
-    <table>
-        <tr>
-            <td><strong>Stock total disponible :</strong></td>
-            <td><strong>{{ total_montant }}</strong></td>
-        </tr>
-    </table>
-</div>
-{% endif %}
-
-
+<!-- ================= LIVRAISONS ================= -->
 {% elif rapport.type == "LIVRAISONS" %}
 <h3>LISTE DES LIVRAISONS (STOCK ENTREPÔT)</h3>
 
@@ -321,79 +293,6 @@
     </tr>
     {% endfor %}
 </table>
-
-        <!-- Totaux par catégorie -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h4>Totaux par Catégorie</h4>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Catégorie</th>
-                            <th>Nombre Livraisons</th>
-                            <th>Total Quantité Livrée</th>
-                            <th>Valeur Livrée</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for cat in total_par_categorie %}
-                        <tr>
-                            <td>{{ cat.produits__categorie__desgcategorie }}</td>
-                            <td>{{ cat.nombre_livraisons }}</td>
-                            <td>{{ cat.total_qtelivree }}</td>
-                            <td>{{ cat.valeur_livraison }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="text-center">Aucune livraison.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Totaux par produit -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h4>Totaux par Produit</h4>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Catégorie</th>
-                            <th>Réf Produit</th>
-                            <th>Désignation</th>
-                            <th>Nombre Livraisons</th>
-                            <th>Total Quantité Livrée</th>
-                            <th>Valeur Livrée</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for prod in total_par_produit %}
-                        <tr>
-                            <td>{{ prod.produits__categorie__desgcategorie }}</td>
-                            <td>{{ prod.produits__refprod }}</td>
-                            <td>{{ prod.produits__desgprod }}</td>
-                            <td>{{ prod.nombre_livraisons }}</td>
-                            <td>{{ prod.total_qtelivree }}</td>
-                            <td>{{ prod.valeur_livraison }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="6" class="text-center">Aucune livraison.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-{% if total_montant %}
-<div class="resume">
-    <table>
-        <tr>
-            <td><strong>Total livré :</strong></td>
-            <td><strong>{{ total_montant }}</strong></td>
-        </tr>
-    </table>
-</div>
-{% endif %}
 
 {% endif %}
 

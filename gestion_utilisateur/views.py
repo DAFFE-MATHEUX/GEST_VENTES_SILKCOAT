@@ -25,79 +25,84 @@ from datetime import timedelta
 @login_required
 
 def home(request):
-    # Profil de l'entreprise
+    # ===============================
+    # PROFIL ENTREPRISE & UTILISATEUR
+    # ===============================
     profil = Entreprise.objects.first()
-
-    # Utilisateur connecté
     utilisateur = request.user
 
-    aujourdhui = timezone.now().date()
-    debut_semaine = aujourdhui - timedelta(days=aujourdhui.weekday())  # Lundi
+    # ===============================
+    # DATES (SEMAINE EN COURS)
+    # ===============================
+    aujourd_hui = timezone.now().date()
+    debut_semaine = aujourd_hui - timedelta(days=aujourd_hui.weekday())  # Lundi
     fin_semaine = debut_semaine + timedelta(days=6)  # Dimanche
-    
-    # -------------------
-    # Notifications
-    # -------------------
-    notifications = Notification.objects.filter(destinataire=utilisateur).order_by('-date')
+
+    # ===============================
+    # NOTIFICATIONS
+    # ===============================
+    notifications = Notification.objects.filter(
+        destinataire=utilisateur
+    ).order_by('-date')
+
     non_lues = notifications.filter(lu=False)
     lues = notifications.filter(lu=True)
 
-    # -------------------
-    # Audits récents
-    # -------------------
-    audits = AuditLog.objects.order_by('-date_action')[:3]
+    # ===============================
+    # AUDITS RÉCENTS
+    # ===============================
+    audits = AuditLog.objects.order_by('-date_action')[:5]
 
-    # -------------------
-    # Commandes récentes
-    # -------------------
-    listes_commandes = Commandes.objects.order_by('-datecmd')
+    # ===============================
+    # COMMANDES RÉCENTES
+    # ===============================
+    listes_commandes = Commandes.objects.order_by('-datecmd')[:3]
 
-    # -------------------
-    # Livraisons récentes
-    # -------------------
-    listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')
+    # ===============================
+    # LIVRAISONS RÉCENTES
+    # ===============================
+    listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')[:3]
 
-        # Calcul des quantités livrées et restantes pour chaque élément
+    # Calcul quantités livrées / restantes
     for elem in listes_livraisons:
         total_livree = LivraisonsProduits.objects.filter(
-            produits=elem.produits,
-            commande=elem.commande
+            commande=elem.commande,
+            produits=elem.produits
         ).aggregate(total=Sum('qtelivrer'))['total'] or 0
+
         elem.total_livree = total_livree
         elem.qte_restante = elem.commande.qtecmd - total_livree
-        
-    # ---------------------------------------
-    # Ventes récentes (dernières ventes)
-    # ---------------------------------------
+
+    # ===============================
+    # 5 DERNIÈRES VENTES
+    # ===============================
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
 
-    # ----------------------------------------------
-    # Les produits les plus vendus dans la semaine
-    # ----------------------------------------------
-
+    # ===============================
+    # TOP 5 PRODUITS LES PLUS VENDUS
+    # ===============================
     produits_plus_vendus = (
         LigneVente.objects
-            .filter(
-                vente__date_vente__date__range=[debut_semaine, fin_semaine]
-            )
-            .values(
-                'produit__id',
-                'produit__desgprod',
-                'produit__categorie__desgcategorie',
-                'produit__refprod'
-            )
-            .annotate(
-                qte_totale=Sum('quantite')
-            )
-            .order_by('-qte_totale')[:5]
+        .filter(
+            vente__date_vente__date__range=[debut_semaine, fin_semaine]
         )
-            # Données pour le graphique
+        .values(
+            'produit__refprod',
+            'produit__desgprod',
+            'produit__categorie__desgcategorie'
+        )
+        .annotate(
+            qte_totale=Sum('quantite')
+        )
+        .order_by('-qte_totale')[:5]
+    )
+
     labels_produits = [p['produit__desgprod'] for p in produits_plus_vendus]
     quantites_produits = [p['qte_totale'] for p in produits_plus_vendus]
 
-    # ---------------------------------------
-    # Top des 5 produits les plus 5 rendables
-    # ---------------------------------------
+    # ===============================
+    # TOP 5 PRODUITS LES PLUS RENTABLES
+    # ===============================
     top_produits_rentables = (
         LigneVente.objects
         .filter(
@@ -106,7 +111,7 @@ def home(request):
         .values(
             'produit__refprod',
             'produit__desgprod',
-            'produit__categorie__desgcategorie',
+            'produit__categorie__desgcategorie'
         )
         .annotate(
             benefice_total=Sum('benefice'),
@@ -114,101 +119,72 @@ def home(request):
         )
         .order_by('-benefice_total')[:5]
     )
+
     labels_rentables = [p['produit__desgprod'] for p in top_produits_rentables]
     benefices = [p['benefice_total'] for p in top_produits_rentables]
 
-    # ----------------------------------------
-    # Statistiques sur le total des produits
-    # ----------------------------------------
+    # ===============================
+    # STATISTIQUES GÉNÉRALES
+    # ===============================
     total_produits = Produits.objects.count()
-    
-
-    # ---------------------------------------------------------
-    # Statistiques sur le total des stocks de tous les produits
-    # dans le magasin et l'entrepôt
-    # ----------------------------------------------------------
-
-    # Stock total en entrepôt
-    total_stock_entrepot = StockProduit.objects.filter(entrepot__isnull=False).aggregate(
-        total=Sum('qtestock')
-    )['total'] or 0
-
-    # Stock total en magasin
-    total_stock_magasin = StockProduit.objects.filter(magasin__isnull=False).aggregate(
-        total=Sum('qtestock')
-    )['total'] or 0
-
-    # ----------------------------------------
-    # Statistiques sur le total de catégorie
-    # ----------------------------------------
     total_categories = CategorieProduit.objects.count()
-    
-    # ----------------------------------------------
-    # Commandes de la semaine
-    # ----------------------------------------------
-    """ 
-    # Commande du jour
-    Commandes.objects.filter(
-            datecmd__gte=debut_semaine
-        ).values('datecmd').annotate(total=Count('id'))
-    """
-    
-    """ 
-    # 📌 Celle-ci compte les 7 derniers jours, pas exactement la semaine civile.
+
+    # ✅ UN SEUL STOCK (plus entrepôt / magasin)
+    total_stock = StockProduit.objects.aggregate(
+        total=Sum('qtestock')
+    )['total'] or 0
+
+    # ===============================
+    # STATISTIQUES SEMAINE
+    # ===============================
     total_commandes = Commandes.objects.filter(
-    datecmd__gte=timezone.now().date() - timedelta(days=7)
-    ).count()
-    """
-    commandes_semaine = Commandes.objects.filter(
         datecmd__range=[debut_semaine, fin_semaine]
-    )
+    ).count()
 
-    total_commandes = commandes_semaine.count()
-    # ----------------------------------------------
-    # Total de Livraisons de la semaine
-    # ----------------------------------------------
-    livraisons_semaine = LivraisonsProduits.objects.filter(
+    total_livraisons = LivraisonsProduits.objects.filter(
         datelivrer__range=[debut_semaine, fin_semaine]
-    )
-    total_livraisons = livraisons_semaine.count()
+    ).count()
 
-    # ----------------------------------------------
-    # Total de vente éffectuée dans la semaine
-    # ----------------------------------------------
-    ventes_semaines = VenteProduit.objects.filter(
-        date_vente__range = [
-            debut_semaine, fin_semaine
-        ]
-    )
-    total_ventes = ventes_semaines.count()
+    total_ventes = VenteProduit.objects.filter(
+        date_vente__date__range=[debut_semaine, fin_semaine]
+    ).count()
 
-    # -------------------------------------
-    # Contexte pour le template
-    # -------------------------------------
+    # ===============================
+    # CONTEXTE TEMPLATE
+    # ===============================
     context = {
         'profil': profil,
-        'labels_produits' : labels_produits,
-        'quantites_produits' : quantites_produits,
-        'top_produits_rentables' : top_produits_rentables,
+
+        # Graphiques
+        'labels_produits': labels_produits,
+        'quantites_produits': quantites_produits,
         'labels_rentables': labels_rentables,
         'benefices': benefices,
-        
+
+        # Données principales
+        'produits_plus_vendus': produits_plus_vendus,
+        'top_produits_rentables': top_produits_rentables,
+        'dernieres_ventes': dernieres_ventes,
+
+        # Listes
+        'listes_commandes': listes_commandes,
+        'listes_livraisons': listes_livraisons,
+
+        # Notifications & audits
         'notifications': notifications,
         'non_lues': non_lues,
         'lues': lues,
         'derniers_audits': audits,
-        'listes_commandes' : listes_commandes[:3],
-        'listes_livraisons' : listes_livraisons,
-        'dernieres_ventes': dernieres_ventes,
         'dernieeres_notification': notifications[:5],
-        'produits_plus_vendus' : produits_plus_vendus,
+
+        # Statistiques
         'total_produits': total_produits,
         'total_categories': total_categories,
+        'total_stock': total_stock,
         'total_commandes': total_commandes,
         'total_livraisons': total_livraisons,
         'total_ventes': total_ventes,
-        'total_stock_entrepot' : total_stock_entrepot,
-        'total_stock_magasin' : total_stock_magasin,
+
         'now': date.today(),
     }
 

@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture Dépenses - {{ nom_entreprise.nom_entrepriese }}</title>
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: "Poppins", sans-serif;
+            color: #222;
+        }
+
+        .recu-container {
+            background: white;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 30px 40px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .header-left, .header-right { font-size: 14px; line-height: 1.5; }
+        .header-center { text-align: center; flex: 1; }
+        .header-center h2 { font-weight: bold; color: #003366; text-transform: uppercase; margin-bottom: 5px; }
+        .logo { width: 80px; height: 80px; }
+        .section-title { text-align: center; background-color: #003366; color: white; font-weight: bold; padding: 8px; border-radius: 6px; margin-bottom: 15px; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 8px 10px; border: 1px solid #ccc; font-size: 14px; }
+        th { background-color: #f1f5f9; color: #003366; }
+
+        .total-row td { font-weight: bold; }
+        .signature-section { margin-top: 40px; display: flex; justify-content: flex-end; }
+        .signature-box { border-top: 2px solid #003366; width: 250px; text-align: center; padding-top: 10px; }
+        .footer { text-align: center; border-top: 2px solid #003366; margin-top: 25px; padding-top: 10px; font-size: 13px; color: #555; }
+        .btn-print { margin-bottom: 15px; }
+
+        @media print {
+            .btn-print { display: none !important; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background: #f8f9fa !important; }
+            .section-title { background-color: #003366 !important; color: white !important; }
+            .recu-container { box-shadow: none !important; border: 1px solid #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="recu-container">
+
+    <!-- ENTÊTE -->
+    <div class="header-top">
+        <div class="header-left">
+            <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
+            <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
+            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
+            {% if nom_entreprise.email %}
+            <strong>Email :</strong> {{ nom_entreprise.email }}
+            {% endif %}
+        </div>
+
+        <div class="header-center">
+            {% if nom_entreprise.logo %}
+                <img src="{{ nom_entreprise.logo.url }}" class="logo"><br>
+            {% endif %}
+            <h2>{{ nom_entreprise.nom_entrepriese|upper }}</h2>
+        </div>
+
+        <div class="header-right">
+            <strong>RÉPUBLIQUE DE GUINÉE</strong><br>
+            <em>Travail - Justice - Solidarité</em><br>
+            {% if qr_code_base64 %}
+                <img src="data:image/png;base64,{{ qr_code_base64 }}" width="85" height="85" alt="QR">
+            {% endif %}
+        </div>
+    </div>
+
+    <h4 class="section-title">Facture Global</h4>
+    <p><strong>Période :</strong> {{ date_debut|date:"d/m/Y" }} - {{ date_fin|date:"d/m/Y" }}</p>
+
+    <!-- TABLEAU DÉPENSES -->
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Désignation</th>
+                <th>Montant (GNF)</th>
+                <th>Provenance</th>
+                <th>Utilisateur</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in depenses %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ d.designation }}</td>
+                <td>{{ d.montant|floatformat:"0" }}</td>
+                <td>{{ d.destine_a }}</td>
+                <td>{{ d.utilisateur }}</td>
+                <td>{{ d.date_operation|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" style="text-align:center;">Aucune dépense trouvée</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="5" style="text-align:right;">Total Dépenses :</td>
+                <td colspan="5">{{ total_depenses|floatformat:"0" }} GNF</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- SIGNATURE -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <p><strong>Le Resposable</strong></p>
+            <p style="font-size:12px;">{{ today|date:"d/m/Y" }}</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Cette facture est générée automatiquement — {{ nom_entrepriese.nom_entrepriese|upper }}</p>
+    </div>
+
+</div>
+
+</body>
+</html>
