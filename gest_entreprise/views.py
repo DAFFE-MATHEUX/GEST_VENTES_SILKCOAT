@@ -655,7 +655,7 @@ def liste_depenses_impression(request):
 
     context = {
         'depenses': depenses,
-        'nom_etablissement': Entreprise.objects.first(),
+        'nom_entreprise': Entreprise.objects.first(),
         'today': timezone.now(),
         'date_debut': date_debut,
         'date_fin': date_fin,

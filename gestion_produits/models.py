@@ -103,6 +103,7 @@ class LigneVente(models.Model):
     produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='lignes')
     quantite = models.IntegerField(default=0)
     prix = models.IntegerField(default=0)  # Prix unitaire en details
+    pu_reduction = models.IntegerField(default=0)  # Prix unitaire en details
     montant_reduction = models.IntegerField(default=0)  # Prix unitaire en details
     sous_total = models.IntegerField(default=0)
     benefice = models.IntegerField(default=0)
@@ -115,10 +116,8 @@ class LigneVente(models.Model):
         # Calcul du sous-total
         self.sous_total = (self.prix * self.quantite) - self.montant_reduction
 
-        # Calcul du bénéfice
-        cout_total = self.produit.pu * self.quantite
-        revenu_total = self.prix * self.quantite
-        self.benefice = revenu_total - cout_total
+        self.pu_reduction = self.prix - self.montant_reduction
+        self.benefice = self.produit.prix_en_gros - self.produit.pu
 
         super().save(*args, **kwargs)
    

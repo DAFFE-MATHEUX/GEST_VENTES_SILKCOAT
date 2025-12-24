@@ -1,13 +1,13 @@
-        {% extends 'admin.html' %}
-        {% load static %}
-        {% block contents %}
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
 
-        <style>
-        .table-responsive { overflow-x: auto; width: 100%; }
-        .table td, .table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-        .table img { max-width: 60px; max-height: 60px; object-fit: contain; }
-        body { overflow-x: auto; }
-        </style>
+<style>
+    .table-responsive { overflow-x: auto; width: 100%; }
+    .table td, .table th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .table img { max-width: 60px; max-height: 60px; object-fit: contain; }
+    body { overflow-x: auto; }
+</style>
 
         <div class="container-fluid">
 
@@ -99,13 +99,29 @@
         {% endwith %}{% endfor %}
         {% endwith %}
         </tbody>
+                        <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="4" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_vendus }}</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">{{ total_stocks }}</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">-</th>
+                            </tr>
+                        </tfoot>
         </table>
+
         </div>
 
         <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
         <table class="table table-bordered table-striped">
         <thead>
-        <tr><th>#</th><th>Catégorie</th><th>Quantité Vendue</th><th>Montant Total (GNF)</th></tr>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
         </thead>
         <tbody>
         {% for cat in total_par_categorie %}
@@ -119,6 +135,14 @@
         <tr><td colspan="4" class="text-center text-muted">Aucune vente par catégorie</td></tr>
         {% endfor %}
         </tbody>
+                                      <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="2" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_vendus }}</th>
+                                <th class="text-center">{{ total_stocks }}</th>
+                                <th class="text-center">-</th>
+                            </tr>
+                        </tfoot>
         </table>
 
         {% else %}

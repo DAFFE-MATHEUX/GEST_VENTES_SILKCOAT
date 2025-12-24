@@ -129,7 +129,6 @@ def home(request):
     total_produits = Produits.objects.count()
     total_categories = CategorieProduit.objects.count()
 
-    # ✅ UN SEUL STOCK (plus entrepôt / magasin)
     total_stock = StockProduit.objects.aggregate(
         total=Sum('qtestock')
     )['total'] or 0

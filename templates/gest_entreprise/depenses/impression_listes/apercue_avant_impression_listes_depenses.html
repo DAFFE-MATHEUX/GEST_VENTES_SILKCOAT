@@ -27,18 +27,19 @@
 
 <div class="header-top">
     <div class="header-left">
-        <strong>IRE :</strong> {{ nom_etablissement.IRE_Etablissement|upper }} <br>
-        <strong>DPE :</strong> {{ nom_etablissement.DPE_Etablissement|upper }} <br>
-        <strong>DSEE :</strong> {{ nom_etablissement.DSE_Etablissement|upper }} <br>
-        <strong>Localisation :</strong> {{ nom_etablissement.Localisation|default:"-" }} <br>
-        <strong>Contact :</strong> {{ nom_etablissement.Contact1|default:"-" }}
+            <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
+            <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
+            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if entreprise.contact2 %} / {{ entreprise.contact2 }}{% endif %}<br>
+            {% if nom_entreprise.email %}
+            <strong>Email :</strong> {{ nom_entreprise.email }}
+            {% endif %}
     </div>
 
     <div class="header-center">
-        {% if nom_etablissement.LogoEtablissement %}
-            <img src="{{ nom_etablissement.LogoEtablissement.url }}" alt="Logo" class="logo"><br>
+        {% if nom_entreprise.logo %}
+            <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
         {% endif %}
-        <h2>GROUPE SCOLAIRE {{ nom_etablissement.NomEtablissement|upper }}</h2>
+        <h2>{{ nom_entreprise.nom_entrepriese|upper }}</h2>
     </div>
 
     <div class="header-right">
@@ -49,7 +50,7 @@
 </div>
 
 <div class="header">
-    <h4>LISTE DES DÉPENSES DE L'ÉTABLISSEMENT</h4>
+    <h4>LISTE DES DÉPENSES EFFECTUEES</h4>
     <strong>Période : {{ date_debut|date:"d/m/Y" }} - {{ date_fin|date:"d/m/Y" }}</strong>
 </div>
 
@@ -69,7 +70,6 @@
         <tr>
             <td>{{ forloop.counter }}</td>
             <td>{{ depense.date_operation|date:"d/m/Y" }}</td>
-            <td>{{ depense.type_operation }}</td>
             <td>{{ depense.designation }}</td>
             <td>{{ depense.montant }}</td>
             <td>{{ depense.destine_a }}</td>

@@ -1273,26 +1273,28 @@ def listes_produits_stock(request):
             )
             .order_by('-id')
         )
-
+        total_stocks = StockProduit.objects.aggregate(
+            total=Sum('qtestock')
+        )['total'] or 0
         total_produit = listes_stock.count()
 
         # ================= TOTAL PAR CATÉGORIE =================
         total_par_categorie = (
             StockProduit.objects
-            .values('produit__categorie__desgcategorie')
+            .values(
+                'produit__categorie__desgcategorie',
+                'produit__pu',    
+                )
             .annotate(
                 nombre_produits=Count('produit', distinct=True),
                 quantite_stock=Sum('qtestock'),
+                total_stock=Sum('qtestock'),
                 valeur_stock=Sum(
                     F('qtestock') * F('produit__pu')
                 ),
             )
-            .order_by('produit__categorie__desgcategorie')
-        )
-
-        # Pagination si ta fonction existe
+            .order_by('produit__categorie__desgcategorie'))
         listes_stock = pagination_liste(request, listes_stock)
-
     except Exception as ex:
         messages.error(
             request,
@@ -1304,6 +1306,7 @@ def listes_produits_stock(request):
         'listes_produits': listes_stock,
         'total_produit': total_produit,
         'total_par_categorie': total_par_categorie,
+        'total_stocks' : total_stocks,
     }
 
     return render(
@@ -1539,18 +1542,19 @@ def listes_des_ventes(request):
             .select_related('vente', 'produit', 'produit__categorie')
             .order_by('-id')
         )
-
+        total_vendus = LigneVente.objects.aggregate(
+            total=Sum('quantite')
+        )['total'] or 0
+        
         total_ventes = lignes.count()
         total_montant_ventes = 0
         benefice_global = 0
         listes_ventes = []
 
         for ligne in lignes:
-            # Prix d'achat par produit
-            prix_achat = getattr(ligne.produit, 'pu_achat', 0) or 0
 
             # Calcul du bénéfice
-            benefice = ligne.sous_total - (prix_achat * ligne.quantite)
+            benefice = ligne.produit.prix_en_gros - ligne.pu_reduction
             ligne.benefice = benefice
 
             # Mise à jour des totaux
@@ -1565,7 +1569,8 @@ def listes_des_ventes(request):
             .values('produit__categorie__desgcategorie')
             .annotate(
                 total_montant=Sum('sous_total'),
-                total_quantite=Sum('quantite')
+                total_quantite=Sum('quantite'),
+                total_vendu=Sum('quantite'),
             )
             .order_by('produit__categorie__desgcategorie')
         )
@@ -1579,6 +1584,7 @@ def listes_des_ventes(request):
         total_ventes = 0
         total_montant_ventes = 0
         benefice_global = 0
+        total_vendus = 0
         total_par_categorie = []
 
     # ================= CONTEXT =================
@@ -1588,6 +1594,7 @@ def listes_des_ventes(request):
         'total_montant_ventes': total_montant_ventes,
         'benefice_global': benefice_global,
         'total_par_categorie': total_par_categorie,
+        'total_vendus' : total_vendus,
     }
 
     return render(
@@ -2201,7 +2208,10 @@ def listes_commandes_impression(request):
             # ------------------ TOTAL PAR CATEGORIE ------------------
     total_par_categorie = (
         Commandes.objects
-        .values('produits__categorie__desgcategorie')
+        .values(
+            'produits__categorie__desgcategorie',
+            'produits__pu'
+            )
         .annotate(
             nombre_commandes=Count('id', distinct=True),
             total_quantite=Sum('qtecmd'),
@@ -2224,12 +2234,6 @@ def listes_commandes_impression(request):
         context
     )
 
-#================================================================================================
-# Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Stocks
-#================================================================================================
-@login_required
-def choix_par_dates_stocks_impression(request):
-    return render(request, 'gestion_produits/impression_listes/stock/fiches_choix_impression_stocks.html')
 
 #================================================================================================
 # Fonction pour imprimer la listes des Produits en Stocks
@@ -2237,32 +2241,28 @@ def choix_par_dates_stocks_impression(request):
 @login_required
 def listes_stocks_impression(request):
 
-    date_debut = None
-    date_fin = None
-
-    try:
-        # Accepte POST ou GET
-        date_debut_str = request.POST.get('date_debut') or request.GET.get('date_debut')
-        date_fin_str = request.POST.get('date_fin') or request.GET.get('date_fin')
-
-        if date_debut_str:
-            date_debut = datetime.strptime(date_debut_str, "%Y-%m-%d")
-
-        if date_fin_str:
-            # Inclure toute la journée
-            date_fin = datetime.strptime(date_fin_str, "%Y-%m-%d")
-            date_fin = date_fin.replace(hour=23, minute=59, second=59)
-
-    except ValueError:
-        messages.warning(request, "Format de date invalide (AAAA-MM-JJ attendu).")
-
-    # ================= FILTRAGE =================
     listes_produits = StockProduit.objects.all()
-
-    if date_debut and date_fin:
-        listes_produits = listes_produits.filter(
-            date_maj__range=[date_debut, date_fin]
+    total_stocks = StockProduit.objects.aggregate(
+        total=Sum('qtestock')
+        )['total'] or 0
+    total_produit = listes_produits.count()
+            # ================= TOTAL PAR CATÉGORIE =================
+    total_par_categorie = (
+        StockProduit.objects
+        .values(
+            'produit__categorie__desgcategorie',
+            'produit__pu',
+            )
+        .annotate(
+            nombre_produits=Count('produit', distinct=True),
+            quantite_stock=Sum('qtestock'),
+            total_stock=Sum('qtestock'),
+            valeur_stock=Sum(
+                F('qtestock') * F('produit__pu')
+            ),
         )
+        .order_by('produit__categorie__desgcategorie')
+    )
 
     # ================= CONTEXT =================
     nom_entreprise = Entreprise.objects.first()
@@ -2271,8 +2271,9 @@ def listes_stocks_impression(request):
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
         'listes_produits': listes_produits,
-        'date_debut': date_debut_str,
-        'date_fin': date_fin_str,
+        'total_par_categorie' : total_par_categorie,
+        'total_produit' : total_produit,
+        'total_stocks' : total_stocks,
     }
 
     return render(

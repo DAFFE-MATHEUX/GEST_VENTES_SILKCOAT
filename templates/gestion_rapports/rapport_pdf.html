@@ -104,7 +104,6 @@
         <th>Code Vente</th>
         <th>Produit</th>
         <th>Quantité Vendue</th>
-        <th>Stock Magasin Actuel</th>
         <th>Date Vente</th>
         <th>Sous-total</th>
         <th>Bénéfice</th>
@@ -117,7 +116,6 @@
             <td>{{ vente_data.vente.code }}</td>
             <td>{{ ligne.produit.desgprod }}</td>
             <td>{{ ligne.quantite }}</td>
-            <td>{{ ligne.stock_magasin|default:"0" }}</td>
             <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
             <td>{{ ligne.sous_total|floatformat:0 }} GNF</td>
             <td>{{ ligne.benefice|floatformat:0 }} GNF</td>
@@ -125,7 +123,7 @@
         {% endfor %}
         <!-- Totaux par vente -->
         <tr class="resume">
-            <td colspan="6" style="text-align:right;"><strong>Total Vente {{ vente_data.vente.code }} :</strong></td>
+            <td colspan="5" style="text-align:right;"><strong>Total Vente {{ vente_data.vente.code }} :</strong></td>
             <td><strong>{{ vente_data.total_vente|floatformat:0 }} GNF</strong></td>
             <td><strong>{{ vente_data.benefice_vente|floatformat:0 }} GNF</strong></td>
         </tr>

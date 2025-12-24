@@ -100,7 +100,6 @@
                 <th>Prix Unitaire</th>
                 <th>Catégorie</th>
                 <th>Date Commande</th>
-                <th>Photo Produit</th>
             </tr>
         </thead>
 
@@ -131,6 +130,7 @@
         <tr>
             <th>Catégorie</th>
             <th>Nombre de commandes</th>
+            <th>Prix de Vente</th>
             <th>Total quantité</th>
             <th>Valeur totale</th>
         </tr>
@@ -140,6 +140,7 @@
         <tr>
             <td>{{ cat.produits__categorie__desgcategorie }}</td>
             <td>{{ cat.nombre_commandes|default:0 }}</td>
+            <td>{{ cat.produits__pu|default:0 }} GNF</td>
             <td>{{ cat.total_quantite|default:0 }}</td>
             <td>{{ cat.valeur_commandes|default:0|floatformat:0 }} GNF</td>
         </tr>

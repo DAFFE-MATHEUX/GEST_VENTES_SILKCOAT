@@ -48,11 +48,11 @@
         <!-- Boutons actions -->
         <div class="row mb-3">
             <div class="col-md-6">
-                <a href="{% url 'produits:choix_par_dates_stocks_impression' %}" class="btn btn-primary">
+                <a href="{% url 'produits:listes_stocks_impression' %}" class="btn btn-primary">
                     <i class="fa fa-print"></i> Imprimer la liste en PDF
                 </a>
             </div>
-            <div class="col-md-6 text-end">
+            <div class="col-md-6 text-right">
                 <a href="{% url 'produits:ajouter_stock_multiple' %}" class="btn btn-danger">
                     <i class="fa fa-plus"></i> NOUVELLE SAISIE
                 </a>
@@ -111,7 +111,7 @@
                                         <th>Catégorie</th>
                                         <th>Réf Produit</th>
                                         <th>Désignation</th>
-                                        <th>Prix Unitaire</th>
+                                        <th>Prix de Vente</th>
                                         <th>Quantité</th>
                                         <th>Seuil</th>
                                         <th>Date Stock</th>
@@ -147,6 +147,15 @@
                                     <tr><td colspan="10" class="text-center">Aucun stock enregistré.</td></tr>
                                     {% endfor %}
                                 </tbody>
+
+                        </tbody>
+                                <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="5" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_stocks }}</th>
+                                <th colspan="5" class="text-center">-</th>
+                            </tr>
+                        </tfoot>
                             </table>
 
                             <!-- Totaux par catégorie -->
@@ -156,6 +165,7 @@
                                     <tr>
                                         <th>Catégorie</th>
                                         <th>Nb Produits</th>
+                                        <th>Prix de Vente</th>
                                         <th>Quantité</th>
                                         <th>Valeur Stock</th>
                                     </tr>
@@ -165,6 +175,7 @@
                                     <tr>
                                         <td>{{ cat.produit__categorie__desgcategorie }}</td>
                                         <td>{{ cat.nombre_produits|default:0 }}</td>
+                                        <td>{{ cat.produit__pu|default:0 }}</td>
                                         <td>{{ cat.quantite_stock|default:0 }}</td>
                                         <td>{{ cat.valeur_stock|default:0|floatformat:0 }}</td>
                                     </tr>
@@ -174,6 +185,15 @@
                                     </tr>
                                     {% endfor %}
                                 </tbody>
+                                <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="1" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_produit }}</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">{{ total_stocks }}</th>
+                                <th class="text-center">-</th>
+                            </tr>
+                        </tfoot>
                             </table>
 
                             <!-- Pagination -->

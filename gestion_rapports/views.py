@@ -121,7 +121,7 @@ def generer_rapport(request):
                     }
 
                 prix_achat = ligne.produit.prix_en_gros if ligne.produit.prix_en_gros else 0
-                benefice_ligne = ligne.sous_total - (prix_achat * ligne.quantite)
+                benefice_ligne = ligne.produit.prix_en_gros - ligne.produit.pu
                 ligne.benefice = benefice_ligne
 
                 ventes_dict[code_vente]['lignes'].append(ligne)

@@ -78,7 +78,6 @@ urlpatterns = [
     path('commandes/listes_commandes_impression/', listes_commandes_impression, name="listes_commandes_impression"),
     path('commandes/choix_par_dates_commandes_impression/', choix_par_dates_commandes_impression, name="choix_par_dates_commandes_impression"),
     
-    path('stocks/choix_par_dates_stocks_impression/', choix_par_dates_stocks_impression, name="choix_par_dates_stocks_impression"),
     path('stocks/listes_stocks_impression/', listes_stocks_impression, name="listes_stocks_impression"),
     
     path('livraisons/listes_livraisons_impression/', listes_livraisons_impression, name="listes_livraisons_impression"),

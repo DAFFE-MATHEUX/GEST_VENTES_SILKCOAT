@@ -96,10 +96,6 @@
                 <th>Réf Produit</th>
                 <th>Désignation</th>
                 <th>Prix Unitaire</th>
-                <th>Entrepôt</th>
-                <th>Quantité</th>
-                <th>Seuil</th>
-                <th>Magasin</th>
                 <th>Quantité</th>
                 <th>Seuil</th>
                 <th>Date Stock</th>
@@ -115,24 +111,8 @@
             <td>{{ elem.produit.refprod }}</td>
             <td>{{ elem.produit.desgprod }}</td>
              <td>{{ elem.produit.pu }}</td>
-
-            <!-- Stock Entrepôt -->
-            {% if elem.entrepot %}
-            <td>{{ elem.entrepot.nom_entrepot }}</td>
-            <td>{{ elem.qtestock }}</td>
-            <td>{{ elem.seuil }}</td>
-            {% else %}
-            <td colspan="3" class="text-center">Aucun stock entrepôt</td>
-            {% endif %}
-
-            <!-- Stock Magasin -->
-            {% if elem.magasin %}
-            <td>{{ elem.magasin.nom_magasin }}</td>
-            <td>{{ elem.qtestock }}</td>
-            <td>{{ elem.seuil }}</td>
-            {% else %}
-            <td colspan="3" class="text-center">Aucun stock magasin</td>
-            {% endif %}
+             <td>{{ elem.qtestock }}</td>
+             <td>{{ elem.seuil }}</td>
 
             <td>{{ elem.date_maj|date:'d/m/Y' }}</td>
             <td>
@@ -147,7 +127,53 @@
             <tr><td colspan="13" class="text-center">Aucun stock enregistré.</td></tr>
             {% endfor %}
         </tbody>
+
+        <tfoot class="table-secondary">
+            <tr>
+            <th colspan="5" class="text-center">Totaux :</th>
+            <th class="text-center">{{ total_stocks }}</th>
+            <th colspan="5" class="text-center">-</th>
+            </tr>
+        </tfoot>
     </table>
+
+                                <!-- Totaux par catégorie -->
+                            <h4 class="mt-4">Stock par catégorie</h4>
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Catégorie</th>
+                                        <th>Nb Produits</th>
+                                        <th>Quantité</th>
+                                        <th>PU</th>
+                                        <th>Valeur Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in total_par_categorie %}
+                                    <tr>
+                                        <td>{{ cat.produit__categorie__desgcategorie }}</td>
+                                        <td>{{ cat.nombre_produits|default:0 }}</td>
+                                        <td>{{ cat.quantite_stock|default:0 }}</td>
+                                        <td>{{ cat.produit__pu|default:0 }}</td>
+                                        <td>{{ cat.valeur_stock|default:0|floatformat:0 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center">Aucune donnée</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="1" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_produit }}</th>
+                                <th class="text-center">{{ total_stocks }}</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">-</th>
+                            </tr>
+                        </tfoot>
+                            </table>
 
     <!-- Signature -->
     <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">
