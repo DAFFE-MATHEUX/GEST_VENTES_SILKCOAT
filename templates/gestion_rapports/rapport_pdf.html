@@ -134,6 +134,41 @@
     {% endfor %}
 </table>
 
+<h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Produit</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in total_par_produit %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ prod.produit__desgprod }}</td>
+            <td class="text-center">{{ prod.total_quantite }}</td>
+            <td class="text-end"><strong>{{ prod.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">Aucune vente par produit</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot class="table-secondary">
+        <tr>
+            <th colspan="2" class="text-center">Totaux :</th>
+            <th class="text-center">{{ total_vendus }}</th>
+            <th class="text-end">{{ total_montant|floatformat:"0" }}</th>
+        </tr>
+    </tfoot>
+</table>
+
+
 <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
 
 <table class="table table-bordered table-striped">
@@ -159,6 +194,13 @@
         </tr>
         {% endfor %}
     </tbody>
+        <tfoot class="table-secondary">
+            <tr>
+            <th colspan="2" class="text-center">Totaux :</th>
+            <th class="text-center">{{ total_vendus }}</th>
+            <th class="text-center">{{ total_montant }}</th>
+            </tr>
+        </tfoot>
 </table>
 
 {% if total_montant %}

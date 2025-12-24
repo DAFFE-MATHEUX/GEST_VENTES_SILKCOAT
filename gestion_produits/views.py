@@ -185,7 +185,7 @@ def vendre_produit(request):
             messages.error(request, "Veuillez renseigner le nom, le téléphone et l'adresse du client.")
             return redirect("produits:vendre_produit")
 
-        total_general = 0
+        total_general = 0  # Total à payer pour la vente
         lignes = []
 
         try:
@@ -193,7 +193,6 @@ def vendre_produit(request):
 
                 # ================= PRÉPARATION DES LIGNES =================
                 for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
-
                     try:
                         prod = Produits.objects.get(id=prod_id)
                     except Produits.DoesNotExist:
@@ -201,7 +200,7 @@ def vendre_produit(request):
 
                     try:
                         qte = int(qte_str or 0)
-                        reduction_unitaire = int(red_str or 0)
+                        reduction_saisie = int(red_str or 0)  # Valeur exacte saisie
                     except ValueError:
                         messages.error(request, f"Quantité ou réduction invalide pour {prod.desgprod}")
                         return redirect("produits:vendre_produit")
@@ -217,16 +216,16 @@ def vendre_produit(request):
                         )
                         return redirect("produits:vendre_produit")
 
-                    if reduction_unitaire > prod.pu:
+                    if reduction_saisie > prod.pu:
                         messages.error(
                             request,
                             f"La réduction pour {prod.desgprod} dépasse le prix unitaire ({prod.pu})"
                         )
                         return redirect("produits:vendre_produit")
 
-                    prix_net = prod.pu - reduction_unitaire
-                    sous_total = qte * prix_net
-                    total_reduction = qte * reduction_unitaire
+                    # 🔹 Calculs
+                    prix_net = prod.pu - reduction_saisie
+                    sous_total = prix_net * qte  # Montant à payer
 
                     total_general += sous_total
 
@@ -234,8 +233,8 @@ def vendre_produit(request):
                         "produit": prod,
                         "quantite": qte,
                         "pu": prod.pu,
-                        "reduction_unitaire": reduction_unitaire,
-                        "reduction_totale": total_reduction,
+                        "reduction_unitaire": reduction_saisie,
+                        "reduction_totale": reduction_saisie,  # ⚡ ici on garde la valeur saisie
                         "sous_total": sous_total,
                         "stock": stock
                     })
@@ -263,37 +262,27 @@ def vendre_produit(request):
                         produit=ligne["produit"],
                         quantite=ligne["quantite"],
                         prix=ligne["pu"],
-                        montant_reduction=ligne["reduction_totale"],  # ✅ STOCKÉ CORRECTEMENT
+                        montant_reduction=ligne["reduction_totale"],  # ⚡ pas multiplié
                         sous_total=ligne["sous_total"],
                     )
 
+                    # Mise à jour du stock
                     ligne["stock"].qtestock -= ligne["quantite"]
                     ligne["stock"].save(update_fields=["qtestock"])
 
                 # ================= EMAIL ADMIN =================
                 try:
                     sujet = f"🧾 Nouvelle vente - {vente.code}"
-                    contenu = f"""
-Nouvelle vente enregistrée
-
-Vendeur : {request.user.get_full_name()}
-Client  : {nom_complet}
-Téléphone : {telephone}
-Adresse : {adresse}
-
-DÉTAILS :
-"""
+                    contenu = f"Nouvelle vente enregistrée\n\nVendeur : {request.user.get_full_name()}\nClient  : {nom_complet}\nTéléphone : {telephone}\nAdresse : {adresse}\n\nDÉTAILS :\n"
                     for ligne in lignes:
                         contenu += (
                             f"- {ligne['produit'].desgprod} | "
                             f"Qté: {ligne['quantite']} | "
                             f"PU: {ligne['pu']:,} | "
-                            f"Réduction totale: {ligne['reduction_totale']:,} | "
+                            f"Réduction saisie: {ligne['reduction_totale']:,} | "
                             f"Sous-total: {ligne['sous_total']:,}\n"
                         )
-
                     contenu += f"\nTOTAL À PAYER : {total_general:,} GNF"
-
                     EmailMessage(
                         sujet,
                         contenu,
@@ -1590,15 +1579,15 @@ def listes_des_ventes(request):
         for ligne in lignes:
 
             # Calcul du bénéfice
-            benefice = ligne.produit.prix_en_gros - ligne.pu_reduction
+            benefice = (ligne.produit.prix_en_gros - ligne.pu_reduction) * ligne.quantite
             ligne.benefice = benefice
 
             # Mise à jour des totaux
-            benefice_global += benefice
+            benefice_global += ligne.benefice
             total_montant_ventes += ligne.sous_total
 
             listes_ventes.append(ligne)
-
+            
         # ================= TOTAL PAR CATÉGORIE =================
         total_par_categorie = (
             lignes
@@ -1610,6 +1599,16 @@ def listes_des_ventes(request):
             )
             .order_by('produit__categorie__desgcategorie')
         )
+                # Total par produit
+        total_par_produit = (
+            lignes
+            .values('produit__desgprod')
+            .annotate(
+                    total_quantite=Sum('quantite'),
+                    total_montant=Sum('sous_total')
+                )
+                .order_by('produit__desgprod')
+            )
 
         # Pagination des lignes de vente
         listes_ventes = pagination_lis(request, listes_ventes)
@@ -1622,6 +1621,7 @@ def listes_des_ventes(request):
         benefice_global = 0
         total_vendus = 0
         total_par_categorie = []
+        total_par_produit = []
 
     # ================= CONTEXT =================
     context = {
@@ -1631,13 +1631,10 @@ def listes_des_ventes(request):
         'benefice_global': benefice_global,
         'total_par_categorie': total_par_categorie,
         'total_vendus' : total_vendus,
+        'total_par_produit' : total_par_produit,
     }
-
     return render(
-        request,
-        "gestion_produits/ventes/listes_ventes.html",
-        context
-    )
+        request,"gestion_produits/ventes/listes_ventes.html",context)
 
 #================================================================================================
 # Fonction pour afficher la liste des commandes éffectuées
@@ -1774,6 +1771,7 @@ def filtrer_listes_ventes(request):
     benefice_global = 0
     total_par_categorie = []
     listes_ventes_filtre = []
+    total_vendus = 0
 
     try:
         # ================== QUERYSET DE BASE ==================
@@ -1791,6 +1789,10 @@ def filtrer_listes_ventes(request):
 
         # ================== TOTAL DES VENTES ==================
         total_ventes = ventes_qs.count()
+        
+        total_vendus = LigneVente.objects.aggregate(
+            total=Sum('quantite')
+        )['total'] or 0
 
         # ================== TOTAL PAR CATÉGORIE ==================
         total_par_categorie = ventes_qs.values(
@@ -1799,11 +1801,21 @@ def filtrer_listes_ventes(request):
             total_quantite=Sum('quantite'),
             total_montant=Sum('sous_total')
         ).order_by('produit__categorie__desgcategorie')
+        
+        # Total par produit
+        total_par_produit = (
+            ventes_qs
+            .values('produit__desgprod')
+            .annotate(
+                    total_quantite=Sum('quantite'),
+                    total_montant=Sum('sous_total')
+                )
+                .order_by('produit__desgprod')
+            )
 
         # ================== CALCUL BÉNÉFICE ==================
         for ligne in ventes_qs:
-            prix_achat = getattr(ligne.produit, 'prix_en_gros', 0) or 0
-            benefice = ligne.sous_total - (prix_achat * ligne.quantite)
+            benefice = (ligne.produit.prix_en_gros - ligne.pu_reduction) * ligne.quantite
             ligne.benefice = benefice
 
             benefice_global += benefice
@@ -1822,7 +1834,9 @@ def filtrer_listes_ventes(request):
         total_ventes = 0
         total_montant_ventes = 0
         benefice_global = 0
+        total_vendus = 0
         total_par_categorie = []
+        total_par_produit = []
 
     # ================== CONTEXT ==================
     context = {
@@ -1833,6 +1847,8 @@ def filtrer_listes_ventes(request):
         "benefice_global": benefice_global,
         "total_par_categorie": total_par_categorie,
         "total_montant_ventes": total_montant_ventes,
+        'total_par_produit' : total_par_produit,
+        'total_vendus' : total_vendus,
     }
 
     return render(
@@ -2187,8 +2203,7 @@ def listes_ventes_impression(request):
                 'benefice_vente': 0
             }
 
-        prix_achat = getattr(ligne.produit, 'prix_en_gros', 0)
-        benefice_ligne = ligne.sous_total - (prix_achat * ligne.quantite)
+        benefice_ligne = ligne.produit.prix_en_gros - ligne.pu_reduction
         ligne.benefice = benefice_ligne
 
         ventes_dict[code_vente]['lignes'].append(ligne)

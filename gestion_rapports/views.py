@@ -95,6 +95,7 @@ def generer_rapport(request):
             ).order_by('-id')
 
             total_montant = data_qs.aggregate(total=Sum('sous_total'))['total'] or 0
+            total_vendus = data_qs.aggregate(total=Sum('quantite'))['total'] or 0
 
             # Total par catégorie
             total_par_categorie = (
@@ -105,6 +106,16 @@ def generer_rapport(request):
                     total_quantite=Sum('quantite')
                 )
                 .order_by('produit__categorie__desgcategorie')
+            )
+                # Total par produit
+            total_par_produit = (
+                data_qs
+                .values('produit__desgprod')
+                .annotate(
+                    total_quantite=Sum('quantite'),
+                    total_montant=Sum('sous_total')
+                )
+                .order_by('produit__desgprod')
             )
 
             # Calcul bénéfice par ligne et total par vente
@@ -120,8 +131,7 @@ def generer_rapport(request):
                         'benefice_vente': 0
                     }
 
-                prix_achat = ligne.produit.prix_en_gros if ligne.produit.prix_en_gros else 0
-                benefice_ligne = ligne.produit.prix_en_gros - ligne.produit.pu
+                benefice_ligne = ligne.produit.prix_en_gros - ligne.pu_reduction
                 ligne.benefice = benefice_ligne
 
                 ventes_dict[code_vente]['lignes'].append(ligne)
@@ -219,6 +229,7 @@ def generer_rapport(request):
             'entreprise': entreprise,
             'total_par_categorie': total_par_categorie,
             'total_par_produit': total_par_produit,
+            'total_vendus' : total_vendus,
         }
 
         template = get_template('gestion_rapports/rapport_pdf.html')

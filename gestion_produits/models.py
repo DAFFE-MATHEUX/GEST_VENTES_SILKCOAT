@@ -117,7 +117,7 @@ class LigneVente(models.Model):
         self.sous_total = (self.prix * self.quantite) - self.montant_reduction
 
         self.pu_reduction = self.prix - self.montant_reduction
-        self.benefice = self.produit.prix_en_gros - self.produit.pu
+        self.benefice = (self.produit.prix_en_gros - self.pu_reduction) * self.quantite
 
         super().save(*args, **kwargs)
    

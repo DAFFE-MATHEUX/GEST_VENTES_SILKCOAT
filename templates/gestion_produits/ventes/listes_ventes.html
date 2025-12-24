@@ -49,7 +49,7 @@
             </div>
         </form>
 <br>
-        {% if listes_ventes or listes_ventes_filtre %}
+        {% if listes_ventes  %}
 
         <!-- RÉSUMÉ -->
         <div class="row mb-4 text-center">
@@ -64,7 +64,7 @@
         <thead class="table-dark">
         <tr>
         <th>#</th><th>Ref Vente</th><th>Produit</th><th>Client</th>
-        <th>Qté</th><th>Prix Vente</th><th>Sous-total</th><th>Bénéfice</th>
+        <th>Qté</th><th>Prix Vente</th> <th>Prix en Gros</th> <th>Réduction</th><th>Sous-total</th><th>Bénéfice</th>
         <th>Bénéfice Total</th><th>Date</th><th>Photo</th><th>Imprimer</th><th>Actions</th>
         </tr>
         </thead>
@@ -79,6 +79,8 @@
         <td>{{ elem.vente.nom_complet_client }}</td>
         <td>{{ elem.quantite }}</td>
         <td>{{ elem.prix }} GNF</td>
+        <td>{{ elem.produit.prix_en_gros }} GNF</td>
+        <td>{{ elem.montant_reduction }} GNF</td>
         <td>{{ elem.sous_total }} GNF</td>
         <td>
         {% if elem.benefice >= 0 %}
@@ -108,11 +110,48 @@
                                 <th class="text-center">{{ total_stocks }}</th>
                                 <th class="text-center">-</th>
                                 <th class="text-center">-</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">{{ benefice_global }}</th>
+                                 <th class="text-center" colspan="4">-</th>
                             </tr>
                         </tfoot>
         </table>
 
         </div>
+
+        <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Produit</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in total_par_produit %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ prod.produit__desgprod }}</td>
+            <td class="text-center">{{ prod.total_quantite }}</td>
+            <td class="text-end"><strong>{{ prod.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">Aucune vente par produit</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot class="table-secondary">
+        <tr>
+            <th colspan="2" class="text-center">Totaux :</th>
+            <th class="text-center">{{ total_vendus }}</th>
+            <th class="text-end">{{ total_montant_ventes|floatformat:"0" }}</th>
+        </tr>
+    </tfoot>
+</table>
 
         <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
         <table class="table table-bordered table-striped">
@@ -136,15 +175,209 @@
         <tr><td colspan="4" class="text-center text-muted">Aucune vente par catégorie</td></tr>
         {% endfor %}
         </tbody>
-                                      <tfoot class="table-secondary">
+                <tfoot class="table-secondary">
                             <tr>
                                 <th colspan="2" class="text-center">Totaux :</th>
                                 <th class="text-center">{{ total_vendus }}</th>
-                                <th class="text-center">{{ total_stocks }}</th>
+                                <th class="text-center">{{ total_montant_ventes }}</th>
                                 <th class="text-center">-</th>
                             </tr>
                         </tfoot>
         </table>
+
+        <!-- ================= PAGINATION ================= -->
+<nav>
+<ul class="pagination justify-content-center">
+    {% if listes_ventes.has_previous %}
+    <li class="page-item">
+        <a class="page-link" href="?pages=1">&laquo;</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes.previous_page_number }}">Préc</a>
+    </li>
+    {% endif %}
+
+    <li class="page-item active">
+        <span class="page-link">
+            {{ listes_ventes.number }} / {{ listes_ventes.paginator.num_pages }}
+        </span>
+    </li>
+
+    {% if listes_ventes.has_next %}
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes.next_page_number }}">Suiv</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes.paginator.num_pages }}">&raquo;</a>
+    </li>
+    {% endif %}
+</ul>
+</nav>
+
+        {% elif listes_ventes_filtre %}
+
+        <!-- RÉSUMÉ -->
+        <div class="row mb-4 text-center">
+            <div class="col-md-4"><div class="alert alert-info"><strong>Total Ventes</strong><br>{{ total_montant_ventes }} GNF</div></div>
+            <div class="col-md-4"><div class="alert alert-success"><strong>Bénéfice Global</strong><br>{{ benefice_global }} GNF</div></div>
+            <div class="col-md-4"><div class="alert alert-warning"><strong>Lignes de Vente</strong><br>{{ total_ventes }}</div></div>
+        </div>
+
+        <!-- TABLE DES VENTES -->
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered table-hover">
+        <thead class="table-dark">
+        <tr>
+        <th>#</th><th>Ref Vente</th><th>Produit</th><th>Client</th>
+        <th>Qté</th><th>Prix Vente</th> <th>Prix en Gros</th> <th>Réduction</th><th>Sous-total</th><th>Bénéfice</th>
+        <th>Bénéfice Total</th><th>Date</th><th>Photo</th><th>Imprimer</th><th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% with cumul_benefice=0 %}
+        {% for elem in listes_ventes_filtre %}
+        {% with cumul_benefice=cumul_benefice|add:elem.benefice %}
+        <tr class="{% if elem.benefice < 0 %}table-danger{% endif %}">
+        <td>{{ forloop.counter }}</td>
+        <td>{{ elem.vente.code }}</td>
+        <td>{{ elem.produit.desgprod }}</td>
+        <td>{{ elem.vente.nom_complet_client }}</td>
+        <td>{{ elem.quantite }}</td>
+        <td>{{ elem.prix }} GNF</td>
+        <td>{{ elem.produit.prix_en_gros }} GNF</td>
+        <td>{{ elem.montant_reduction }} GNF</td>
+        <td>{{ elem.sous_total }} GNF</td>
+        <td>
+        {% if elem.benefice >= 0 %}
+        <span class="text-success"><b>+{{ elem.benefice }}</b></span>
+        {% else %}
+        <span class="text-danger"><b>{{ elem.benefice }}</b></span>
+        {% endif %}
+        </td>
+        <td><span class="text-primary"><b>{{ cumul_benefice }}</b></span></td>
+        <td>{{ elem.vente.date_vente|date:"Y-m-d" }}</td>
+        <td>{% if elem.produit.photoprod %}<img src="{{ elem.produit.photoprod.url }}">{% else %}—{% endif %}</td>
+        <td><a class="btn btn-primary btn-sm" href="{% url 'produits:recu_vente_global' elem.vente.code %}"><i class="fa fa-print"></i></a></td>
+        <td>
+                <button class="btn btn-danger btn-sm btn-produit-sup" data-id="{{ elem.id }}" data-toggle="modal" data-target="#supprimer">
+                    <i class="fa fa-trash"></i>
+                </button>
+        </td>
+        </tr>
+        {% endwith %}{% endfor %}
+        {% endwith %}
+        </tbody>
+                        <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="4" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_vendus }}</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">{{ total_stocks }}</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">-</th>
+                                <th class="text-center">{{ benefice_global }}</th>
+                                 <th class="text-center" colspan="4">-</th>
+                            </tr>
+                        </tfoot>
+        </table>
+
+        </div>
+
+        <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Produit</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in total_par_produit %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ prod.produit__desgprod }}</td>
+            <td class="text-center">{{ prod.total_quantite }}</td>
+            <td class="text-end"><strong>{{ prod.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">Aucune vente par produit</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot class="table-secondary">
+        <tr>
+            <th colspan="2" class="text-center">Totaux :</th>
+            <th class="text-center">{{ total_vendus }}</th>
+            <th class="text-end">{{ total_montant_ventes|floatformat:"0" }}</th>
+        </tr>
+    </tfoot>
+</table>
+
+        <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+        <table class="table table-bordered table-striped">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ cat.produit__categorie__desgcategorie }}</td>
+        <td>{{ cat.total_quantite }}</td>
+        <td><strong>{{ cat.total_montant|floatformat:"0" }}</strong></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted">Aucune vente par catégorie</td></tr>
+        {% endfor %}
+        </tbody>
+                <tfoot class="table-secondary">
+                            <tr>
+                                <th colspan="2" class="text-center">Totaux :</th>
+                                <th class="text-center">{{ total_vendus }}</th>
+                                <th class="text-center">{{ total_montant_ventes }}</th>
+                                <th class="text-center">-</th>
+                            </tr>
+                        </tfoot>
+        </table>
+
+        <!-- ================= PAGINATION ================= -->
+<nav>
+<ul class="pagination justify-content-center">
+    {% if listes_ventes_filtre.has_previous %}
+    <li class="page-item">
+        <a class="page-link" href="?pages=1">&laquo;</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes_filtre.previous_page_number }}">Préc</a>
+    </li>
+    {% endif %}
+
+    <li class="page-item active">
+        <span class="page-link">
+            {{ listes_ventes_filtre.number }} / {{ listes_ventes_filtre.paginator.num_pages }}
+        </span>
+    </li>
+
+    {% if listes_ventes_filtre.has_next %}
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes_filtre.next_page_number }}">Suiv</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes_filtre.paginator.num_pages }}">&raquo;</a>
+    </li>
+    {% endif %}
+</ul>
+</nav>
 
         {% else %}
         <p class="text-center text-muted">Aucune vente enregistrée.</p>
