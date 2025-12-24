@@ -103,8 +103,8 @@ class LigneVente(models.Model):
     produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='lignes')
     quantite = models.IntegerField(default=0)
     prix = models.IntegerField(default=0)  # Prix unitaire en details
-    pu_reduction = models.IntegerField(default=0)  # Prix unitaire en details
-    montant_reduction = models.IntegerField(default=0)  # Prix unitaire en details
+    pu_reduction = models.IntegerField(default=0)  
+    montant_reduction = models.IntegerField(default=0) 
     sous_total = models.IntegerField(default=0)
     benefice = models.IntegerField(default=0)
     date_saisie = models.DateField(auto_now_add=True)

@@ -164,11 +164,10 @@ def approvisionner_produits(request):
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
 @login_required
-
 def vendre_produit(request):
     produits = Produits.objects.all()
-    
-    # Pour chaque produit, récupérer le stock
+
+    # Afficher le stock disponible pour chaque produit
     for p in produits:
         stock = StockProduit.objects.filter(produit=p).first()
         p.qtestock_magasin = stock.qtestock if stock else 0
@@ -183,96 +182,139 @@ def vendre_produit(request):
         adresse = request.POST.get("adresse_client")
 
         if not nom_complet or not telephone or not adresse:
-            messages.error(request, "Veuillez renseigner le nom complet, le téléphone et l'adresse du client.")
+            messages.error(request, "Veuillez renseigner le nom, le téléphone et l'adresse du client.")
             return redirect("produits:vendre_produit")
 
         total_general = 0
         lignes = []
 
-        # Boucle sécurisée pour préparer la vente
-        for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
-            try:
-                prod = Produits.objects.get(id=prod_id)
-            except Produits.DoesNotExist:
-                continue
+        try:
+            with transaction.atomic():
 
-            try:
-                qte = int(str(qte_str).replace(',', '').replace(' ', '') or 0)
-                reduction = int(str(red_str).replace(',', '').replace(' ', '') or 0)
-            except ValueError:
-                messages.error(request, f"Quantité ou réduction invalide pour {prod.desgprod}")
-                return redirect("produits:vendre_produit")
+                # ================= PRÉPARATION DES LIGNES =================
+                for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
 
-            if qte < 0:
-                messages.error(request, f"La quantité est inférieure à 0 pour {prod.desgprod}. Disponible : {prod.qtestock_magasin}")
-                return redirect("produits:vendre_produit")
+                    try:
+                        prod = Produits.objects.get(id=prod_id)
+                    except Produits.DoesNotExist:
+                        continue
 
-            # Vérification stock
-            stock = StockProduit.objects.filter(produit=prod).first()
-            if not stock or stock.qtestock < qte:
-                messages.error(request, f"Stock insuffisant pour {prod.desgprod}. Disponible : {stock.qtestock if stock else 0}")
-                return redirect("produits:vendre_produit")
+                    try:
+                        qte = int(qte_str or 0)
+                        reduction_unitaire = int(red_str or 0)
+                    except ValueError:
+                        messages.error(request, f"Quantité ou réduction invalide pour {prod.desgprod}")
+                        return redirect("produits:vendre_produit")
 
-            if reduction > prod.pu:
-                messages.error(request, f"La réduction pour {prod.desgprod} ne peut pas dépasser le prix unitaire ({prod.pu})")
-                return redirect("produits:vendre_produit")
+                    if qte <= 0:
+                        continue
 
-            sous_total = qte * (prod.pu - reduction)
-            total_general += sous_total
+                    stock = StockProduit.objects.filter(produit=prod).select_for_update().first()
+                    if not stock or stock.qtestock < qte:
+                        messages.error(
+                            request,
+                            f"Stock insuffisant pour {prod.desgprod} (Disponible : {stock.qtestock if stock else 0})"
+                        )
+                        return redirect("produits:vendre_produit")
 
-            if not qte == 0 :
-                lignes.append((prod, qte, prod.pu, reduction, sous_total))
+                    if reduction_unitaire > prod.pu:
+                        messages.error(
+                            request,
+                            f"La réduction pour {prod.desgprod} dépasse le prix unitaire ({prod.pu})"
+                        )
+                        return redirect("produits:vendre_produit")
 
-        if not lignes:
-            messages.error(request, "Aucun produit sélectionné pour la vente.")
+                    prix_net = prod.pu - reduction_unitaire
+                    sous_total = qte * prix_net
+                    total_reduction = qte * reduction_unitaire
+
+                    total_general += sous_total
+
+                    lignes.append({
+                        "produit": prod,
+                        "quantite": qte,
+                        "pu": prod.pu,
+                        "reduction_unitaire": reduction_unitaire,
+                        "reduction_totale": total_reduction,
+                        "sous_total": sous_total,
+                        "stock": stock
+                    })
+
+                if not lignes:
+                    messages.error(request, "Aucun produit valide sélectionné pour la vente.")
+                    return redirect("produits:vendre_produit")
+
+                # ================= CRÉATION DE LA VENTE =================
+                code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
+
+                vente = VenteProduit.objects.create(
+                    code=code,
+                    total=total_general,
+                    utilisateur=request.user,
+                    nom_complet_client=nom_complet,
+                    telclt_client=telephone,
+                    adresseclt_client=adresse
+                )
+
+                # ================= LIGNES + MISE À JOUR STOCK =================
+                for ligne in lignes:
+                    LigneVente.objects.create(
+                        vente=vente,
+                        produit=ligne["produit"],
+                        quantite=ligne["quantite"],
+                        prix=ligne["pu"],
+                        montant_reduction=ligne["reduction_totale"],  # ✅ STOCKÉ CORRECTEMENT
+                        sous_total=ligne["sous_total"],
+                    )
+
+                    ligne["stock"].qtestock -= ligne["quantite"]
+                    ligne["stock"].save(update_fields=["qtestock"])
+
+                # ================= EMAIL ADMIN =================
+                try:
+                    sujet = f"🧾 Nouvelle vente - {vente.code}"
+                    contenu = f"""
+Nouvelle vente enregistrée
+
+Vendeur : {request.user.get_full_name()}
+Client  : {nom_complet}
+Téléphone : {telephone}
+Adresse : {adresse}
+
+DÉTAILS :
+"""
+                    for ligne in lignes:
+                        contenu += (
+                            f"- {ligne['produit'].desgprod} | "
+                            f"Qté: {ligne['quantite']} | "
+                            f"PU: {ligne['pu']:,} | "
+                            f"Réduction totale: {ligne['reduction_totale']:,} | "
+                            f"Sous-total: {ligne['sous_total']:,}\n"
+                        )
+
+                    contenu += f"\nTOTAL À PAYER : {total_general:,} GNF"
+
+                    EmailMessage(
+                        sujet,
+                        contenu,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [settings.ADMIN_EMAIL]
+                    ).send(fail_silently=False)
+
+                except Exception as e:
+                    logger.error(f"Erreur email vente {vente.code} : {str(e)}")
+                    messages.warning(request, "Vente enregistrée mais email non envoyé.")
+
+        except Exception as ex:
+            messages.error(request, f"Erreur lors de l'enregistrement de la vente : {str(ex)}")
             return redirect("produits:vendre_produit")
 
-        # Création vente globale
-        code = f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}"
-        vente = VenteProduit.objects.create(
-            code=code,
-            total=total_general,
-            utilisateur=request.user,
-            nom_complet_client=nom_complet,
-            telclt_client=telephone,
-            adresseclt_client=adresse
-        )
-
-        # Création lignes de vente et mise à jour stock
-        for prod, qte, pu, reduction, st in lignes:
-            LigneVente.objects.create(
-                vente=vente,
-                produit=prod,
-                quantite=qte,
-                prix=pu,
-                sous_total=st,
-                montant_reduction=reduction,
-            )
-            stock = StockProduit.objects.filter(produit=prod).first()
-            stock.qtestock -= qte
-            stock.save()
-
-        # Envoi email admin (optionnel)
-        try:
-            if not hasattr(settings, 'DEFAULT_FROM_EMAIL') or not hasattr(settings, 'ADMIN_EMAIL'):
-                raise ValueError("Paramètres email non définis")
-
-            sujet = f"Nouvelle vente - Code {vente.code}"
-            contenu = f"Vente par {request.user}\nClient : {nom_complet}\nTéléphone : {telephone}\nAdresse : {adresse}\nTotal : {total_general:,} GNF\nDétails :\n"
-            for prod, qte, pu, reduction, st in lignes:
-                contenu += f"- {prod.desgprod} | Qté : {qte} | PU : {pu:,} | Réduction : {reduction:,} | Sous-total : {st:,}\n"
-
-            email = EmailMessage(sujet, contenu, settings.ADMIN_EMAIL, [settings.DEFAULT_FROM_EMAIL])
-            email.send(fail_silently=False)
-
-        except Exception as e:
-            logger.error(f"Erreur lors de l'envoi de l'email pour la vente {vente.code}: {str(e)}")
-            messages.warning(request, f"Vente enregistrée mais email non envoyé : {str(e)}")
-
-        messages.success(request, "Vente enregistrée avec succès !")
+        messages.success(request, "✅ Vente enregistrée avec succès.")
         return redirect("produits:recu_vente_global", vente_code=vente.code)
 
-    return render(request, "gestion_produits/ventes/nouvelle_vente.html", {"produits": produits})
+    return render(request, "gestion_produits/ventes/nouvelle_vente.html", {
+        "produits": produits
+    })
 
 #================================================================================================
 # Fonction pour afficher l'historique des ventes par date
@@ -1113,50 +1155,48 @@ Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 @login_required
 def supprimer_ventes(request):
     if request.method != 'POST':
-        messages.warning(request, "Méthode non autorisée pour la suppression.")
+        messages.warning(request, "Méthode non autorisée.")
         return redirect('produits:listes_des_ventes')
 
-    vente_id = request.POST.get('id_supprimer')
-    if not vente_id:
-        messages.warning(request, "⚠️ Aucun vente sélectionnée pour suppression.")
+    ligne_id = request.POST.get('id_supprimer')
+    if not ligne_id:
+        messages.warning(request, "Aucune vente sélectionnée.")
         return redirect('produits:listes_des_ventes')
 
     try:
         with transaction.atomic():
-            # 1️⃣ Récupérer la vente
-            vente = get_object_or_404(VenteProduit, id=vente_id)
+
+            # 1️⃣ Récupérer la ligne de vente
+            ligne = get_object_or_404(LigneVente, id=ligne_id)
+            vente = ligne.vente
             code_vente = vente.code
 
-            # 2️⃣ Récupérer toutes les lignes liées
+            # 2️⃣ Récupérer toutes les lignes de la vente
             lignes = LigneVente.objects.select_related('produit').filter(vente=vente)
 
-            # 3️⃣ Restaurer le stock
-            for ligne in lignes:
-                produit = ligne.produit
+            # 3️⃣ Restaurer le stock global
+            for l in lignes:
+                stock, created = StockProduit.objects.get_or_create(
+                    produit=l.produit,
+                    defaults={"qtestock": 0}
+                )
+                stock.qtestock += l.quantite
+                stock.save(update_fields=["qtestock"])
 
-                # Stock magasin
-                stock_magasin = produit.stocks.filter(magasin__isnull=False).first()
-                if stock_magasin:
-                    stock_magasin.qtestock += ligne.quantite
-                    stock_magasin.save(update_fields=['qtestock'])
-
-                # Stock entrepôt
-                stock_entrepot = produit.stocks.filter(entrepot__isnull=False).first()
-                if stock_entrepot:
-                    stock_entrepot.qtestock += ligne.quantite
-                    stock_entrepot.save(update_fields=['qtestock'])
-
-            # 4️⃣ Enregistrement de l'audit
+            # 4️⃣ Audit
             ancienne_valeur = {
                 "Vente": code_vente,
-                "Produits": [{ 
-                    "Produit": ligne.produit.desgprod,
-                    "Qté": ligne.quantite,
-                    "Sous-total": ligne.sous_total
-                } for ligne in lignes],
-                "Utilisateur connecté": request.user.get_full_name(),
+                "Produits": [
+                    {
+                        "Produit": l.produit.desgprod,
+                        "Quantité": l.quantite,
+                        "Sous-total": l.sous_total
+                    } for l in lignes
+                ],
+                "Utilisateur": request.user.get_full_name(),
                 "Date": timezone.now().strftime('%d/%m/%Y %H:%M')
             }
+
             enregistrer_audit(
                 utilisateur=request.user,
                 action="Suppression",
@@ -1169,43 +1209,39 @@ def supprimer_ventes(request):
             lignes.delete()
             vente.delete()
 
-            # 6️⃣ Notification interne
+            # 6️⃣ Notification
             Notification.objects.create(
                 destinataire=request.user,
-                titre=f"🗑 Suppression de vente {code_vente}",
-                message=f"La vente {code_vente} a été supprimée avec succès. Les stocks ont été restaurés automatiquement."
+                titre=f"🗑 Suppression vente {code_vente}",
+                message="La vente a été supprimée et le stock restauré."
             )
 
-            # 7️⃣ Envoi email à l'administrateur
+            # 7️⃣ Email admin
             try:
-                sujet = f"🗑 Suppression d'une vente - {code_vente}"
-                contenu = f"""
+                EmailMessage(
+                    subject=f"🗑 Suppression d'une vente - {code_vente}",
+                    body=f"""
 Une vente a été supprimée.
 
-Code vente : {code_vente}
+Code : {code_vente}
 Utilisateur : {request.user.get_full_name()}
 Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 
-Les stocks ont été restaurés automatiquement.
-"""
-                email = EmailMessage(
-                    sujet,
-                    contenu,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL]
-                )
-                email.send(fail_silently=False)
-            except Exception as e:
-                logger.error(f"Erreur email suppression vente : {str(e)}")
-                messages.warning(
-                    request,
-                    "Vente supprimée mais l'email d'information n'a pas pu être envoyé."
-                )
+Le stock a été restauré automatiquement.
+""",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.ADMIN_EMAIL]
+                ).send()
+            except Exception:
+                messages.warning(request, "Email non envoyé.")
 
-        messages.success(request, f"Vente {code_vente} supprimée avec succès. Stocks restaurés ✔")
+        messages.success(
+            request,
+            f"✅ Vente {code_vente} supprimée avec succès. Stock restauré ✔"
+        )
 
-    except Exception as ex:
-        messages.error(request, f"⚠️ Erreur lors de la suppression de la vente : {str(ex)}")
+    except Exception as e:
+        messages.error(request, f"⚠️ Erreur suppression : {e}")
 
     return redirect('produits:listes_des_ventes')
 
