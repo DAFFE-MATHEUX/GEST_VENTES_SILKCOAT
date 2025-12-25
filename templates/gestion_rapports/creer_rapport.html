@@ -47,9 +47,10 @@
 
               <!-- COMMERCIAL -->
               <option value="VENTES">Ventes</option>
+               {% if not request.user.type_utilisateur == 'Gerante' %}
               <option value="COMMANDES">Commandes</option>
               <option value="LIVRAISONS">Livraisons</option>
-
+          {% endif %}
               <!-- STOCK -->
               <option value="STOCKS">Stocks</option>
             </select>

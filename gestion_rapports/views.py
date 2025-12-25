@@ -230,6 +230,7 @@ def generer_rapport(request):
             'total_par_categorie': total_par_categorie,
             'total_par_produit': total_par_produit,
             'total_vendus' : total_vendus,
+            'benefice_global' : benefice_global,
         }
 
         template = get_template('gestion_rapports/rapport_pdf.html')

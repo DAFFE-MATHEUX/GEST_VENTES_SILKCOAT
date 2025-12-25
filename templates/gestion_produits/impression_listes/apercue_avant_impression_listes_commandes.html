@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES PRODUITS</title>
+    <title>LISTE DES COMMANDES</title>
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
@@ -15,7 +15,6 @@
         table, th, td { border: 1px solid #000; }
         th, td { padding: 6px; text-align: left; font-size: 11px; }
         th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
-        img.photo-preview { max-width: 45px; border-radius: 4px; }
 
         /* Print style */
         @media print {
@@ -64,7 +63,7 @@
         <div class="header-left">
             <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
             <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
-            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if entreprise.contact2 %} / {{ entreprise.contact2 }}{% endif %}<br>
+            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
             {% if nom_entreprise.email %}
             <strong>Email :</strong> {{ nom_entreprise.email }}
             {% endif %}
@@ -74,7 +73,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES PRODUITS</h2>
+            <h2>LISTE DES COMMANDES</h2>
         </div>
 
         <div class="header-right">
@@ -85,52 +84,119 @@
     </div>
 
     <!-- TITRE -->
-    <h4>CATALOGUE COMPLET DES PRODUITS ENREGISTRÉS</h4>
+    <h4>Commandes du {{ date_debut }} au {{ date_fin }}</h4>
 
-    <!-- TABLEAU DES PRODUITS -->
+    <!-- TABLEAU PRINCIPAL DES COMMANDES -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Code</th>
-                <th>Désignation</th>
+                <th>Num Commande</th>
+                <th>Produit</th>
                 <th>Catégorie</th>
-                <th>PU (GNF)</th>
-                <th>Prix en Gros</th>
-                <th>Stock</th>
-                <th>Seuil Affecte</th>
-                <th>Date Ajout</th>
-                <th>Photo</th>
+                <th>Quantité</th>
+                <th>Prix Unitaire</th>
+                <th>Valeur</th>
+                <th>Date Commande</th>
             </tr>
         </thead>
-
         <tbody>
-        {% for p in listes_produits %}
+        {% for elem in listes_commandes %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ p.refprod }}</td>
-                <td>{{ p.desgprod }}</td>
-                <td>{{ p.categorie.desgcategorie|default:"-" }}</td>
-                <td>{{ p.pu }}</td>
-                <td>{{ p.prix_en_gros }}</td>
-                <td>{{ p.qtestock }}</td>
-                <td>{{ p.seuil }}</td>
-                <td>{{ p.date_maj }}</td>
-
-                <td style="text-align:center;">
-                    {% if p.photoProduit %}
-                        <img src="{{ p.photoProduit.url }}" class="photo-preview">
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
+                <td>{{ elem.numcmd }}</td>
+                <td>{{ elem.produits.desgprod }}</td>
+                <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                <td>{{ elem.qtecmd }}</td>
+                <td>{{ elem.produits.pu }}</td>
+                <td>{{ elem.qtecmd }}</td>
+                <td>{{ elem.datecmd|date:"d/m/Y" }}</td>
             </tr>
         {% empty %}
             <tr>
-                <td colspan="8" style="text-align:center;">⚠️ Aucun produit trouvé.</td>
+                <td colspan="8" style="text-align:center;">⚠️ Aucune commande trouvée pour cette période.</td>
             </tr>
         {% endfor %}
         </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="4" style="text-align:center;">Totaux</th>
+                <th>{{ total_quantite }}</th>
+                <th>-</th>
+                <th>{{ total_valeur }}</th>
+                <th>{{ total_commandes }} commandes</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- TABLEAU DES TOTAUX PAR CATÉGORIE -->
+    <h4>Totaux par Catégorie</h4>
+    <table>
+        <thead>
+            <tr>
+                <th>Catégorie</th>
+                <th>Nombre de Commandes</th>
+                <th>Total Quantité</th>
+                <th>Valeur Totale</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for cat in total_par_categorie %}
+            <tr>
+                <td>{{ cat.produits__categorie__desgcategorie }}</td>
+                <td>{{ cat.nombre_commandes }}</td>
+                <td>{{ cat.total_quantite }}</td>
+                <td>{{ cat.valeur_commandes }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="4" style="text-align:center;">Aucune donnée</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="2" style="text-align:center;">Totaux globaux</th>
+                <th>{{ total_quantite }}</th>
+                <th>{{ total_valeur }}</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- TABLEAU DES TOTAUX PAR PRODUIT -->
+    <h4>Totaux par Produit</h4>
+    <table>
+        <thead>
+            <tr>
+                <th>Produit</th>
+                <th>Catégorie</th>
+                <th>Nombre de Commandes</th>
+                <th>Total Quantité</th>
+                <th>Valeur Totale</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for prod in total_par_produit %}
+            <tr>
+                <td>{{ prod.produits__desgprod }}</td>
+                <td>{{ prod.produits__categorie__desgcategorie }}</td>
+                <td>{{ prod.nombre_commandes }}</td>
+                <td>{{ prod.total_quantite }}</td>
+                <td>{{ prod.valeur_commandes }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="5" style="text-align:center;">Aucune donnée</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="3" style="text-align:center;">Totaux globaux</th>
+                <th>{{ total_quantite }}</th>
+                <th>{{ total_valeur }}</th>
+            </tr>
+        </tfoot>
     </table>
 
     <!-- Signature -->

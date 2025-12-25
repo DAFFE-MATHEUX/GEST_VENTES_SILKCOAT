@@ -73,6 +73,8 @@
     <div style="text-align:center; flex:1;">
         {% if entreprise.logo %}
             <img src="{{ entreprise.logo.url }}" style="width:80px;height:80px;object-fit:contain;"><br>
+        {% else %}
+        <p><small>Logo Indisponible</small></p>
         {% endif %}
         <h2 style="margin:5px 0; font-size:16px; color:#003366;">
             {{ entreprise.nom_entrepriese }}
@@ -96,7 +98,7 @@
 <!-- ================= CONTENU DYNAMIQUE ================= -->
 
 {% if rapport.type == "VENTES" %}
-<h3>LISTE DES VENTES (STOCK MAGASIN)</h3>
+<h3>LISTES DES PRODUITS VENDUS</h3>
 
 <table>
     <tr>
@@ -105,8 +107,10 @@
         <th>Produit</th>
         <th>Quantité Vendue</th>
         <th>Date Vente</th>
-        <th>Sous-total</th>
-        <th>Bénéfice</th>
+        <th>Sous-total(GNF)</th>
+         {% if request.user.type_utilisateur|lower != 'gerante' %}
+        <th>Bénéfice(GNF)</th>
+        {% endif %}
     </tr>
 
     {% for vente_data in data %}
@@ -117,19 +121,27 @@
             <td>{{ ligne.produit.desgprod }}</td>
             <td>{{ ligne.quantite }}</td>
             <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
-            <td>{{ ligne.sous_total|floatformat:0 }} GNF</td>
-            <td>{{ ligne.benefice|floatformat:0 }} GNF</td>
+            <td>{{ ligne.sous_total|floatformat:0 }}</td>
+
+             {% if request.user.type_utilisateur|lower != 'gerante' %}
+            <td>{{ ligne.benefice|floatformat:0 }}</td>
+            {% endif %}
+
         </tr>
         {% endfor %}
         <!-- Totaux par vente -->
         <tr class="resume">
             <td colspan="5" style="text-align:right;"><strong>Total Vente {{ vente_data.vente.code }} :</strong></td>
             <td><strong>{{ vente_data.total_vente|floatformat:0 }} GNF</strong></td>
+
+             {% if request.user.type_utilisateur|lower != 'gerante' %}
             <td><strong>{{ vente_data.benefice_vente|floatformat:0 }} GNF</strong></td>
+            {% endif %}
+            
         </tr>
     {% empty %}
     <tr>
-        <td colspan="8" class="empty">Aucune vente trouvée.</td>
+        <td colspan="8" class="empty">Aucune vente trouvée sur les dates</td>
     </tr>
     {% endfor %}
 </table>
@@ -210,6 +222,12 @@
             <td><strong>Total des ventes :</strong></td>
             <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
         </tr>
+            {% if request.user.type_utilisateur|lower != 'gerante' %}
+        <tr>
+            <td><strong>Total Global Bénéfice : </strong></td>
+            <td><strong>{{ benefice_global|floatformat:0 }} GNF</strong></td>
+        </tr>
+        {% endif %}
     </table>
 </div>
 {% endif %}
@@ -335,11 +353,6 @@
 </table>
 
 {% endif %}
-
-<!-- ================= FOOTER ================= -->
-<div class="footer">
-    Rapport généré automatiquement – {{ rapport.date_generation|date:"d/m/Y" }}
-</div>
 
 </body>
 </html>

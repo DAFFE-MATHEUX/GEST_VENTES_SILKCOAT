@@ -6,24 +6,54 @@
     <title>LISTE DES LIVRAISONS</title>
 
     <style>
-        body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
-        h2, h4 { text-align: center; margin: 0; }
-        h4 { margin-top: 5px; color: #444; }
+        body {
+            font-family: "Trebuchet MS", Arial, sans-serif;
+            font-size: 12px;
+            margin: 25px;
+            color: #222;
+        }
 
-        /* Table style */
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        table, th, td { border: 1px solid #000; }
-        th, td { padding: 6px; text-align: left; font-size: 11px; }
-        th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
-        img.photo-preview { max-width: 45px; border-radius: 4px; }
+        h2, h3, h4 {
+            text-align: center;
+            margin: 0;
+        }
 
-        /* Print style */
+        h4 {
+            margin-top: 15px;
+            color: #444;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table, th, td {
+            border: 1px solid #000;
+        }
+
+        th, td {
+            padding: 6px;
+            font-size: 11px;
+        }
+
+        th {
+            background-color: #f0f0f0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        img.photo-preview {
+            max-width: 45px;
+            border-radius: 4px;
+        }
+
         @media print {
             body { margin: 0; }
             .no-print { display: none; }
         }
 
-        /* Header style */
         .header-top {
             display: flex;
             justify-content: space-between;
@@ -38,11 +68,14 @@
             line-height: 1.5;
         }
 
-        .header-center { text-align: center; flex: 1; }
+        .header-center {
+            text-align: center;
+            flex: 1;
+        }
+
         .header-center h2 {
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 5px;
             color: #002060;
         }
 
@@ -52,167 +85,206 @@
             object-fit: contain;
         }
 
-        .footer { margin-top: 25px; font-size: 11px; text-align: right; color: #555; }
+        .footer {
+            margin-top: 30px;
+            font-size: 11px;
+            text-align: right;
+            color: #555;
+        }
     </style>
 </head>
 
 <body>
 
-    <!-- ENTÊTE ENTREPRISE -->
-    <div class="header-top">
+<!-- ================= ENTÊTE ENTREPRISE ================= -->
+<div class="header-top">
 
-        <div class="header-left">
-            <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
-            <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
-            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if entreprise.contact2 %} / {{ entreprise.contact2 }}{% endif %}<br>
-            {% if nom_entreprise.email %}
+    <div class="header-left">
+        <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
+        <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
+        <strong>Contact :</strong> {{ nom_entreprise.contact1 }}
+        {% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
+        {% if nom_entreprise.email %}
             <strong>Email :</strong> {{ nom_entreprise.email }}
-            {% endif %}
-        </div>
-
-        <div class="header-center">
-            {% if nom_entreprise.logo %}
-                <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
-            {% endif %}
-            <h2>LISTES DES LIVRAISONS</h2>
-        </div>
-
-        <div class="header-right">
-            <strong>IMPRESSION</strong><br>
-            <em>{{ today|date:"d/m/Y" }}</em><br>
-        </div>
-
+        {% endif %}
     </div>
 
-    <!-- TITRE -->
-    <h2>CATALOGUE COMPLET DES PRODUITS LIVRER</h2>
-    <h3>Date de Début Livraisons : {{date_debut }}</h3>
-    <h3>Date de Fin Livraisons : {{date_fin }}</h3>
+    <div class="header-center">
+        {% if nom_entreprise.logo %}
+            <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
+        {% endif %}
+        <h2>LISTE DES LIVRAISONS</h2>
+    </div>
 
-            <!-- Totaux par catégorie -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h4>Totaux par Catégorie</h4>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Catégorie</th>
-                            <th>Nombre Livraisons</th>
-                            <th>Total Quantité Livrée</th>
-                            <th>Valeur Livrée</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for cat in total_par_categorie %}
-                        <tr>
-                            <td>{{ cat.produits__categorie__desgcategorie }}</td>
-                            <td>{{ cat.nombre_livraisons }}</td>
-                            <td>{{ cat.total_qtelivree }}</td>
-                            <td>{{ cat.valeur_livraison }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="text-center">Aucune livraison.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="header-right">
+        <strong>IMPRESSION</strong><br>
+        <em>{{ today|date:"d/m/Y" }}</em>
+    </div>
 
-                <!-- Totaux par produit -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h4>Totaux par Produit</h4>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Catégorie</th>
-                            <th>Réf Produit</th>
-                            <th>Désignation</th>
-                            <th>Nombre Livraisons</th>
-                            <th>Total Quantité Livrée</th>
-                            <th>Valeur Livrée</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for prod in total_par_produit %}
-                        <tr>
-                            <td>{{ prod.produits__categorie__desgcategorie }}</td>
-                            <td>{{ prod.produits__refprod }}</td>
-                            <td>{{ prod.produits__desgprod }}</td>
-                            <td>{{ prod.nombre_livraisons }}</td>
-                            <td>{{ prod.total_qtelivree }}</td>
-                            <td>{{ prod.valeur_livraison }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="6" class="text-center">Aucune livraison.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+</div>
 
-        <!-- Tableau principal des livraisons -->
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Num Livraison</th>
-                <th>Num Commande</th>
-                <th>Réf Produit</th>
-                <th>Catégorie</th>
-                <th>Désignation</th>
-                <th>Qte Commandée</th>
-                <th>Qte Livrée</th>
-                <th>Qte Restante</th>
-                <th>Prix Unitaire</th>
-                 <th>Date de Livraison</th>
-                <th>Photo</th>
-            </tr>
-        </thead>
+<!-- ================= TITRE ================= -->
+<h3>CATALOGUE DES PRODUITS LIVRÉS</h3>
+<h4>Date début : {{ date_debut }} | Date fin : {{ date_fin }}</h4>
 
-        <tbody>
-        {% for elem in listes_livraisons %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ elem.numlivrer }}</td>
-                <td>{{ elem.commande.numcmd }}</td>
-                <td>{{ elem.produits.refprod }}</td>
-                <td>{{ elem.produits.categorie.desgcategorie }}</td>
-                <td>{{ elem.produits.desgprod }}</td>
-                <td>{{ elem.commande.qtecmd }}</td>
-                <td>{{ elem.total_livree }}</td>
-                <td>{{ elem.qte_restante }}</td>
-                <td>{{ elem.produits.pu }}</td>
-                <td>{{ elem.datelivrer|date:'d/m/Y' }}</td>
+<!-- ================= TOTAUX PAR CATÉGORIE ================= -->
+<h4>Totaux par catégorie</h4>
 
-                <td style="text-align:center;">
-                    {% if elem.produits.photoprod %}
-                        <img src="{{ elem.produits.photoprod.url }}" class="photo-preview">
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-            </tr>
+<table>
+    <thead>
+        <tr>
+            <th>Catégorie</th>
+            <th>Nombre livraisons</th>
+            <th>Total livré</th>
+            <th>Total restant</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ cat.produits__categorie__desgcategorie }}</td>
+            <td style="text-align:center;">{{ cat.nombre_livraisons }}</td>
+            <td style="text-align:center;">{{ cat.total_qtelivree }}</td>
+            <td style="text-align:center;">{{ cat.total_qte_restante }}</td>
+        </tr>
         {% empty %}
-            <tr>
-                <td colspan="8" style="text-align:center;">⚠️ Aucun produit trouvé.</td>
-            </tr>
+        <tr>
+            <td colspan="4" style="text-align:center;">Aucune donnée</td>
+        </tr>
         {% endfor %}
-        </tbody>
-    </table>
+    </tbody>
+                    <tfoot class="table-secondary">
+            <tr>
+                <th class="text-center">Totaux :</th>
+                <th class="text-center">{{ total_livraison }}</th>
+                <th class="text-center">{{ total_quantite_livrer }}</th>
+                <th class="text-center">{{ total_quantite_restante }}</th>
+                </tr>
+            </tfoot>
+</table>
 
-    <!-- Signature -->
-    <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">
-        <div style="text-align: right;">
-            <p>Le Responsable</p>
-            <br><br><br>
-            <p>______________________________</p>
-        </div>
-    </div>
+<!-- ================= TOTAUX PAR PRODUIT ================= -->
+<h4>Totaux par produit</h4>
 
-    <div class="footer">
-        Impression générée le : {{ today|date:"d/m/Y" }}
+<table>
+    <thead>
+        <tr>
+            <th>Catégorie</th>
+            <th>Réf produit</th>
+            <th>Désignation</th>
+            <th>Livraisons</th>
+            <th>Total livré</th>
+            <th>Total restant</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for elem in total_par_produit %}
+        <tr>
+            <td>{{ elem.produits__categorie__desgcategorie }}</td>
+            <td style="text-align:center;">{{ elem.produits__refprod }}</td>
+            <td>{{ elem.produits__desgprod }}</td>
+            <td style="text-align:center;">{{ elem.nombre_livraisons }}</td>
+            <td style="text-align:center;">{{ elem.total_qtelivree }}</td>
+            <td style="text-align:center;">{{ elem.total_qte_restante }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align:center;">Aucune donnée</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+
+    
+</table>
+
+<!-- ================= LISTE DÉTAILLÉE DES LIVRAISONS ================= -->
+<h4>Détails des livraisons</h4>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Num livraison</th>
+            <th>Num commande</th>
+            <th>Réf produit</th>
+            <th>Catégorie</th>
+            <th>Désignation</th>
+            <th>Qté commandée</th>
+            <th>Qté livrée</th>
+            <th>Qté restante</th>
+            <th>PU</th>
+            <th>Date</th>
+            <th>Photo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for elem in listes_livraisons %}
+        <tr>
+            <td style="text-align:center;">{{ forloop.counter }}</td>
+            <td>{{ elem.numlivrer }}</td>
+            <td>{{ elem.commande.numcmd }}</td>
+            <td>{{ elem.produits.refprod }}</td>
+            <td>{{ elem.produits.categorie.desgcategorie }}</td>
+            <td>{{ elem.produits.desgprod }}</td>
+            <td style="text-align:center;">{{ elem.commande.qtecmd }}</td>
+            <td style="text-align:center;">{{ elem.qtelivrer }}</td>
+            <td style="text-align:center;">{{ elem.qte_restante }}</td>
+            <td style="text-align:right;">{{ elem.produits.pu }}</td>
+            <td style="text-align:center;">{{ elem.datelivrer|date:"d/m/Y" }}</td>
+            <td style="text-align:center;">
+                {% if elem.produits.photoprod %}
+                    <img src="{{ elem.produits.photoprod.url }}" class="photo-preview">
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="12" style="text-align:center;">Aucune livraison trouvée</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+
+    <tfoot class="table-secondary fw-bold">
+    <tr>
+        <!-- Colonnes non concernées -->
+        <th colspan="6" class="text-end">TOTAUX GÉNÉRAUX :</th>
+
+        <!-- Quantité commandée -->
+        <th class="text-center">
+            {{ total_qtecmd }}
+        </th>
+
+        <!-- Quantité livrée -->
+        <th class="text-center text-success">
+            {{ total_quantite_livrer }}
+        </th>
+
+        <!-- Quantité restante -->
+        <th class="text-center text-danger">
+            {{ total_quantite_restante }}
+        </th>
+
+        <!-- Colonnes PU / Date / Actions -->
+        <th colspan="3"></th>
+    </tr>
+</tfoot>
+
+</table>
+
+<!-- ================= SIGNATURE ================= -->
+<div style="margin-top: 50px; display: flex; justify-content: flex-end;">
+    <div style="text-align: right;">
+        <p>Le Responsable</p>
+        <br><br>
+        <p>______________________________</p>
     </div>
+</div>
+
+<div class="footer">
+    Impression générée le {{ today|date:"d/m/Y" }}
+</div>
 
 </body>
 </html>

@@ -121,6 +121,7 @@
         <a class="btn btn-primary btn-sm" href="{% url 'produits:consulter_produit' elem.id %}">
             <i class="fa fa-eye"></i>
         </a>
+         {% if not request.user.type_utilisateur == 'Gerante' %}
         <a class="btn btn-info btn-sm" href="{% url 'produits:editer_produit' elem.id %}">
             <i class="fa fa-edit"></i>
         </a>
@@ -130,6 +131,7 @@
                 data-target="#supprimer">
             <i class="fa fa-trash"></i>
         </button>
+        {% endif %}
     </td>
 </tr>
 {% empty %}

@@ -18,9 +18,7 @@
         max-height: 60px;
         object-fit: contain;
     }
-    body {
-        overflow-x: hidden;
-    }
+    body { overflow-x: hidden; }
 </style>
 
 <div id="page-wrapper">
@@ -65,237 +63,230 @@
             </div>
             <div class="col-md-3 d-flex align-items-end gap-2">
                 <button type="submit" class="btn btn-primary w-100">🔍 Filtrer</button>
-                <a href="{% url 'produits:filtrer_listes_commandes' %}" class="btn btn-secondary w-100">
+                <a href="{% url 'produits:listes_des_commandes' %}" class="btn btn-secondary w-100">
                     <i class="fa fa-refresh"></i> Annuler
                 </a>
             </div>
         </form>
 
-         {% if listes_commandes %}
-                <!-- TOTAL -->
-        <div class="mb-3">
-            <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
-        </div>
+        {% if listes_commandes %}
+            <!-- TOTAL -->
+            <div class="mb-3">
+                <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
+            </div>
 
-              <!-- TABLE COMMANDES -->
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped table-hover">
+            <!-- TABLE COMMANDES -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Num Commande</th>
+                            <th>Réf Produit</th>
+                            <th>Désignation</th>
+                            <th>Quantité</th>
+                            <th>Statut</th>
+                            <th>PU</th>
+                            <th>Catégorie</th>
+                            <th>Date</th>
+                            <th>Photo</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for elem in listes_commandes %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ elem.numcmd }}</td>
+                            <td>{{ elem.produits.refprod }}</td>
+                            <td>{{ elem.produits.desgprod }}</td>
+                            <td>{{ elem.qtecmd }}</td>
+                            <td>{{ elem.statuts }}</td>
+                            <td>{{ elem.produits.pu }}</td>
+                            <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                            <td>{{ elem.datecmd|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if elem.produits.photoprod %}
+                                    <img src="{{ elem.produits.photoprod.url }}">
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'produits:consulter_produit' elem.produits.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                <button class="btn btn-danger btn-sm btn-produit-sup"
+                                        data-id="{{ elem.id }}"
+                                        data-toggle="modal"
+                                        data-target="#supprimer">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="text-center">Aucune commande trouvée</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- FOOTER TABLEAU COMMANDES -->
+                    <tfoot>
+                        <tr>
+                            <th colspan="4" style="text-align:center;">Totaux</th>
+                            <th>{{ total_quantite }}</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- COMMANDES PAR CATÉGORIE -->
+            <h4 class="mt-4">Commandes par catégorie</h4>
+            <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Num Commande</th>
-                        <th>Réf Produit</th>
-                        <th>Désignation</th>
-                        <th>Quantité</th>
-                        <th>Statut</th>
-                        <th>PU</th>
                         <th>Catégorie</th>
-                        <th>Date</th>
-                        <th>Photo</th>
-                        <th>Actions</th>
+                        <th>Total Quantité</th>
+                        <th>Nb Commande</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for elem in listes_commandes %}
+                    {% for cat in total_par_categorie %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ elem.numcmd }}</td>
-                        <td>{{ elem.produits.refprod }}</td>
-                        <td>{{ elem.produits.desgprod }}</td>
-                        <td>{{ elem.qtecmd }}</td>
-                        <td>{{ elem.statuts }}</td>
-                        <td>{{ elem.produits.pu }}</td>
-                        <td>{{ elem.produits.categorie.desgcategorie }}</td>
-                        <td>{{ elem.datecmd|date:"d/m/Y" }}</td>
-                        <td>
-                            {% if elem.produits.photoprod %}
-                                <img src="{{ elem.produits.photoprod.url }}">
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'produits:consulter_produit' elem.produits.id %}" class="btn btn-primary btn-sm">
-                                <i class="fa fa-eye"></i>
-                            </a>
-                      
-                                <button class="btn btn-danger btn-sm btn-produit-sup"
-                                    data-id="{{ elem.id }}"
-                                    data-toggle="modal"
-                                    data-target="#supprimer">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </td>
+                        <td>{{ cat.produits__categorie__desgcategorie }}</td>
+                        <td>{{ cat.total_quantite }}</td>
+                        <td>{{ cat.nombre_commandes }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="text-center">Aucune commande trouvée</td>
+                        <td colspan="3" class="text-center">Aucune donnée</td>
                     </tr>
                     {% endfor %}
                 </tbody>
+                <!-- FOOTER TABLEAU PAR CATEGORIE -->
+                <tfoot>
+                    <tr>
+                        <th style="text-align:center;">Totaux globaux</th>
+                        <th>{{ total_quantite }}</th>
+                        <th>{{ total_commande }}</th>
+                    </tr>
+                </tfoot>
             </table>
-        </div>
-
-                <!-- COMMANDES PAR CATÉGORIE -->
-        <h4 class="mt-4">Commandes par catégorie</h4>
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Catégorie</th>
-                    <th>Total Quantité</th>
-                    <th>Nb Commande</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cat in total_par_categorie %}
-                <tr>
-                    <td>{{ cat.produits__categorie__desgcategorie }}</td>
-                    <td>{{ cat.total_quantite }}</td>
-                    <td>{{ cat.nombre_commandes }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="2" class="text-center">Aucune donnée</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- PAGINATION -->
-        <nav class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if listes_commandes.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ listes_commandes.previous_page_number }}">Précédent</a>
-                    </li>
-                {% endif %}
-
-                <li class="page-item active">
-                    <span class="page-link">
-                        Page {{ listes_commandes.number }} / {{ listes_commandes.paginator.num_pages }}
-                    </span>
-                </li>
-
-                {% if listes_commandes.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ listes_commandes.next_page_number }}">Suivant</a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
-
         {% elif listes_commandes_filtre %}
+                    <!-- TOTAL -->
+            <div class="mb-3">
+                <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
+            </div>
 
-        <!-- TOTAL -->
-        <div class="mb-3">
-            <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
-        </div>
+            <!-- TABLE COMMANDES -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Num Commande</th>
+                            <th>Réf Produit</th>
+                            <th>Désignation</th>
+                            <th>Quantité</th>
+                            <th>Statut</th>
+                            <th>PU</th>
+                            <th>Catégorie</th>
+                            <th>Date</th>
+                            <th>Photo</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for elem in listes_commandes_filtre %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ elem.numcmd }}</td>
+                            <td>{{ elem.produits.refprod }}</td>
+                            <td>{{ elem.produits.desgprod }}</td>
+                            <td>{{ elem.qtecmd }}</td>
+                            <td>{{ elem.statuts }}</td>
+                            <td>{{ elem.produits.pu }}</td>
+                            <td>{{ elem.produits.categorie.desgcategorie }}</td>
+                            <td>{{ elem.datecmd|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if elem.produits.photoprod %}
+                                    <img src="{{ elem.produits.photoprod.url }}">
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'produits:consulter_produit' elem.produits.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                <button class="btn btn-danger btn-sm btn-produit-sup"
+                                        data-id="{{ elem.id }}"
+                                        data-toggle="modal"
+                                        data-target="#supprimer">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="text-center">Aucune commande trouvée</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <!-- FOOTER TABLEAU COMMANDES -->
+                    <tfoot>
+                        <tr>
+                            <th colspan="4" style="text-align:center;">Totaux</th>
+                            <th>{{ total_quantite }}</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th>-</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
 
-        <!-- TABLE COMMANDES -->
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped table-hover">
+            <!-- COMMANDES PAR CATÉGORIE -->
+            <h4 class="mt-4">Commandes par catégorie</h4>
+            <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Num Commande</th>
                         <th>Catégorie</th>
-                        <th>Réf Produit</th>
-                        <th>Désignation</th>
-                        <th>Quantité</th>
-                        <th>Statut</th>
-                        <th>PU</th> 
-                        <th>Date</th>
-                        <th>Photo</th>
-                        <th>Actions</th>
+                        <th>Total Quantité</th>
+                        <th>Nb Commande</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for elem in listes_commandes_filtre %}
+                    {% for cat in total_par_categorie %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ elem.numcmd }}</td>
-                        <td>{{ elem.produits.categorie.desgcategorie }}</td>
-                        <td>{{ elem.produits.refprod }}</td>
-                        <td>{{ elem.produits.desgprod }}</td>
-                        <td>{{ elem.qtecmd }}</td>
-                        <td>{{ elem.statuts }}</td>
-                        <td>{{ elem.produits.pu }}</td>
-                        <td>{{ elem.datecmd|date:"d/m/Y" }}</td>
-                        <td>
-                            {% if elem.produits.photoprod %}
-                                <img src="{{ elem.produits.photoprod.url }}">
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'produits:consulter_produit' elem.produits.id %}" class="btn btn-primary btn-sm">
-                                <i class="fa fa-eye"></i>
-                            </a>
-                                <button class="btn btn-danger btn-sm btn-produit-sup"
-                                    data-id="{{ elem.id }}"
-                                    data-toggle="modal"
-                                    data-target="#supprimer">
-                                <i class="fa fa-trash"></i>
-                            </button>
-                        </td>
+                        <td>{{ cat.produits__categorie__desgcategorie }}</td>
+                        <td>{{ cat.total_quantite }}</td>
+                        <td>{{ cat.nombre_commandes }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="text-center">Aucune commande trouvée</td>
+                        <td colspan="3" class="text-center">Aucune donnée</td>
                     </tr>
                     {% endfor %}
                 </tbody>
+                <!-- FOOTER TABLEAU PAR CATEGORIE -->
+                <tfoot>
+                    <tr>
+                        <th style="text-align:center;">Totaux globaux</th>
+                        <th>{{ total_quantite }}</th>
+                        <th>{{ total_commande }}</th>
+                    </tr>
+                </tfoot>
             </table>
-        </div>
-
-        <!-- COMMANDES PAR CATÉGORIE -->
-        <h4 class="mt-4">Commandes par catégorie</h4>
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Catégorie</th>
-                    <th>Total Quantité</th>
-                    <th>Nb Commande</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cat in total_par_categorie %}
-                <tr>
-                    <td>{{ cat.produits__categorie__desgcategorie }}</td>
-                    <td>{{ cat.total_quantite }}</td>
-                    <td>{{ cat.nombre_commandes }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="2" class="text-center">Aucune donnée</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- PAGINATION -->
-        <nav class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if listes_commandes_filtre.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ listes_commandes_filtre.previous_page_number }}">Précédent</a>
-                    </li>
-                {% endif %}
-
-                <li class="page-item active">
-                    <span class="page-link">
-                        Page {{ listes_commandes_filtre.number }} / {{ listes_commandes_filtre.paginator.num_pages }}
-                    </span>
-                </li>
-
-                {% if listes_commandes_filtre.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ listes_commandes_filtre.next_page_number }}">Suivant</a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
 
         {% else %}
             <p class="text-center">Aucune commande disponible.</p>
@@ -327,12 +318,12 @@
 </div>
 
 <script>
-                // Modal Supprimer
-            document.querySelectorAll('.btn-produit-sup').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
-                });
-            });
+    // Modal Supprimer
+    document.querySelectorAll('.btn-produit-sup').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
+        });
+    });
 </script>
 
 {% endblock %}

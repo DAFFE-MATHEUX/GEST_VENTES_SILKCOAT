@@ -20,80 +20,82 @@
         .header-left, .header-right { font-size: 14px; line-height: 1.5; }
         .header-center { text-align: center; flex: 1; }
         .header-center h2 { font-weight: bold; color: #003366; text-transform: uppercase; margin-bottom: 5px; }
-        .logo { width: 80px; height: 80px; }
+        .logo { width: 80px; height: 80px; object-fit: contain; }
+        .total-row { font-weight: bold; background-color: #e6f7ff; text-align: right; }
     </style>
 </head>
 <body>
 
+<!-- ENTÊTE -->
 <div class="header-top">
     <div class="header-left">
-            <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
-            <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
-            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if entreprise.contact2 %} / {{ entreprise.contact2 }}{% endif %}<br>
-            {% if nom_entreprise.email %}
+        <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
+        <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
+        <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
+        {% if nom_entreprise.email %}
             <strong>Email :</strong> {{ nom_entreprise.email }}
-            {% endif %}
+        {% endif %}
     </div>
 
     <div class="header-center">
         {% if nom_entreprise.logo %}
             <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
         {% endif %}
-        <h2>{{ nom_entreprise.nom_entrepriese|upper }}</h2>
+        <h2>LISTE DES DÉPENSES EFFECTUÉES</h2>
     </div>
 
     <div class="header-right">
         <strong>RÉPUBLIQUE DE GUINÉE</strong><br>
-        <em>Travail - Justice - Solidarité</em><br>
-
+        <em>Travail - Justice - Solidarité</em>
     </div>
 </div>
 
+<!-- Période -->
 <div class="header">
-    <h4>LISTE DES DÉPENSES EFFECTUEES</h4>
     <strong>Période : {{ date_debut|date:"d/m/Y" }} - {{ date_fin|date:"d/m/Y" }}</strong>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Date</th>
-            <th>Désignation</th>
-            <th>Montant</th>
-            <th>Destiné à</th>
-            <th>Utilisateur</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for depense in depenses %}
-        <tr>
-            <td>{{ forloop.counter }}</td>
-            <td>{{ depense.date_operation|date:"d/m/Y" }}</td>
-            <td>{{ depense.designation }}</td>
-            <td>{{ depense.montant }}</td>
-            <td>{{ depense.destine_a }}</td>
-            <td>{{ depense.utilisateur.username }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="10" style="text-align:center;">⚠️ Aucune dépense trouvée pour cette période.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<!-- TABLEAU DES DÉPENSES PAR DATE -->
+{% if depenses_par_date %}
+    {% for group in depenses_par_date %}
+        <h4>Dépenses du {{ group.date|date:"d/m/Y" }}</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Désignation</th>
+                    <th>Montant (GNF)</th>
+                    <th>Destiné à</th>
+                    <th>Utilisateur</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for depense in group.depenses %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ depense.designation }}</td>
+                    <td style="text-align:right;">{{ depense.montant|floatformat:0 }}</td>
+                    <td>{{ depense.destine_a }}</td>
+                    <td>{{ depense.utilisateur.username }}</td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td colspan="2" style="text-align:right;">Total dépense du {{ group.date|date:"d/m/Y" }} :</td>
+                    <td style="text-align:right;">{{ group.total|floatformat:0 }} GNF</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+    {% endfor %}
+{% else %}
+    <p style="text-align:center;">⚠️ Aucune dépense trouvée pour cette période.</p>
+{% endif %}
 
-<div style="margin-top: 40px; width: 100%; display: flex; justify-content: space-between;">
-    <div style="width: 50%; text-align: left;"></div>
-    <div style="width: 50%; text-align: right;">
-        <p>Le Responsable </p><br><br><br>
-        <p>_________________________</p>
-    </div>
-</div>
-
+<!-- TOTAL GENERAL -->
 <div class="footer">
-    Fait le : {{ today|date:"d/m/Y" }} <br>
-    Total Dépenses : {{ total_montant }}
+    Total général des dépenses : <strong>{{ total_general|floatformat:0 }} GNF</strong><br>
+    Fait le : {{ today|date:"d/m/Y" }}
 </div>
 
 </body>

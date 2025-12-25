@@ -106,12 +106,15 @@
                     <i class="fa fa-angle-left pull-right"></i>
                 </a>
                 <ul class="treeview-menu">
+                    {% if not request.user.type_utilisateur == 'Gerante' %} 
                     <li><a href="{% url 'liste_entreprise' %}"><i class="fa fa-list"></i>Informations Personnelles</a></li>
-                    <li><a href="{% url 'liste_depense' %}"><i class="fa fa-list"></i>Listes des Dépenses </a></li>
                     <li><a href="{% url 'notifications:listes_totales_notification' %}"><i class="fa fa-list"></i>Listes des Notifications </a></li>
+                    {% endif %}
+                    <li><a href="{% url 'liste_depense' %}"><i class="fa fa-list"></i>Listes des Dépenses </a></li>
+                  
                 </ul>
             </li>
-
+{% if not request.user.type_utilisateur == 'Gerante' %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-file-alt"></i>
@@ -122,7 +125,7 @@
                     <li><a href="{% url 'audit:liste_audit' %}"><i class="fa fa-list"></i> Listes des AuditLog</a></li>
                 </ul>
             </li>
-
+{% endif %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-file-alt"></i>

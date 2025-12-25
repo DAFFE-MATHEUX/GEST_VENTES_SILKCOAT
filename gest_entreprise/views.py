@@ -26,6 +26,8 @@ from openpyxl.utils import get_column_letter
 from django.db import transaction
 import openpyxl
 
+from collections import defaultdict 
+
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur') #Empecher tant que l'utilisateur n'est pas connecté
 def nouvelle_saisie(request, *args, **kwargs):
     template_name = "gestion_entreprise/listes_entreprise.html"
@@ -629,7 +631,6 @@ def choix_listes_impression_depenses(request):
 #==============================================================================================
 @login_required
 def liste_depenses_impression(request):
-    # --- Récupération des dates ---
     date_debut_str = request.POST.get('date_debut')
     date_fin_str = request.POST.get('date_fin')
 
@@ -637,28 +638,31 @@ def liste_depenses_impression(request):
         messages.error(request, "⚠️ Veuillez renseigner les deux dates.")
         return render(request, "gest_entreprise/depenses/impression_listes/choix_impression_depenses.html")
 
-    try:
-        date_debut = datetime.strptime(date_debut_str, "%Y-%m-%d").date()
-        date_fin = datetime.strptime(date_fin_str, "%Y-%m-%d").date()
-    except ValueError:
-        messages.error(request, "⚠️ Format de date invalide.")
-        return render(request, "gest_entreprise/depenses/impression_listes/choix_impression_depenses.html")
+    date_debut = datetime.strptime(date_debut_str, "%Y-%m-%d").date()
+    date_fin = datetime.strptime(date_fin_str, "%Y-%m-%d").date()
 
-    if date_debut > date_fin:
-        messages.warning(request, "⚠️ La date de début ne doit pas être supérieure à la date de fin.")
-        return render(request, "gest_entreprise/depenses/impression_listes/choix_impression_depenses.html")
+    depenses = Depenses.objects.filter(date_operation__range=(date_debut, date_fin)).order_by('date_operation')
 
-    # --- Récupération des dépenses ---
-    depenses = Depenses.objects.filter(
-        date_operation__range=(date_debut, date_fin)
-    )
+    # Grouper par date
+    depenses_par_date_dict = defaultdict(list)
+    total_general = 0
+    for dep in depenses:
+        depenses_par_date_dict[dep.date_operation].append(dep)
+        total_general += dep.montant
+
+    # Créer une liste pour le template
+    depenses_par_date = [
+        {'date': date, 'depenses': items, 'total': sum(d.montant for d in items)}
+        for date, items in depenses_par_date_dict.items()
+    ]
 
     context = {
-        'depenses': depenses,
+        'depenses_par_date': depenses_par_date,
+        'total_general': total_general,
         'nom_entreprise': Entreprise.objects.first(),
-        'today': timezone.now(),
         'date_debut': date_debut,
         'date_fin': date_fin,
+        'today': timezone.now(),
     }
 
     return render(request, 'gest_entreprise/depenses/impression_listes/apercue_avant_impression_listes_depenses.html', context)

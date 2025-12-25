@@ -60,25 +60,7 @@
         </div>
         <br>
 
-        <!-- Recherche par date -->
-        <form method="get" class="row g-3 mb-4">
-            <div class="col-md-3">
-                <label for="date_debut" class="form-label">Date Début</label>
-                <input type="date" class="form-control" id="date_debut" name="date_debut" value="{{ date_debut }}">
-            </div>
-            <div class="col-md-3">
-                <label for="date_fin" class="form-label">Date Fin</label>
-                <input type="date" class="form-control" id="date_fin" name="date_fin" value="{{ date_fin }}">
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">🔍 Filtrer</button>
-                <a href="{% url 'produits:listes_produits_stock' %}" class="btn btn-secondary w-100 ms-2">
-                    <i class="fa fa-refresh"></i> Annuler
-                </a>
-            </div>
-        </form>
-        <br>
-
+        
         {% if listes_produits %}
         <!-- Tableau stocks -->
         <div class="row">
@@ -92,7 +74,7 @@
                             <div class="col-md-6 col-sm-12">
                                 <small class="text-muted" style="font-size: 20px; font-weight: bold;">
                                     <i class="fa fa-users text-primary me-1"></i>
-                                    Total Stocks : <strong>{{ total_produit }}</strong>
+                                    Total Produit : <strong>{{ total_produit }}</strong>
                                 </small>
                             </div>
                             <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
@@ -116,8 +98,10 @@
                                         <th>Seuil</th>
                                         <th>Date Stock</th>
                                         <th>Photo</th>
+                                    {% if not request.user.type_utilisateur == 'Gerante' %}
                                         <th>Action</th>
-                                    </tr>
+                                    {% endif %}                                   
+                                 </tr>
                                 </thead>
                                 <tbody id="my_table">
                                     {% for elem in listes_produits %}
@@ -137,7 +121,9 @@
                                                 Photo indisponible
                                             {% endif %}
                                         </td>
-                                        <td>
+                                    {% if not request.user.type_utilisateur == 'Gerante' %}
+                                        <td>    
+
                                 <button class="btn btn-danger btn-sm btn-produit-sup"
                                         data-id="{{ elem.id }}"
                                         data-toggle="modal"
@@ -145,6 +131,7 @@
                                     <i class="fa fa-trash"></i>
                                 </button>
                                         </td>
+                                {% endif %}
                                     </tr>
                                     {% empty %}
                                     <tr><td colspan="10" class="text-center">Aucun stock enregistré.</td></tr>
@@ -233,6 +220,12 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+
+        {% else %}
+        <div class="alert alert-info">
+            Aucun produit en stock trouvé.
         </div>
         {% endif %}
 

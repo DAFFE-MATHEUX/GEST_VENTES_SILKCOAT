@@ -16,8 +16,6 @@
         th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
         img.photo-preview { max-width: 45px; max-height: 45px; border-radius: 4px; object-fit: contain; }
 
-        @media print { body { margin: 0; } .no-print { display: none; } }
-
         .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
         .header-left, .header-right { font-size: 13px; line-height: 1.5; }
         .header-center { text-align: center; flex: 1; }
@@ -57,7 +55,7 @@
     <!-- TITRE -->
     <h3>Ventes du {{ date_debut }} au {{ date_fin }}</h3>
 
-    <!-- TABLEAU DES VENTES -->
+    <!-- TABLEAU PRINCIPAL DES VENTES -->
     <table>
         <thead>
             <tr>
@@ -68,7 +66,9 @@
                 <th>Qté</th>
                 <th>Prix Vente</th>
                 <th>Sous-total</th>
+                {% if request.user.type_utilisateur != 'Gerante' %}
                 <th>Bénéfice</th>
+                {% endif %}
                 <th>Date Vente</th>
                 <th>Photo Produit</th>
             </tr>
@@ -85,7 +85,9 @@
                             <td>{{ ligne.quantite }}</td>
                             <td>{{ ligne.prix }} GNF</td>
                             <td>{{ ligne.sous_total }} GNF</td>
+                            {% if request.user.type_utilisateur != 'Gerante' %}
                             <td>{{ ligne.benefice }} GNF</td>
+                            {% endif %}
                             <td>{{ ligne.vente.date_vente|date:"d/m/Y" }}</td>
                             <td>
                                 {% if ligne.produit.photoprod %}
@@ -100,16 +102,20 @@
                     <tr class="total-row">
                         <td colspan="6">Total Vente {{ vente_data.vente.code }} :</td>
                         <td>{{ vente_data.total_vente }} GNF</td>
+                        {% if request.user.type_utilisateur != 'Gerante' %}
                         <td>{{ vente_data.benefice_vente }} GNF</td>
-                        <td colspan="2"></td>
+                        {% endif %}
+                        <td colspan="2" class="text-center">-</td>
                     </tr>
                 {% endfor %}
+                {% if request.user.type_utilisateur != 'Gerante' %}
                 <!-- Bénéfice global -->
                 <tr class="total-row">
                     <td colspan="7">Bénéfice Global :</td>
                     <td>{{ benefice_global }} GNF</td>
                     <td colspan="2"></td>
                 </tr>
+                {% endif %}
             {% else %}
                 <tr>
                     <td colspan="10" style="text-align:center;">Aucune vente enregistrée pour cette période.</td>
@@ -117,36 +123,80 @@
             {% endif %}
         </tbody>
     </table>
-
 <br>
-<h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+    <!-- TABLEAU DES VENTES PAR PRODUIT -->
+    <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
 
-<table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Catégorie</th>
-            <th>Quantité Vendue</th>
-            <th>Montant Total (GNF)</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% if total_par_categorie %}
-            {% for cat in total_par_categorie %}
+    <table style="width:100%; border-collapse: collapse;">
+        <thead>
             <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ cat.produit__categorie__desgcategorie }}</td>
-                <td>{{ cat.total_quantite }}</td>
-                <td>{{ cat.total_montant|floatformat:"0" }} GNF</td>
+                <th>#</th>
+                <th>Produit</th>
+                <th>Quantité Vendue</th>
+                <th>Montant Total (GNF)</th>
             </tr>
-            {% endfor %}
-        {% else %}
+        </thead>
+        <tbody>
+            {% if total_par_produit %}
+                {% for prod in total_par_produit %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ prod.produit__desgprod }}</td>
+                    <td>{{ prod.total_quantite }}</td>
+                    <td>{{ prod.total_montant|floatformat:"0" }} GNF</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" style="text-align:center;">Aucune vente par produit</td>
+                </tr>
+            {% endif %}
+        </tbody>
+        <tfoot>
+            <tr style="font-weight:bold; background-color:#e6f7ff;">
+                <td colspan="2" style="text-align:center;">Totaux :</td>
+                <td>{{ total_quantite_produits|default:0 }}</td>
+                <td>{{ total_montant_produits|floatformat:"0"|default:"0" }} GNF</td>
+            </tr>
+        </tfoot>
+    </table>
+<br>
+    <!-- TABLEAU DES VENTES PAR CATEGORIE -->
+    <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+
+    <table style="width:100%; border-collapse: collapse;">
+        <thead>
             <tr>
-                <td colspan="4" style="text-align:center;">Aucune vente par catégorie</td>
+                <th>#</th>
+                <th>Catégorie</th>
+                <th>Quantité Vendue</th>
+                <th>Montant Total (GNF)</th>
             </tr>
-        {% endif %}
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            {% if total_par_categorie %}
+                {% for cat in total_par_categorie %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ cat.produit__categorie__desgcategorie }}</td>
+                    <td>{{ cat.total_quantite }}</td>
+                    <td>{{ cat.total_montant|floatformat:"0" }} GNF</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" style="text-align:center;">Aucune vente par catégorie</td>
+                </tr>
+            {% endif %}
+        </tbody>
+        <tfoot>
+            <tr style="font-weight:bold; background-color:#e6f7ff;">
+                <td colspan="2" style="text-align:center;">Totaux :</td>
+                <td>{{ total_quantite_categories|default:0 }}</td>
+                <td>{{ total_montant_categories|floatformat:"0"|default:"0" }} GNF</td>
+            </tr>
+        </tfoot>
+    </table>
 
     <!-- Signature -->
     <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">

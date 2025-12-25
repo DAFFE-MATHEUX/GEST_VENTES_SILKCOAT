@@ -19,7 +19,6 @@ urlpatterns = [
     #==================================================================================================================================================
     
     path('listes_produits_stock/', listes_produits_stock, name='listes_produits_stock'),
-    path('filtrer_listes_produits_stock/', filtrer_listes_produits_stock, name='filtrer_listes_produits_stock'),
     path('ajouter_stock_multiple/', ajouter_stock_multiple, name='ajouter_stock_multiple'),  
     path('supprimer_produits_stock/', supprimer_produits_stock, name='supprimer_produits_stock'),
      

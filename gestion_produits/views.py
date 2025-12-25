@@ -20,7 +20,7 @@ from django.core.mail import EmailMessage
 from django.utils import timezone
 from django.conf import settings
 from django.http import HttpResponse
-from django.db.models import Sum, F, Count, Q
+from django.db.models import Sum, F, Count, Q, ExpressionWrapper, IntegerField
 from openpyxl import Workbook
 
 from django.db import transaction
@@ -1372,14 +1372,14 @@ def supprimer_ventes(request):
                 EmailMessage(
                     subject=f"🗑 Suppression d'une vente - {code_vente}",
                     body=f"""
-Une vente a été supprimée.
+            Une vente a été supprimée.
 
-Code : {code_vente}
-Utilisateur : {request.user.get_full_name()}
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+            Code : {code_vente}
+            Utilisateur : {request.user.get_full_name()}
+            Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 
-Le stock a été restauré automatiquement.
-""",
+            Le stock a été restauré automatiquement.
+            """,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     to=[settings.ADMIN_EMAIL]
                 ).send()
@@ -1390,7 +1390,6 @@ Le stock a été restauré automatiquement.
             request,
             f"✅ Vente {code_vente} supprimée avec succès. Stock restauré ✔"
         )
-
     except Exception as e:
         messages.error(request, f"⚠️ Erreur suppression : {e}")
 
@@ -1450,7 +1449,6 @@ def listes_produits(request):
 #================================================================================================
 # Fonction pour afficher la liste de tout les produits
 #================================================================================================
-
 @login_required
 def listes_produits_stock(request):
     try:
@@ -1504,230 +1502,247 @@ def listes_produits_stock(request):
         context
     )
 
-#================================================================================================
-# Fonction pour filter la liste des produits en stocks selon un intervalle de date donnée
-#================================================================================================
-@login_required
-def filtrer_listes_produits_stock(request):
-    """
-    Filtre les produits en stock selon la date
-    et affiche les statistiques + pagination
-    """
-
-    date_debut = request.GET.get("date_debut")
-    date_fin = request.GET.get("date_fin")
-
-    total_produit = 0
-    total_par_categorie = []
-    listes_produits = []
-
-    try:
-        # ================== QUERYSET DE BASE ==================
-        produits_qs = (
-            StockProduit.objects
-            .select_related(
-                'produit',
-                'produit__categorie'
-            )
-            .order_by('-id')
-        )
-
-        # ================== FILTRE PAR DATE ==================
-        if date_debut and date_fin:
-            produits_qs = produits_qs.filter(
-                date_maj__date__range=[date_debut, date_fin]
-            )
-        elif date_debut:
-            produits_qs = produits_qs.filter(
-                date_maj__date=date_debut
-            )
-        elif date_fin:
-            produits_qs = produits_qs.filter(
-                date_maj__date=date_fin
-            )
-
-        # ================== TOTAL DES PRODUITS ==================
-        total_produit = produits_qs.count()
-
-        # ================== TOTAL PAR CATÉGORIE ==================
-        total_par_categorie = (
-            produits_qs
-            .values('produit__categorie__desgcategorie')
-            .annotate(
-                nombre_produits=Count('produit', distinct=True),
-                quantite_stock=Sum('qtestock'),
-                valeur_stock=Sum(
-                    F('qtestock') * F('produit__pu')
-                ),
-            )
-            .order_by('produit__categorie__desgcategorie')
-        )
-
-        # ================== PAGINATION ==================
-        listes_produits = pagination_liste(request, produits_qs)
-
-    except Exception as ex:
-        messages.warning(
-            request,
-            f"Erreur lors du filtrage des produits en stock : {str(ex)}"
-        )
-        return redirect('produits:listes_produits_stock')
-
-    context = {
-        "date_debut": date_debut,
-        "date_fin": date_fin,
-        "listes_produits": listes_produits,
-        "total_produit": total_produit,
-        "total_par_categorie": total_par_categorie,
-    }
-
-    return render(
-        request,
-        "gestion_produits/stocks/lites_produits_stocks.html",
-        context
-    )
 
 #================================================================================================
 # Fonction pour afficher la liste de tout les livraisons
 #================================================================================================
 @login_required
 def listes_des_livraisons(request):
-    total_quantite_restante = 0
-    total_valeur_livraison = 0
-    
-    try:
-        # ------------------ LISTE DES LIVRAISONS ------------------
-        listes_livraisons = LivraisonsProduits.objects.select_related(
-            'commande', 'produits', 'produits__categorie'
-        ).order_by('-id')
 
+    try:
+        # ================= LIVRAISONS =================
+        livraisons_qs = LivraisonsProduits.objects.select_related(
+            'commande', 'produits', 'produits__categorie'
+        )
+
+        # ================= QUANTITÉ LIVRÉE PAR COMMANDE =================
+        livraison_par_commande = (
+            LivraisonsProduits.objects
+            .values('commande')
+            .annotate(total_livree=Sum('qtelivrer'))
+        )
+
+        livraison_map = {
+            l['commande']: l['total_livree'] for l in livraison_par_commande
+        }
+
+        # ================= LISTE + QTE RESTANTE =================
+        listes_livraisons = livraisons_qs.order_by('-id')
+
+        total_quantite_restante = 0
+        for l in listes_livraisons:
+            total_livree = livraison_map.get(l.commande_id, 0)
+            l.qte_restante = max(l.commande.qtecmd - total_livree, 0)
+            total_quantite_restante += l.qte_restante
+
+        # ================= TOTAUX GLOBAUX =================
         total_livraison = listes_livraisons.count()
-        
+
         total_quantite_livrer = listes_livraisons.aggregate(
             total=Sum('qtelivrer')
         )['total'] or 0
         
-        total_quantite_restante = LivraisonsProduits.objects.aggregate(
+        total_qtecmd = listes_livraisons.aggregate(
+            total=Sum('commande__qtecmd')
+        )['total'] or 0
+
+        total_quantite_livrer = listes_livraisons.aggregate(
+            total=Sum('qtelivrer')
+        )['total'] or 0
+
+        total_quantite_restante = listes_livraisons.aggregate(
             total=Sum(F('commande__qtecmd') - F('qtelivrer'))
         )['total'] or 0
-        print(f"Total quantité restante: {total_quantite_restante}")
-        
-        # Calcul des quantités livrées et restantes
-        for elem in listes_livraisons:
-            total_livree = (
-                LivraisonsProduits.objects.filter(
-                    produits=elem.produits,
-                    commande=elem.commande
-                ).aggregate(total=Sum('qtelivrer'))['total'] or 0
-            )
-            elem.total_livree = total_livree
-            elem.qte_restante = elem.commande.qtecmd - total_livree
-            print(f"Produit: {elem.produits.desgprod}, Commande: {elem.commande.numcmd}, Total livrée: {total_livree}, Qte restante: {elem.qte_restante}")
 
-        # ------------------ TOTAL PAR CATEGORIE ------------------
+
+        # ================= TOTAUX PAR CATÉGORIE =================
         total_par_categorie = (
             LivraisonsProduits.objects
             .values('produits__categorie__desgcategorie')
             .annotate(
-                nombre_livraisons=Count('id', distinct=True),
-                total_livraison=Count('id'),
+                nombre_livraisons=Count('id'),
                 total_qtelivree=Sum('qtelivrer'),
-                valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+                total_qtecmd=Sum('commande__qtecmd')
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
             )
             .order_by('produits__categorie__desgcategorie')
         )
-
-        # ------------------ TOTAL PAR PRODUIT ------------------
+        # ================= TOTAUX PAR PRODUIT =================
         total_par_produit = (
             LivraisonsProduits.objects
-            .values('produits__categorie__desgcategorie', 'produits__refprod', 'produits__desgprod')
-            .annotate(
-                nombre_livraisons=Count('id', distinct=True),
-                total_qtelivree=Sum('qtelivrer'),
-                valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+            .values(
+                'produits_id',
+                'produits__desgprod',
+                'produits__categorie__desgcategorie'
             )
-            .order_by('produits__categorie__desgcategorie', 'produits__refprod')
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtelivree=Sum('qtelivrer'),
+                total_qtecmd=Sum('commande__qtecmd')
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
+            .order_by('produits__desgprod')
         )
 
+        # ================= PAGINATION =================
         listes_livraisons = pagination_liste(request, listes_livraisons)
 
     except Exception as ex:
-        messages.warning(request, f"Erreur de récupération des livraisons : {str(ex)} !")
+        messages.warning(request, f"Erreur de récupération : {ex}")
         listes_livraisons = []
         total_livraison = 0
+        total_quantite_livrer = 0
+        total_quantite_restante = 0
         total_par_categorie = []
         total_par_produit = []
+        total_qtecmd = 0
         total_quantite_livrer = 0
         total_quantite_restante = 0
 
     context = {
         'listes_livraisons': listes_livraisons,
         'total_livraison': total_livraison,
-        'total_par_categorie': total_par_categorie,
-        'total_par_produit': total_par_produit,
         'total_quantite_livrer': total_quantite_livrer,
         'total_quantite_restante': total_quantite_restante,
+        'total_par_categorie': total_par_categorie,
+        'total_par_produit': total_par_produit,
+        'total_qtecmd' : total_qtecmd,
+        
     }
 
-    return render(request, "gestion_produits/livraisons/listes_livraisons.html", context)
+    return render(
+        request,
+        "gestion_produits/livraisons/listes_livraisons.html",
+        context
+    )
 
 #================================================================================================
 # Fonction pour filtrer la liste des livraisons par date
 #================================================================================================
 @login_required
-
 def filtrer_listes_livraisons(request):
-    """
-    Filtre les livraisons selon la date.
-    La page affiche soit une date unique, soit un intervalle de dates.
-    """
 
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
 
-    total_livraison = 0
-    total_par_categorie = []
-    listes_livraisons_filtre = []
-
     try:
-        # ================== QUERYSET DE BASE ==================
-        livraison_qs = LivraisonsProduits.objects.select_related(
+        # ================= QUERYSET DE BASE =================
+        livraisons_qs = LivraisonsProduits.objects.select_related(
+            'commande',
             'produits',
-            'produits__categorie',
-            'commande'
-        ).order_by("-datelivrer")
+            'produits__categorie'
+        )
 
-        # ================== FILTRE PAR DATE ==================
+        # ================= FILTRE PAR DATE =================
         if date_debut and date_fin:
-            livraison_qs = livraison_qs.filter(datelivrer__range=[date_debut, date_fin])
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer__range=[date_debut, date_fin]
+            )
         elif date_debut:
-            livraison_qs = livraison_qs.filter(datelivrer=date_debut)
+            livraisons_qs = livraisons_qs.filter(datelivrer=date_debut)
         elif date_fin:
-            livraison_qs = livraison_qs.filter(datelivrer=date_fin)
+            livraisons_qs = livraisons_qs.filter(datelivrer=date_fin)
 
-        # ================== TOTAL DES LIVRAISONS ==================
-        total_livraison = livraison_qs.count()
+        livraisons_qs = livraisons_qs.order_by('-id')
 
-        # ================== TOTAL PAR CATÉGORIE ==================
+        # ================= QTE LIVRÉE PAR COMMANDE =================
+        livraison_par_commande = (
+            livraisons_qs
+            .values('commande')
+            .annotate(total_livree=Sum('qtelivrer'))
+        )
+
+        livraison_map = {
+            l['commande']: l['total_livree'] for l in livraison_par_commande
+        }
+
+        # ================= LISTE + QTE RESTANTE =================
+        total_quantite_restante = 0
+        for l in livraisons_qs:
+            total_livree = livraison_map.get(l.commande_id, 0)
+            l.qte_restante = max(l.commande.qtecmd - total_livree, 0)
+            total_quantite_restante += l.qte_restante
+
+        # ================= TOTAUX GLOBAUX =================
+        total_livraison = livraisons_qs.count()
+
+        total_qtecmd = livraisons_qs.aggregate(
+            total=Sum('commande__qtecmd')
+        )['total'] or 0
+
+        total_quantite_livrer = livraisons_qs.aggregate(
+            total=Sum('qtelivrer')
+        )['total'] or 0
+
+        total_quantite_restante = livraisons_qs.aggregate(
+            total=Sum(F('commande__qtecmd') - F('qtelivrer'))
+        )['total'] or 0
+
+        # ================= TOTAUX PAR CATÉGORIE =================
         total_par_categorie = (
-            livraison_qs
+            livraisons_qs
             .values('produits__categorie__desgcategorie')
-            .annotate(total_quantite=Sum('qtelivrer'))
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtecmd=Sum('commande__qtecmd'),
+                total_qtelivree=Sum('qtelivrer')
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
             .order_by('produits__categorie__desgcategorie')
         )
 
-        # ================== PAGINATION ==================
-        listes_livraisons_filtre = pagination_liste(request, livraison_qs)
+        # ================= TOTAUX PAR PRODUIT =================
+        total_par_produit = (
+            livraisons_qs
+            .values(
+                'produits_id',
+                'produits__desgprod',
+                'produits__categorie__desgcategorie'
+            )
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtecmd=Sum('commande__qtecmd'),
+                total_qtelivree=Sum('qtelivrer')
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
+            .order_by('produits__desgprod')
+        )
+
+        # ================= PAGINATION =================
+        listes_livraisons_filtre = pagination_liste(request, livraisons_qs)
 
     except Exception as ex:
-        messages.warning(request, f"Erreur lors du filtrage des livraisons : {str(ex)}")
+        messages.warning(request, f"Erreur lors du filtrage : {ex}")
+        listes_livraisons_filtre = []
+        total_livraison = 0
+        total_qtecmd = 0
+        total_quantite_livrer = 0
+        total_quantite_restante = 0
+        total_par_categorie = []
+        total_par_produit = []
 
     context = {
         "date_debut": date_debut,
         "date_fin": date_fin,
         "listes_livraisons_filtre": listes_livraisons_filtre,
+
+        # Totaux globaux (tfoot)
         "total_livraison": total_livraison,
+        "total_qtecmd": total_qtecmd,
+        "total_quantite_livrer": total_quantite_livrer,
+        "total_quantite_restante": total_quantite_restante,
+
+        # Récapitulatifs
         "total_par_categorie": total_par_categorie,
+        "total_par_produit": total_par_produit,
     }
 
     return render(
@@ -1821,48 +1836,65 @@ def listes_des_ventes(request):
 #================================================================================================
 @login_required
 def listes_des_commandes(request):
+    total_commande = 0
+    listes_commandes = []
+    total_par_categorie = []
+    total_par_produit = []
+    total_quantite = 0
     try:
         # ------------------ LISTE DES COMMANDES ------------------
-        listes_commandes = Commandes.objects.select_related('produits').order_by('-id')
-        total_commandes = listes_commandes.count()
-        
-        # Pagination
-        listes_commandes = pagination_lis(request, listes_commandes)
-        
+        listes_commandes_qs = Commandes.objects.select_related(
+            'produits', 'produits__categorie'
+        ).order_by('-id')
+        total_commande = listes_commandes_qs.count()
+
         # ------------------ TOTAL PAR CATEGORIE ------------------
         total_par_categorie = (
-            Commandes.objects
+            listes_commandes_qs
             .values('produits__categorie__desgcategorie')
             .annotate(
                 nombre_commandes=Count('id', distinct=True),
                 total_quantite=Sum('qtecmd'),
                 valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
             )
-            .order_by('produits__categorie__desgcategorie'))
-                # ------------------ TOTAL PAR PRODUIT ------------------
+            .order_by('produits__categorie__desgcategorie')
+        )
+
+        # ------------------ TOTAL PAR PRODUIT ------------------
         total_par_produit = (
-            Commandes.objects
+            listes_commandes_qs
             .values('produits__categorie__desgcategorie', 'produits__refprod', 'produits__desgprod')
             .annotate(
-                nombre_commande=Count('id', distinct=True),
-                total_qtecmd=Sum('qtecmd'),
-                valeur_cmd =Sum(F('qtecmd') * F('produits__pu'))
+                nombre_commandes=Count('id', distinct=True),
+                total_quantite=Sum('qtecmd'),
+                valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
             )
-            .order_by('produits__categorie__desgcategorie', 'produits__refprod'))
+            .order_by('produits__categorie__desgcategorie', 'produits__refprod')
+        )
 
+        # ------------------ TOTAL GLOBAUX ------------------
+        total_quantite = listes_commandes_qs.aggregate(total_qte=Sum('qtecmd'))['total_qte'] or 0
+
+        # ------------------ PAGINATION ------------------
+        if 'pagination_lis' in globals():
+            listes_commandes = pagination_lis(request, listes_commandes_qs)
+        else:
+            listes_commandes = listes_commandes_qs
 
     except Exception as ex:
         messages.warning(request, f"Erreur de récupération des commandes : {str(ex)} !")
         listes_commandes = []
-        total_commandes = 0
+        total_commande = 0
         total_par_produit = []
         total_par_categorie = []
+        total_quantite = 0
 
     context = {
         'listes_commandes': listes_commandes,
-        'total_commandes': total_commandes,
+        'total_commande': total_commande,
         'total_par_categorie': total_par_categorie,
-        'total_par_produit' : total_par_produit,
+        'total_par_produit': total_par_produit,
+        'total_quantite': total_quantite,
     }
 
     return render(request, "gestion_produits/commandes/listes_commandes.html", context)
@@ -1876,52 +1908,67 @@ def filtrer_listes_commandes(request):
     Filtre les commandes selon la date
     (DateField : une date ou intervalle)
     """
-
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
 
     total_commande = 0
     total_par_categorie = []
+    total_par_produit = []
     listes_commandes_filtre = []
 
     try:
         # ================== QUERYSET DE BASE ==================
-        commande_qs = Commandes.objects.prefetch_related(
-            'produits',
-            'produits__categorie'
+        commande_qs = Commandes.objects.select_related(
+            'produits', 'produits__categorie'
         ).order_by("-datecmd")
 
-        # ================== FILTRE PAR DATE (CORRECT DateField) ==================
+        # ================== FILTRE PAR DATE ==================
         if date_debut and date_fin:
-            commande_qs = commande_qs.filter(
-                datecmd__range=[date_debut, date_fin]
-            )
+            commande_qs = commande_qs.filter(datecmd__range=[date_debut, date_fin])
         elif date_debut:
-            commande_qs = commande_qs.filter(
-                datecmd=date_debut
-            )
+            commande_qs = commande_qs.filter(datecmd=date_debut)
         elif date_fin:
-            commande_qs = commande_qs.filter(
-                datecmd=date_fin
-            )
+            commande_qs = commande_qs.filter(datecmd=date_fin)
 
         # ================== TOTAL DES COMMANDES ==================
         total_commande = commande_qs.count()
 
-        # ================== TOTAL PAR CATÉGORIE ==================
+        # ================== TOTAL PAR CATEGORIE ==================
         total_par_categorie = commande_qs.values(
             'produits__categorie__desgcategorie'
         ).annotate(
-            total_quantite=Sum('qtecmd')
+            nombre_commandes=Count('id', distinct=True),
+            total_quantite=Sum('qtecmd'),
+            valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
         ).order_by('produits__categorie__desgcategorie')
 
-        listes_commandes_filtre = pagination_liste(request, commande_qs)
+        # ================== TOTAL PAR PRODUIT ==================
+        total_par_produit = commande_qs.values(
+            'produits__categorie__desgcategorie',
+            'produits__refprod',
+            'produits__desgprod'
+        ).annotate(
+            nombre_commandes=Count('id', distinct=True),
+            total_quantite=Sum('qtecmd'),
+            valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
+        ).order_by('produits__categorie__desgcategorie', 'produits__refprod')
+
+        # ================== TOTAL GLOBAUX ==================
+        total_quantite = commande_qs.aggregate(total_qte=Sum('qtecmd'))['total_qte'] or 0
+
+        # ================== PAGINATION ==================
+        if 'pagination_liste' in globals():
+            listes_commandes_filtre = pagination_liste(request, commande_qs)
+        else:
+            listes_commandes_filtre = commande_qs
 
     except Exception as ex:
-        messages.warning(
-            request,
-            f"Erreur lors du filtrage des commandes : {str(ex)}"
-        )
+        messages.warning(request, f"Erreur lors du filtrage des commandes : {str(ex)}")
+        listes_commandes_filtre = []
+        total_commande = 0
+        total_par_categorie = []
+        total_par_produit = []
+        total_quantite = 0
 
     context = {
         "date_debut": date_debut,
@@ -1929,9 +1976,11 @@ def filtrer_listes_commandes(request):
         "listes_commandes_filtre": listes_commandes_filtre,
         "total_commande": total_commande,
         "total_par_categorie": total_par_categorie,
+        "total_par_produit": total_par_produit,
+        "total_quantite": total_quantite,
     }
-    return render( request,
-        "gestion_produits/commandes/listes_commandes.html",context)
+
+    return render(request, "gestion_produits/commandes/listes_commandes.html", context)
 
 #================================================================================================
 # Fonction pour filter la liste des vente selon un intervalle de date donnée
@@ -2349,10 +2398,15 @@ def listes_ventes_impression(request):
 
     lignes = LigneVente.objects.none()
     total_par_categorie = []
+    total_par_produit = []
+    total_quantite_produits = 0
+    total_montant_produits = 0
+    total_quantite_categories = 0
+    total_montant_categories = 0
+    benefice_global = 0
 
     if date_debut and date_fin:
         try:
-            # Queryset filtré
             lignes = (
                 LigneVente.objects
                 .select_related('vente', 'produit', 'produit__categorie')
@@ -2371,13 +2425,30 @@ def listes_ventes_impression(request):
                 .order_by('produit__categorie__desgcategorie')
             )
 
+            # Totaux globaux par catégorie
+            total_quantite_categories = sum(c['total_quantite'] for c in total_par_categorie)
+            total_montant_categories = sum(c['total_montant'] for c in total_par_categorie)
+
+            # Total par produit
+            total_par_produit = (
+                lignes
+                .values('produit__desgprod')
+                .annotate(
+                    total_montant=Sum('sous_total'),
+                    total_quantite=Sum('quantite')
+                )
+                .order_by('produit__desgprod')
+            )
+
+            # Totaux globaux par produit
+            total_quantite_produits = sum(p['total_quantite'] for p in total_par_produit)
+            total_montant_produits = sum(p['total_montant'] for p in total_par_produit)
+
         except Exception as ex:
             messages.warning(request, f"Erreur lors de la récupération des ventes : {str(ex)}")
 
     # Regrouper les lignes par vente
     ventes_dict = {}
-    benefice_global = 0
-
     for ligne in lignes:
         code_vente = ligne.vente.code
         if code_vente not in ventes_dict:
@@ -2388,7 +2459,8 @@ def listes_ventes_impression(request):
                 'benefice_vente': 0
             }
 
-        benefice_ligne = ligne.produit.prix_en_gros - ligne.pu_reduction
+        # Calcul du bénéfice pour chaque ligne
+        benefice_ligne = (ligne.pu_reduction - ligne.produit.prix_en_gros) * ligne.quantite
         ligne.benefice = benefice_ligne
 
         ventes_dict[code_vente]['lignes'].append(ligne)
@@ -2408,6 +2480,11 @@ def listes_ventes_impression(request):
         'date_fin': date_fin,
         'benefice_global': benefice_global,
         'total_par_categorie': total_par_categorie,
+        'total_par_produit': total_par_produit,
+        'total_quantite_produits': total_quantite_produits,
+        'total_montant_produits': total_montant_produits,
+        'total_quantite_categories': total_quantite_categories,
+        'total_montant_categories': total_montant_categories,
     }
 
     return render(
@@ -2427,46 +2504,106 @@ def choix_par_dates_commandes_impression(request):
 # Fonction pour imprimer la listes des Commandes
 #================================================================================================
 @login_required
-def listes_commandes_impression(request):
-    
-    try:
-        date_debut = request.POST.get('date_debut')
-        date_fin = request.POST.get('date_fin')
-    except Exception as ex:
-        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
 
-    except ValueError as ve:
-        messages.warning(request, f"Erreur de type de données : {str(ve)}")
-        
-    listes_commandes = Commandes.objects.filter(
-        datecmd__range=[
-            date_debut, date_fin])
-            # ------------------ TOTAL PAR CATEGORIE ------------------
-    total_par_categorie = (
-        Commandes.objects
-        .values(
-            'produits__categorie__desgcategorie',
-            'produits__pu'
+def listes_commandes_impression(request):
+
+    date_debut = request.POST.get('date_debut')
+    date_fin = request.POST.get('date_fin')
+
+    try:
+        # ================= COMMANDES FILTRÉES =================
+        listes_commandes = Commandes.objects.select_related(
+            'produits',
+            'produits__categorie'
+        ).filter(
+            datecmd__range=[date_debut, date_fin]
+        ).order_by('-datecmd')
+
+        # ================= TOTAUX GLOBAUX =================
+        total_commandes = listes_commandes.count()
+
+        total_quantite = listes_commandes.aggregate(
+            total=Sum('qtecmd')
+        )['total'] or 0
+
+        total_valeur = listes_commandes.aggregate(
+            total=Sum(
+                ExpressionWrapper(
+                    F('qtecmd') * F('produits__pu'),
+                    output_field=IntegerField()
+                )
             )
-        .annotate(
-            nombre_commandes=Count('id', distinct=True),
-            total_quantite=Sum('qtecmd'),
-            valeur_commandes=Sum(F('qtecmd') * F('produits__pu'))
+        )['total'] or 0
+
+        # ================= TOTAL PAR CATÉGORIE =================
+        total_par_categorie = (
+            listes_commandes
+            .values('produits__categorie__desgcategorie')
+            .annotate(
+                nombre_commandes=Count('id'),
+                total_quantite=Sum('qtecmd'),
+                valeur_commandes=Sum(
+                    ExpressionWrapper(
+                        F('qtecmd') * F('produits__pu'),
+                        output_field=IntegerField()
+                    )
+                )
             )
             .order_by('produits__categorie__desgcategorie')
         )
+
+        # ================= TOTAL PAR PRODUIT =================
+        total_par_produit = (
+            listes_commandes
+            .values(
+                'produits__refprod',
+                'produits__desgprod',
+                'produits__categorie__desgcategorie'
+            )
+            .annotate(
+                nombre_commandes=Count('id'),
+                total_quantite=Sum('qtecmd'),
+                valeur_commandes=Sum(
+                    ExpressionWrapper(
+                        F('qtecmd') * F('produits__pu'),
+                        output_field=IntegerField()
+                    )
+                )
+            )
+            .order_by('produits__desgprod')
+        )
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur impression commandes : {ex}")
+        listes_commandes = []
+        total_par_categorie = []
+        total_par_produit = []
+        total_commandes = 0
+        total_quantite = 0
+        total_valeur = 0
+
     nom_entreprise = Entreprise.objects.first()
+
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
-        'listes_commandes' : listes_commandes,
-        'date_debut' : date_debut,
-        'date_fin' : date_fin,
-        'total_par_categorie' : total_par_categorie,
+        'date_debut': date_debut,
+        'date_fin': date_fin,
+
+        # données
+        'listes_commandes': listes_commandes,
+        'total_par_categorie': total_par_categorie,
+        'total_par_produit': total_par_produit,
+
+        # totaux globaux
+        'total_commandes': total_commandes,
+        'total_quantite': total_quantite,
+        'total_valeur': total_valeur,
     }
+
     return render(
         request,
-        'gestion_produits/impression_listes/apercue_avant_impression_listes_produits.html',
+        'gestion_produits/impression_listes/apercue_avant_impression_listes_commandes.html',
         context
     )
 
@@ -2530,63 +2667,130 @@ def choix_par_dates_livraisons_impression(request):
 #================================================================================================
 @login_required
 def listes_livraisons_impression(request):
-    
+
     try:
         date_debut = request.POST.get('date_debut')
         date_fin = request.POST.get('date_fin')
-    except Exception as ex:
-        messages.warning(request, f"Erreur de récupération des dates : {str(ex)}")
 
-    except ValueError as ve:
-        messages.warning(request, f"Erreur de type de données : {str(ve)}")
-        
-    listes_livraisons = LivraisonsProduits.objects.filter(
-        datelivrer__range=[
-            date_debut, date_fin])
-    
-    # Calcul des quantités livrées et restantes pour chaque livraison
-    for elem in listes_livraisons:
-        total_livree = LivraisonsProduits.objects.filter(
-        produits=elem.produits,
-        commande=elem.commande
-        ).aggregate(total=Sum('qtelivrer'))['total'] or 0
-        elem.total_livree = total_livree
-        elem.qte_restante = elem.commande.qtecmd - total_livree
-
-        # ------------------ TOTAL PAR CATEGORIE ------------------
-    total_par_categorie = (
-        LivraisonsProduits.objects
-        .values('produits__categorie__desgcategorie')
-        .annotate(
-        nombre_livraisons=Count('id', distinct=True),
-        total_qtelivree=Sum('qtelivrer'),
-        valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
-        )
-        .order_by('produits__categorie__desgcategorie')
+        # ================= QUERYSET DE BASE =================
+        livraisons_qs = LivraisonsProduits.objects.select_related(
+            'commande',
+            'produits',
+            'produits__categorie'
         )
 
-        # ------------------ TOTAL PAR PRODUIT ------------------
-    total_par_produit = (
-        LivraisonsProduits.objects
-        .values('produits__categorie__desgcategorie', 'produits__refprod', 'produits__desgprod')
-        .annotate(
-            nombre_livraisons=Count('id', distinct=True),
-            total_qtelivree=Sum('qtelivrer'),
-            valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
+        # ================= FILTRE PAR DATE =================
+        if date_debut and date_fin:
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer__range=[date_debut, date_fin]
             )
-            .order_by('produits__categorie__desgcategorie', 'produits__refprod')
+        elif date_debut:
+            livraisons_qs = livraisons_qs.filter(datelivrer=date_debut)
+        elif date_fin:
+            livraisons_qs = livraisons_qs.filter(datelivrer=date_fin)
+
+        livraisons_qs = livraisons_qs.order_by('-id')
+
+        # ================= QTE LIVRÉE PAR COMMANDE =================
+        livraison_par_commande = (
+            livraisons_qs
+            .values('commande')
+            .annotate(total_livree=Sum('qtelivrer'))
         )
 
+        livraison_map = {
+            l['commande']: l['total_livree'] for l in livraison_par_commande
+        }
+
+        # ================= LISTE + QTE RESTANTE =================
+        total_quantite_restante = 0
+        for l in livraisons_qs:
+            total_livree = livraison_map.get(l.commande_id, 0)
+            l.qte_restante = max(l.commande.qtecmd - total_livree, 0)
+            total_quantite_restante += l.qte_restante
+
+        # ================= TOTAUX GLOBAUX =================
+        total_livraison = livraisons_qs.count()
+
+        total_qtecmd = livraisons_qs.aggregate(
+            total=Sum('commande__qtecmd')
+        )['total'] or 0
+
+        total_quantite_livrer = livraisons_qs.aggregate(
+            total=Sum('qtelivrer')
+        )['total'] or 0
+
+        total_quantite_restante = livraisons_qs.aggregate(
+            total=Sum(F('commande__qtecmd') - F('qtelivrer'))
+        )['total'] or 0
+
+        # ================= TOTAUX PAR CATÉGORIE =================
+        total_par_categorie = (
+            livraisons_qs
+            .values('produits__categorie__desgcategorie')
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtecmd=Sum('commande__qtecmd'),
+                total_qtelivree=Sum('qtelivrer')
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
+            .order_by('produits__categorie__desgcategorie')
+        )
+
+        # ================= TOTAUX PAR PRODUIT =================
+        total_par_produit = (
+            livraisons_qs
+            .values(
+                'produits_id',
+                'produits__desgprod',
+                'produits__refprod',
+                'produits__categorie__desgcategorie'
+            )
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtecmd=Sum('commande__qtecmd'),
+                total_qtelivree=Sum('qtelivrer')
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
+            .order_by('produits__desgprod')
+        )
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur impression livraisons : {ex}")
+        livraisons_qs = []
+        total_livraison = 0
+        total_qtecmd = 0
+        total_quantite_livrer = 0
+        total_quantite_restante = 0
+        total_par_categorie = []
+        total_par_produit = []
+
+    # ================= CONTEXTE =================
     nom_entreprise = Entreprise.objects.first()
+
     context = {
         'nom_entreprise': nom_entreprise,
         'today': timezone.now(),
-        'listes_livraisons' : listes_livraisons,
-        'date_debut' : date_debut,
-        'date_fin' : date_fin,
-        'total_par_produit' : total_par_produit,
-        'total_par_categorie' : total_par_categorie,
+
+        'listes_livraisons': livraisons_qs,
+        'date_debut': date_debut,
+        'date_fin': date_fin,
+
+        # Totaux
+        'total_livraison': total_livraison,
+        'total_qtecmd': total_qtecmd,
+        'total_quantite_livrer': total_quantite_livrer,
+        'total_quantite_restante': total_quantite_restante,
+
+        # Récaps
+        'total_par_categorie': total_par_categorie,
+        'total_par_produit': total_par_produit,
     }
+
     return render(
         request,
         'gestion_produits/impression_listes/apercue_avant_impression_listes_livraisons.html',
