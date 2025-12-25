@@ -8,7 +8,7 @@ from simple_history.models import HistoricalRecords
 #==================================================================================
 
 class CategorieProduit(models.Model):
-    desgcategorie = models.CharField(max_length=65)
+    desgcategorie = models.CharField(max_length=65, unique=True)
     description = models.TextField(null = True, blank = True)
     date_maj = models.DateField(auto_now = True)
     

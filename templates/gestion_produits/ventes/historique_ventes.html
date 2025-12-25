@@ -12,9 +12,14 @@
     <div class="card-header bg-dark text-white">
         <h4>📅 {{ bloc.date|date:"d/m/Y" }}</h4>
         <small>
-            💰 Total ventes : <strong>{{ bloc.total_montant|floatformat:"0" }} GNF</strong> |
-            📦 Produits vendus : <strong>{{ bloc.total_quantite }}</strong> |
-            🗂️ Catégories : <strong>{{ bloc.total_categories }}</strong>
+            💰 Total ventes :
+            <strong>{{ bloc.total_montant|floatformat:"0" }} GNF</strong> |
+            📦 Produits vendus :
+            <strong>{{ bloc.total_quantite }}</strong> |
+            🗂️ Catégories :
+            <strong>{{ bloc.total_categories }}</strong> |
+            📈 Bénéfice :
+            <strong>{{ bloc.total_profit|floatformat:"0" }} GNF</strong>
         </small>
     </div>
 
@@ -27,7 +32,7 @@
                     <th>Code Vente</th>
                     <th>Client</th>
                     <th>Total (GNF)</th>
-                    <th>Profit (GNF)</th>
+                    <th>Bénéfice (GNF)</th>
                     <th>Vendeur</th>
                     <th>Heure</th>
                     <th>Reçu</th>
@@ -43,35 +48,40 @@
                         <small>{{ v.telclt_client }}</small>
                     </td>
                     <td><strong>{{ v.total|floatformat:"0" }}</strong></td>
-                    <td><strong>{{ v.total_profit|floatformat:"0" }}</strong></td>
+                    <td><strong>{{ v.benefice_total|floatformat:"0" }}</strong></td>
                     <td>{{ v.utilisateur.get_full_name }}</td>
                     <td>{{ v.date_vente|date:"H:i" }}</td>
                     <td>
-                        <a href="{% url 'produits:recu_vente_global' v.code %}" class="btn btn-primary btn-sm">
+                        <a href="{% url 'produits:recu_vente_global' v.code %}"
+                           class="btn btn-primary btn-sm">
                             <i class="fa fa-file"></i>
                         </a>
                     </td>
                 </tr>
 
-                <!-- Détail des produits de la vente -->
+                <!-- DÉTAIL DES PRODUITS -->
                 <tr>
-                    <td colspan="8" style="background-color: #f9f9f9;">
+                    <td colspan="8" class="bg-light">
                         <strong>Détails des produits :</strong>
-                        <ul>
+                        <ul class="mb-0">
                         {% for ligne in v.lignes.all %}
                             <li>
-                                {{ ligne.produit.desgprod }} |
-                                Catégorie : {{ ligne.produit.categorie.nom_categorie }} |
+                                {% if ligne.produit %}
+                                    {{ ligne.produit.desgprod }} |
+                                    Catégorie :
+                                    {{ ligne.produit.categorie.desgcategorie }} |
+                                {% else %}
+                                    Produit supprimé |
+                                {% endif %}
                                 Qté : {{ ligne.quantite }} |
-                                Prix unitaire : {{ ligne.prix|floatformat:"0" }} GNF |
+                                PU : {{ ligne.prix|floatformat:"0" }} GNF |
                                 Sous-total : {{ ligne.sous_total|floatformat:"0" }} GNF |
-                                Profit : {{ ligne.profit|floatformat:"0" }} GNF
+                                Bénéfice : {{ ligne.benefice|floatformat:"0" }} GNF
                             </li>
                         {% endfor %}
                         </ul>
                     </td>
                 </tr>
-
                 {% endfor %}
             </tbody>
         </table>

@@ -118,6 +118,13 @@
                             <a href="{% url 'produits:consulter_produit' elem.produits.id %}" class="btn btn-primary btn-sm">
                                 <i class="fa fa-eye"></i>
                             </a>
+                      
+                                <button class="btn btn-danger btn-sm btn-produit-sup"
+                                    data-id="{{ elem.id }}"
+                                    data-toggle="modal"
+                                    data-target="#supprimer">
+                                <i class="fa fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
@@ -225,6 +232,12 @@
                             <a href="{% url 'produits:consulter_produit' elem.produits.id %}" class="btn btn-primary btn-sm">
                                 <i class="fa fa-eye"></i>
                             </a>
+                                <button class="btn btn-danger btn-sm btn-produit-sup"
+                                    data-id="{{ elem.id }}"
+                                    data-toggle="modal"
+                                    data-target="#supprimer">
+                                <i class="fa fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
@@ -290,5 +303,36 @@
 
     </div>
 </div>
+
+<!-- ================= MODAL SUPPRESSION ================= -->
+<div class="modal fade" id="supprimer">
+<div class="modal-dialog">
+<div class="modal-content">
+<form method="POST" action="{% url 'produits:supprimer_commandes' %}">
+{% csrf_token %}
+<div class="modal-header bg-danger">
+    <h4>SUPPRESSION</h4>
+</div>
+<div class="modal-body">
+    <input type="hidden" name="id_supprimer" id="id_supprimer">
+    Confirmer la suppression ?
+</div>
+<div class="modal-footer">
+    <button class="btn btn-default" data-dismiss="modal">Annuler</button>
+    <button class="btn btn-danger">Supprimer</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+
+<script>
+                // Modal Supprimer
+            document.querySelectorAll('.btn-produit-sup').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
+                });
+            });
+</script>
 
 {% endblock %}

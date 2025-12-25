@@ -105,7 +105,6 @@
               <tr>
                 <th>#</th>
                 <th>Destinataire</th>
-                <th>Destinataire Email Parent</th>
                 <th>Titre</th>
                 <th>Messages</th>
                 <th>Date de Notification</th>
@@ -115,7 +114,6 @@
               {% for element in listes_notifications %}
               <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ element.destinataire }}</td>
                 <td>{{ element.destinataire_email }}</td>
                 <td>{{ element.titre }}</td>
                 <td>{{ element.message }}</td>

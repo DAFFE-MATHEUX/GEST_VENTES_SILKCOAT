@@ -138,9 +138,12 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <button type="button" class="btn btn-danger btn-sm btn-produit-sup" data-bs-toggle="modal" data-bs-target="#supprimer" data-id="{{ elem.id }}">
-                                                <i class="fa fa-trash"></i>
-                                            </button>
+                                <button class="btn btn-danger btn-sm btn-produit-sup"
+                                        data-id="{{ elem.id }}"
+                                        data-toggle="modal"
+                                        data-target="#supprimer">
+                                    <i class="fa fa-trash"></i>
+                                </button>
                                         </td>
                                     </tr>
                                     {% empty %}
@@ -233,28 +236,27 @@
         </div>
         {% endif %}
 
-        <!-- Modal Suppression -->
-        <div class="modal fade" id="supprimer" tabindex="-1" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header bg-danger">
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        <h4 class="modal-title">SUPPRESSION D'UN STOCK</h4>
-                    </div>
-                    <form method="POST" action="{% url 'produits:supprimer_produits_stock' %}">
-                        {% csrf_token %}
-                        <div class="modal-body">
-                            <input type="hidden" name="id_supprimer" id="id_supprimer">
-                            <p>Êtes-vous sûr de vouloir supprimer définitivement ce stock ?</p>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                            <button type="submit" class="btn btn-danger">Supprimer</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+<!-- ================= MODAL SUPPRESSION ================= -->
+<div class="modal fade" id="supprimer">
+<div class="modal-dialog">
+<div class="modal-content">
+<form method="POST" action="{% url 'produits:supprimer_produits' %}">
+{% csrf_token %}
+<div class="modal-header bg-danger">
+    <h4>SUPPRESSION</h4>
+</div>
+<div class="modal-body">
+    <input type="hidden" name="id_supprimer" id="id_supprimer">
+    Confirmer la suppression ?
+</div>
+<div class="modal-footer">
+    <button class="btn btn-default" data-dismiss="modal">Annuler</button>
+    <button class="btn btn-danger">Supprimer</button>
+</div>
+</form>
+</div>
+</div>
+</div>
 
         <script>
             // Modal Supprimer
