@@ -1,7 +1,6 @@
 from django.contrib import admin
-from .models import Entreprise, Entrepot, Magasin, Depenses
+from .models import Entreprise, Depenses
+from simple_history.admin import SimpleHistoryAdmin
 
-admin.site.register(Entreprise)
-admin.site.register(Entrepot)
-admin.site.register(Magasin)
-admin.site.register(Depenses)
+admin.site.register(Entreprise, SimpleHistoryAdmin)
+admin.site.register(Depenses, SimpleHistoryAdmin)

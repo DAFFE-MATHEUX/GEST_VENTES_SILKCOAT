@@ -1,6 +1,5 @@
 from django.db import models
 from gestion_utilisateur.models import Utilisateur
-from gest_entreprise.models import Entrepot, Magasin
 from simple_history.models import HistoricalRecords
 
 #==================================================================================
