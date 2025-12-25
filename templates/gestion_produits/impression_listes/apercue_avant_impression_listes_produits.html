@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES PRODUITS COMMANDES</title>
+    <title>LISTE DES PRODUITS</title>
 
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
@@ -74,7 +74,7 @@
             {% if nom_entreprise.logo %}
                 <img src="{{ nom_entreprise.logo.url }}" alt="Logo" class="logo"><br>
             {% endif %}
-            <h2>LISTE DES PRODUITS COMMANDES</h2>
+            <h2>LISTE COMPLETE DES PRODUITS</h2>
         </div>
 
         <div class="header-right">
@@ -85,72 +85,82 @@
     </div>
 
     <!-- TITRE -->
-    <h4>CATALOGUE COMPLET DES PRODUITS DEJA COMMANDES</h4>
+    <h4>CATALOGUE COMPLET DES PRODUITS ENREGISTRES</h4>
 
     <!-- TABLEAU DES PRODUITS -->
     <table>
         <thead>
             <tr>
                 <th>#</th>
-                <th>Num Commande</th>
+                <th>Catégorie</th>
                 <th>Réf Produit</th>
                 <th>Désignation</th>
-                <th>Quantité Commandée</th>
-                <th>Statut Commandé</th>
-                <th>Prix Unitaire</th>
-                <th>Catégorie</th>
-                <th>Date Commande</th>
+                <th>Prix En Gros</th>
+                <th>Prix de Vente</th>
+                <th>Date Stock</th>
+                <th>Photo</th>
             </tr>
         </thead>
 
         <tbody>
-        {% for elem in listes_commandes %}
+        {% for elem in listes_produits %}
             <tr>
                 <td>{{ forloop.counter }}</td>
-                <td>{{ elem.numcmd }}</td>
-                <td>{{ elem.produits.refprod }}</td>
-                <td>{{ elem.produits.desgprod }}</td>
-                <td>{{ elem.qtecmd }}</td>
-                <td>{{ elem.statuts }}</td>
-                <td>{{ elem.produits.pu }}</td>
-                <td>{{ elem.produits.categorie.desgcategorie }}</td>
-                <td>{{ elem.datecmd|date:'d/m/Y' }}</td>
+                <td>{{ elem.categorie.desgcategorie }}</td>
+                <td>{{ elem.refprod }}</td>
+                <td>{{ elem.desgprod }}</td>
+                <td>{{ elem.prix_en_gros }}</td>
+                <td>{{ elem.pu }}</td>
+                <td>{{ elem.date_maj|date:'d/m/Y' }}</td>
+                <td>
+                    {% if elem.photoprod %}
+                    <img src="{{ elem.photoprod.url }}" width="40px" height="40px" class="photo-preview" alt="Photo de {{ elem.desgprod }}">
+                    {% else %}
+                    Photo indisponible
+                    {% endif %}
+                </td>
             </tr>
         {% empty %}
             <tr>
-                <td colspan="8" style="text-align:center;">⚠️ Aucun produit trouvé.</td>
+                <td colspan="8" style="text-align:center;">⚠️ Aucun produit trouvé pour les dates.</td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
 
-                             <h4 class="mt-4">Commandes par catégorie</h4>
-<table class="table table-bordered table-striped">
+    
+<!-- ================= TOTAL PAR CATÉGORIE ================= -->
+    <h4>Total des produits par catégorie</h4>
+
+    <table class="table table-bordered table-striped">
     <thead>
-        <tr>
-            <th>Catégorie</th>
-            <th>Nombre de commandes</th>
-            <th>Prix de Vente</th>
-            <th>Total quantité</th>
-            <th>Valeur totale</th>
-        </tr>
+    <tr>
+        <th>Catégorie</th>
+        <th>Nombre de produits</th>
+        <th>Quantité stock</th>
+    </tr>
     </thead>
     <tbody>
-        {% for cat in total_par_categorie %}
-        <tr>
-            <td>{{ cat.produits__categorie__desgcategorie }}</td>
-            <td>{{ cat.nombre_commandes|default:0 }}</td>
-            <td>{{ cat.produits__pu|default:0 }} GNF</td>
-            <td>{{ cat.total_quantite|default:0 }}</td>
-            <td>{{ cat.valeur_commandes|default:0|floatformat:0 }} GNF</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="4" class="text-center">Aucune donnée</td>
-        </tr>
-        {% endfor %}
+    {% for cat in total_par_categorie %}
+    <tr>
+        <td>{{ cat.categorie__desgcategorie }}</td>
+        <td>{{ cat.nombre_produits }}</td>
+        <td>{{ cat.quantite_stock|default:0 }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+    <td colspan="4" class="text-center">Aucune donnée</td>
+    </tr>
+    {% endfor %}
     </tbody>
-</table>
+            <tfoot class="table-secondary">
+            <tr>
+                <th class="text-center">Totaux :</th>
+                <th class="text-center">{{ total_produit }}</th>
+                <th class="text-center">{{ total_quantite_restante }}</th>
+                </tr>
+            </tfoot>
+    </table>
 
 
     <!-- Signature -->

@@ -64,95 +64,88 @@ def ajouter_categorie(request):
 #================================================================================================
 @login_required
 def approvisionner_produits(request):
-    produits = Produits.objects.all()
+    produits = Produits.objects.all().select_related('categorie')
+
+    # Préparer données avec stock unique
     produits_data = []
-
-    # Préparer les données pour le template
     for p in produits:
-        stock_entrepot = p.stocks.filter(entrepot__isnull=False).first()
-        stock_magasin = p.stocks.filter(magasin__isnull=False).first()
-
+        stock = StockProduit.objects.filter(produit=p).first()
         produits_data.append({
             "produit": p,
-            "stock_entrepot": stock_entrepot.qtestock if stock_entrepot else 0,
-            "seuil_entrepot": stock_entrepot.seuil if stock_entrepot else 0,
-            "stock_magasin": stock_magasin.qtestock if stock_magasin else 0,
-            "stock_entrepot_instance": stock_entrepot,
-            "stock_magasin_instance": stock_magasin,
+            "stock": stock.qtestock if stock else 0,
+            "stock_instance": stock,
         })
 
     if request.method == "POST":
+        approvisionnements = []
+
         try:
-            qte = int(request.POST.get("quantite", 0))
-        except ValueError:
-            qte = 0
+            with transaction.atomic():
+                for p in produits_data:
+                    produit = p["produit"]
+                    stock = p["stock_instance"]
 
-        if qte <= 0:
-            messages.error(request, "La quantité doit être supérieure à zéro.")
-            return redirect("produits:approvisionner_produits")
+                    qte_str = request.POST.get(f"quantite_{produit.id}", "0")
+                    try:
+                        qte = int(qte_str)
+                    except ValueError:
+                        qte = 0
 
-        approvisionnements = []  # Pour l’email
+                    if qte <= 0:
+                        continue
 
-        # Transfert global
-        for p in produits_data:
-            se = p["stock_entrepot_instance"]
-            sm = p["stock_magasin_instance"]
+                    # Créer stock si inexistant
+                    if not stock:
+                        stock = StockProduit.objects.create(
+                            produit=produit,
+                            qtestock=0,
+                            seuil=0
+                        )
 
-            if not se or se.qtestock <= 0:
-                continue
+                    stock.qtestock += qte
+                    stock.save()
 
-            # Créer stock magasin si absent
-            if not sm:
-                sm = StockProduit.objects.create(
-                    produit=p["produit"],
-                    entrepot=None,
-                    magasin=Magasin.objects.first(),  # ou ton magasin par défaut
-                    qtestock=0,
-                    seuil=0
-                )
+                    approvisionnements.append({
+                        "produit": produit.desgprod,
+                        "quantite": qte,
+                        "stock_final": stock.qtestock
+                    })
 
-            transfert = min(qte, se.qtestock)
+            # ================= EMAIL ADMIN =================
+            if approvisionnements:
+                try:
+                    sujet = "Approvisionnement des produits"
+                    contenu = f"""
+Approvisionnement effectué avec succès.
 
-            se.qtestock = F('qtestock') - transfert
-            sm.qtestock = F('qtestock') + transfert
-            se.save()
-            sm.save()
+Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+Utilisateur : {request.user}
 
-            approvisionnements.append({
-                "produit": p["produit"].desgprod,
-                "quantite": transfert,
-                "entrepot_restant": se.qtestock - transfert if isinstance(se.qtestock, int) else "",
-            })
+Détails :
+"""
+                    for a in approvisionnements:
+                        contenu += f"- {a['produit']} | +{a['quantite']} | Stock final : {a['stock_final']}\n"
 
-        # =================== EMAIL ADMIN ===================
-        if approvisionnements:
-            try:
-                sujet = "Approvisionnement Entrepôt → Magasin"
-                contenu = f"""
-                Nouvel approvisionnement effectué.
+                    email = EmailMessage(
+                        sujet,
+                        contenu,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [settings.ADMIN_EMAIL]
+                    )
+                    email.send(fail_silently=False)
 
-                Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-                Utilisateur : {request.user}
+                except Exception as e:
+                    logger.error(f"Erreur email approvisionnement : {str(e)}")
+                    messages.warning(
+                        request,
+                        "Approvisionnement effectué mais email non envoyé."
+                    )
 
-                Détails :
-                """
-                for a in approvisionnements:
-                    contenu += f"- Produit : {a['produit']} | Quantité transférée : {a['quantite']}\n"
+            messages.success(request, "Approvisionnement effectué avec succès ✔")
+            return redirect("produits:listes_produits_stock")
 
-                email = EmailMessage(
-                    sujet,
-                    contenu,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL]
-                )
-                email.send(fail_silently=False)
-
-            except Exception as e:
-                logger.error(f"Erreur email approvisionnement : {str(e)}")
-                messages.warning(request, "Approvisionnement effectué, mais email non envoyé.")
-
-        messages.success(request, "Approvisionnement global effectué avec succès !")
-        return redirect("produits:listes_produits_stock")
+        except Exception as e:
+            messages.error(request, f"Erreur lors de l'approvisionnement : {str(e)}")
 
     return render(
         request,
@@ -1246,7 +1239,9 @@ def listes_produits(request):
             .select_related('categorie')
             .order_by('-id')
         )
-
+        total_quantite_restante = StockProduit.objects.aggregate(
+            total=Sum('qtestock')
+        )['total'] or 0
         total_produit = produits.count()
 
         # ================= TOTAL PAR CATÉGORIE =================
@@ -1261,19 +1256,20 @@ def listes_produits(request):
             .order_by('categorie__desgcategorie')
         )
 
-        # Pagination
         listes_produits = pagination_liste(request, produits)
 
     except Exception as ex:
         messages.warning(request, f"Erreur de récupération des produits : {str(ex)}")
         listes_produits = []
         total_produit = 0
+        total_quantite_restante = 0
         total_par_categorie = []
 
     context = {
         'listes_produits': listes_produits,
         'total_produit': total_produit,
-        'total_par_categorie': total_par_categorie,  # 👈 clé importante
+        'total_par_categorie': total_par_categorie, 
+        'total_quantite_restante' : total_quantite_restante,
     }
 
     return render(
@@ -1317,8 +1313,7 @@ def listes_produits_stock(request):
                 valeur_stock=Sum(
                     F('qtestock') * F('produit__pu')
                 ),
-            )
-            .order_by('produit__categorie__desgcategorie'))
+            ).order_by('produit__categorie__desgcategorie'))
         listes_stock = pagination_liste(request, listes_stock)
     except Exception as ex:
         messages.error(
@@ -1428,6 +1423,9 @@ def filtrer_listes_produits_stock(request):
 #================================================================================================
 @login_required
 def listes_des_livraisons(request):
+    total_quantite_restante = 0
+    total_valeur_livraison = 0
+    
     try:
         # ------------------ LISTE DES LIVRAISONS ------------------
         listes_livraisons = LivraisonsProduits.objects.select_related(
@@ -1435,7 +1433,16 @@ def listes_des_livraisons(request):
         ).order_by('-id')
 
         total_livraison = listes_livraisons.count()
-
+        
+        total_quantite_livrer = listes_livraisons.aggregate(
+            total=Sum('qtelivrer')
+        )['total'] or 0
+        
+        total_quantite_restante = LivraisonsProduits.objects.aggregate(
+            total=Sum(F('commande__qtecmd') - F('qtelivrer'))
+        )['total'] or 0
+        print(f"Total quantité restante: {total_quantite_restante}")
+        
         # Calcul des quantités livrées et restantes
         for elem in listes_livraisons:
             total_livree = (
@@ -1446,6 +1453,7 @@ def listes_des_livraisons(request):
             )
             elem.total_livree = total_livree
             elem.qte_restante = elem.commande.qtecmd - total_livree
+            print(f"Produit: {elem.produits.desgprod}, Commande: {elem.commande.numcmd}, Total livrée: {total_livree}, Qte restante: {elem.qte_restante}")
 
         # ------------------ TOTAL PAR CATEGORIE ------------------
         total_par_categorie = (
@@ -1453,6 +1461,7 @@ def listes_des_livraisons(request):
             .values('produits__categorie__desgcategorie')
             .annotate(
                 nombre_livraisons=Count('id', distinct=True),
+                total_livraison=Count('id'),
                 total_qtelivree=Sum('qtelivrer'),
                 valeur_livraison=Sum(F('qtelivrer') * F('produits__pu'))
             )
@@ -1471,7 +1480,6 @@ def listes_des_livraisons(request):
             .order_by('produits__categorie__desgcategorie', 'produits__refprod')
         )
 
-        # ------------------ PAGINATION ------------------
         listes_livraisons = pagination_liste(request, listes_livraisons)
 
     except Exception as ex:
@@ -1480,12 +1488,16 @@ def listes_des_livraisons(request):
         total_livraison = 0
         total_par_categorie = []
         total_par_produit = []
+        total_quantite_livrer = 0
+        total_quantite_restante = 0
 
     context = {
         'listes_livraisons': listes_livraisons,
         'total_livraison': total_livraison,
         'total_par_categorie': total_par_categorie,
-        'total_par_produit': total_par_produit
+        'total_par_produit': total_par_produit,
+        'total_quantite_livrer': total_quantite_livrer,
+        'total_quantite_restante': total_quantite_restante,
     }
 
     return render(request, "gestion_produits/livraisons/listes_livraisons.html", context)
@@ -1610,7 +1622,6 @@ def listes_des_ventes(request):
                 .order_by('produit__desgprod')
             )
 
-        # Pagination des lignes de vente
         listes_ventes = pagination_lis(request, listes_ventes)
 
     except Exception as ex:
@@ -2098,15 +2109,18 @@ def ajouter_stock_multiple(request):
 def listes_produits_impression(request):
 
     listes_produits = Produits.objects.all()
-    
-            # ================= TOTAL PAR CATÉGORIE =================
+
+    total_quantite_restante = StockProduit.objects.aggregate(
+            total=Sum('qtestock')
+        )['total'] or 0
+    total_produit = listes_produits.count()
+        # ================= TOTAL PAR CATÉGORIE =================
     total_par_categorie = (
         listes_produits
-        .values('categorie__desgcategorie')
-        .annotate(
-            nombre_produits=Count('id', distinct=True),
-            quantite_stock=Sum('stocks__qtestock'),
-            valeur_stock=Sum(F('stocks__qtestock') * F('pu'))
+            .values('categorie__desgcategorie')
+            .annotate(
+                nombre_produits=Count('id', distinct=True),
+                quantite_stock=Sum('stocks__qtestock'),
             )
             .order_by('categorie__desgcategorie')
         )
@@ -2117,6 +2131,8 @@ def listes_produits_impression(request):
         'today': timezone.now(),
         'listes_produits' : listes_produits,
         'total_par_categorie' : total_par_categorie,
+        'total_produit' : total_produit,
+        'total_quantite_restante' : total_quantite_restante,
     }
     return render(
         request,

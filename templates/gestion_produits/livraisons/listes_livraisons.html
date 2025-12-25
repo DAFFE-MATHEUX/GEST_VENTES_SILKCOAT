@@ -58,6 +58,7 @@
                 <tr>
                     <th>Catégorie</th>
                     <th>Total Quantité Livrée</th>
+                    <th>Quantité Restante</th>
                     <th>Nombre de Livraisons</th>
                 </tr>
             </thead>
@@ -66,13 +67,23 @@
                 <tr>
                     <td>{{ cat.produits__categorie__desgcategorie }}</td>
                     <td>{{ cat.total_qtelivree }}</td>
+                    <td>{{ cat.total_qte_restante }}</td>
                     <td>{{ cat.nombre_livraisons }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="3" class="text-center">Aucune livraison.</td></tr>
                 {% endfor %}
             </tbody>
+                <tfoot class="table-secondary">
+            <tr>
+                <th class="text-center">Totaux :</th>
+                <th class="text-center">{{ total_quantite_livrer }}</th>
+                <th class="text-center">{{ total_quantite_restante }}</th>
+                <th class="text-center">{{ total_livraison }}</th>
+                </tr>
+            </tfoot>
         </table>
+
     </div>
 
     <!-- Tableau principal des livraisons -->

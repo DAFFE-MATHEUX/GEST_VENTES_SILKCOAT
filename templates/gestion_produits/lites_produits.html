@@ -149,7 +149,6 @@
     <th>Catégorie</th>
     <th>Nombre de produits</th>
     <th>Quantité stock</th>
-    <th>Valeur stock</th>
 </tr>
 </thead>
 <tbody>
@@ -158,7 +157,6 @@
     <td>{{ cat.categorie__desgcategorie }}</td>
     <td>{{ cat.nombre_produits }}</td>
     <td>{{ cat.quantite_stock|default:0 }}</td>
-    <td>{{ cat.valeur_stock|default:0|floatformat:0 }} GNF</td>
 </tr>
 {% empty %}
 <tr>
@@ -166,6 +164,13 @@
 </tr>
 {% endfor %}
 </tbody>
+            <tfoot class="table-secondary">
+            <tr>
+                <th class="text-center">Totaux :</th>
+                <th class="text-center">{{ total_produit }}</th>
+                <th class="text-center">{{ total_quantite_restante }}</th>
+                </tr>
+            </tfoot>
 </table>
 
 <!-- ================= PAGINATION ================= -->
