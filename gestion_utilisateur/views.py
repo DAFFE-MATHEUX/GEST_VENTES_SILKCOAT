@@ -23,7 +23,6 @@ from datetime import timedelta
 # Tableau de bord
 # ===============================================
 @login_required
-
 def home(request):
     # ===============================
     # PROFIL ENTREPRISE & UTILISATEUR
@@ -32,11 +31,17 @@ def home(request):
     utilisateur = request.user
 
     # ===============================
-    # DATES (SEMAINE EN COURS)
+    # DATES (MOIS EN COURS)
     # ===============================
     aujourd_hui = timezone.now().date()
-    debut_semaine = aujourd_hui - timedelta(days=aujourd_hui.weekday())  # Lundi
-    fin_semaine = debut_semaine + timedelta(days=6)  # Dimanche
+
+    debut_mois = aujourd_hui.replace(day=1)
+
+    # Fin du mois (astuce robuste)
+    if debut_mois.month == 12:
+        fin_mois = debut_mois.replace(year=debut_mois.year + 1, month=1) - timedelta(days=1)
+    else:
+        fin_mois = debut_mois.replace(month=debut_mois.month + 1) - timedelta(days=1)
 
     # ===============================
     # NOTIFICATIONS
@@ -79,12 +84,12 @@ def home(request):
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
 
     # ===============================
-    # TOP 5 PRODUITS LES PLUS VENDUS
+    # TOP 5 PRODUITS LES PLUS VENDUS (MOIS)
     # ===============================
     produits_plus_vendus = (
         LigneVente.objects
         .filter(
-            vente__date_vente__date__range=[debut_semaine, fin_semaine]
+            vente__date_vente__date__range=[debut_mois, fin_mois]
         )
         .values(
             'produit__refprod',
@@ -101,12 +106,12 @@ def home(request):
     quantites_produits = [p['qte_totale'] for p in produits_plus_vendus]
 
     # ===============================
-    # TOP 5 PRODUITS LES PLUS RENTABLES
+    # TOP 5 PRODUITS LES PLUS RENTABLES (MOIS)
     # ===============================
     top_produits_rentables = (
         LigneVente.objects
         .filter(
-            vente__date_vente__date__range=[debut_semaine, fin_semaine]
+            vente__date_vente__date__range=[debut_mois, fin_mois]
         )
         .values(
             'produit__refprod',
@@ -134,18 +139,18 @@ def home(request):
     )['total'] or 0
 
     # ===============================
-    # STATISTIQUES SEMAINE
+    # STATISTIQUES DU MOIS
     # ===============================
     total_commandes = Commandes.objects.filter(
-        datecmd__range=[debut_semaine, fin_semaine]
+        datecmd__range=[debut_mois, fin_mois]
     ).count()
 
     total_livraisons = LivraisonsProduits.objects.filter(
-        datelivrer__range=[debut_semaine, fin_semaine]
+        datelivrer__range=[debut_mois, fin_mois]
     ).count()
 
     total_ventes = VenteProduit.objects.filter(
-        date_vente__date__range=[debut_semaine, fin_semaine]
+        date_vente__date__range=[debut_mois, fin_mois]
     ).count()
 
     # ===============================
@@ -184,6 +189,9 @@ def home(request):
         'total_livraisons': total_livraisons,
         'total_ventes': total_ventes,
 
+        # Période affichée
+        'debut_mois': debut_mois,
+        'fin_mois': fin_mois,
         'now': date.today(),
     }
 

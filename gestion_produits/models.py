@@ -86,7 +86,6 @@ class VenteProduit(models.Model):
     def __str__(self):
         return f"Vente {self.code} Par {self.utilisateur}"
     
-# Dans VenteProduit
     def calculer_totaux(self):
         self.total = sum(ligne.sous_total for ligne in self.lignes.all())
         self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
@@ -114,10 +113,10 @@ class LigneVente(models.Model):
         return f"{self.produit.desgprod} (x{self.quantite})"
 
     def save(self, *args, **kwargs):
-        # Calcul du sous-total
-        self.sous_total = (self.prix * self.quantite) - self.montant_reduction
-
         self.pu_reduction = self.prix - self.montant_reduction
+        # Calcul du sous-total
+        self.sous_total = (self.prix - self.montant_reduction) * self.quantite 
+
         self.benefice = (self.pu_reduction - self.produit.prix_en_gros ) * self.quantite
 
         super().save(*args, **kwargs)

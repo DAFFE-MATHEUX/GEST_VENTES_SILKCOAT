@@ -200,10 +200,37 @@
                                 <th colspan="2" class="text-center">Totaux :</th>
                                 <th class="text-center">{{ total_vendus }}</th>
                                 <th class="text-center">{{ total_montant_ventes }}</th>
-                                <th class="text-center">-</th>
                             </tr>
                         </tfoot>
         </table>
+
+        <nav>
+<ul class="pagination justify-content-center">
+    {% if listes_ventes.has_previous %}
+    <li class="page-item">
+        <a class="page-link" href="?pages=1">&laquo;</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes.previous_page_number }}">Préc</a>
+    </li>
+    {% endif %}
+
+    <li class="page-item active">
+        <span class="page-link">
+            {{ listes_ventes.number }} / {{ listes_ventes.paginator.num_pages }}
+        </span>
+    </li>
+
+    {% if listes_ventes.has_next %}
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes.next_page_number }}">Suiv</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_ventes.paginator.num_pages }}">&raquo;</a>
+    </li>
+    {% endif %}
+</ul>
+</nav>
 
     {% elif listes_ventes_filtre  %}
 
@@ -359,7 +386,6 @@
                                 <th colspan="2" class="text-center">Totaux :</th>
                                 <th class="text-center">{{ total_vendus }}</th>
                                 <th class="text-center">{{ total_montant_ventes }}</th>
-                                <th class="text-center">-</th>
                             </tr>
                         </tfoot>
         </table>

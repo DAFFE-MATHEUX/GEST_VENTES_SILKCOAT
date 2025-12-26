@@ -131,8 +131,8 @@ def generer_rapport(request):
                         'benefice_vente': 0
                     }
 
-                benefice_ligne = ligne.produit.prix_en_gros - ligne.pu_reduction
-                ligne.benefice = benefice_ligne
+                benefice_ligne = ligne.benefice
+                #ligne.benefice = benefice_ligne
 
                 ventes_dict[code_vente]['lignes'].append(ligne)
                 ventes_dict[code_vente]['total_vente'] += ligne.sous_total

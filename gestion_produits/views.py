@@ -228,12 +228,24 @@ def vendre_produit(request):
 
             with transaction.atomic():
 
+                # 1️⃣ Création de la vente (vide au départ)
+                vente = VenteProduit.objects.create(
+                    code=f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}",
+                    total=0,
+                    benefice_total=0,
+                    utilisateur=request.user,
+                    nom_complet_client=nom_complet,
+                    telclt_client=telephone,
+                    adresseclt_client=adresse
+                )
+
+                # 2️⃣ Parcours des produits
                 for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
 
                     try:
                         produit = Produits.objects.get(id=prod_id)
                     except Produits.DoesNotExist:
-                        logger.warning(f"Produit inexistant: {prod_id}")
+                        logger.warning(f"Produit inexistant : {prod_id}")
                         continue
 
                     try:
@@ -244,16 +256,18 @@ def vendre_produit(request):
                             request,
                             f"Quantité ou réduction invalide pour {produit.desgprod}"
                         )
-                        return redirect("produits:vendre_produit")
+                        raise IntegrityError()
 
                     if quantite <= 0:
                         continue
 
-                    stock = StockProduit.objects.select_for_update().filter(produit=produit).first()
+                    stock = StockProduit.objects.select_for_update().filter(
+                        produit=produit
+                    ).first()
 
                     if not stock or stock.qtestock <= 0:
                         produits_sans_stock.append(produit.desgprod)
-                        continue  # on saute le produit sans stock
+                        continue
 
                     if stock.qtestock < quantite:
                         messages.error(
@@ -261,32 +275,32 @@ def vendre_produit(request):
                             f"Stock insuffisant pour {produit.desgprod} "
                             f"(Disponible : {stock.qtestock})"
                         )
-                        return redirect("produits:vendre_produit")
+                        raise IntegrityError()
 
+                    # 🔒 Sécurité réduction
                     if reduction > produit.pu:
-                        messages.error(
-                            request,
-                            f"La réduction dépasse le prix unitaire pour {produit.desgprod}"
-                        )
-                        return redirect("produits:vendre_produit")
+                        reduction = produit.pu
 
-                    prix_net = produit.pu - reduction
-                    sous_total = prix_net * quantite
+                    # ✅ CALCUL CORRECT (identique au JS)
+                    prix_net_unitaire = produit.pu - reduction
+                    sous_total = prix_net_unitaire * quantite
+
                     total_general += sous_total
 
                     lignes.append({
                         "produit": produit,
                         "quantite": quantite,
                         "pu": produit.pu,
-                        "reduction": reduction,
-                        "sous_total": sous_total,
+                        "reduction": reduction,          # unitaire
+                        "prix_net": prix_net_unitaire,
                         "stock": stock
                     })
 
                 if produits_sans_stock:
                     messages.warning(
                         request,
-                        f"Les produits suivants n'ont pas de stock et ont été ignorés: {', '.join(produits_sans_stock)}"
+                        "Produits ignorés (stock vide) : "
+                        + ", ".join(produits_sans_stock)
                     )
 
                 if not lignes:
@@ -294,55 +308,83 @@ def vendre_produit(request):
                         request,
                         "Aucun produit valide sélectionné pour la vente."
                     )
+                    vente.delete()
                     return redirect("produits:vendre_produit")
 
-                # Création de la vente
-                vente = VenteProduit.objects.create(
-                    code=f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}",
-                    total=total_general,
-                    utilisateur=request.user,
-                    nom_complet_client=nom_complet,
-                    telclt_client=telephone,
-                    adresseclt_client=adresse
-                )
-
-                # Création des lignes de vente et mise à jour du stock
+                # 3️⃣ Création des lignes + mise à jour du stock
                 for ligne in lignes:
                     LigneVente.objects.create(
                         vente=vente,
                         produit=ligne["produit"],
                         quantite=ligne["quantite"],
-                        prix=ligne["pu"],
-                        montant_reduction=ligne["reduction"],
-                        sous_total=ligne["sous_total"]
+                        prix=ligne["pu"],                     # PU brut
+                        montant_reduction=ligne["reduction"], # réduction UNITAIRE
                     )
+
                     ligne["stock"].qtestock -= ligne["quantite"]
                     ligne["stock"].save(update_fields=["qtestock"])
 
-                # Envoi d'email admin (non bloquant)
+                # 4️⃣ Mise à jour des totaux (méthode modèle)
+                vente.total = total_general
+                vente.calculer_totaux() 
+                vente.save(update_fields=["total", "benefice_total"])
+
+                # 5️⃣ Email admin (non bloquant)
                 try:
-                    contenu = f"Nouvelle vente : {vente.code}\n\n"
-                    for l in lignes:
-                        contenu += f"- {l['produit'].desgprod} | Qté: {l['quantite']} | Reduction: {l['reduction']} | Sous-total: {l['sous_total']}\n"
-                    contenu += f"\nTOTAL : {total_general}"
+                    total_quantite = 0
+                    total_reduction = 0
+
+                    contenu = (
+                        f"Nouvelle vente : {vente.code}\n"
+                        f"Client : {nom_complet}\n"
+                        f"Téléphone : {telephone}\n"
+                        f"Adresse : {adresse}\n\n"
+                        f"DÉTAILS DE LA VENTE\n"
+                        f"-------------------\n"
+                    )
+
+                    for l in vente.lignes.all():
+                        total_quantite += l.quantite
+                        total_reduction += l.montant_reduction * l.quantite
+
+                    contenu += (
+                        f"- Produit : {l.produit.desgprod}\n"
+                        f"  Qté : {l.quantite}\n"
+                        f"  PU : {l.prix}\n"
+                        f"  Réduction unitaire : {l.montant_reduction}\n"
+                        f"  Sous-total : {l.sous_total}\n"
+                        f"  Bénéfice ligne : {l.benefice}\n\n"
+                    )
+
+                    contenu += (
+                        f"-------------------\n"
+                        f"TOTAL QUANTITÉ : {total_quantite}\n"
+                        f"TOTAL RÉDUCTION : {total_reduction}\n"
+                        f"TOTAL MONTANT : {vente.total}\n"
+                        f"BÉNÉFICE GLOBAL : {vente.benefice_total}\n"
+                    )
 
                     EmailMessage(
-                        f"Nouvelle vente {vente.code}",
-                        contenu,
-                        settings.DEFAULT_FROM_EMAIL,
-                        [settings.ADMIN_EMAIL]
-                    ).send()
+                        subject=f"Nouvelle vente : {vente.code}",
+                        body=contenu,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[settings.ADMIN_EMAIL]
+                    ).send(fail_silently=False)
 
                 except Exception as mail_error:
-                    logger.error(f"Email vente échoué : {mail_error}")
+                    logger.exception("Erreur envoi email vente")
                     messages.warning(
                         request,
                         "Vente enregistrée mais email non envoyé."
                     )
 
+
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
-                reverse("produits:recu_vente_global", kwargs={"vente_code": vente.code})
+                reverse(
+                    "produits:recu_vente_global",
+                    kwargs={"vente_code": vente.code}
+                )
             )
 
         return render(
@@ -356,15 +398,14 @@ def vendre_produit(request):
         return redirect("produits:vendre_produit")
 
     except DatabaseError:
-        messages.error(request, "Erreur de base de données. Veuillez réessayer.")
+        messages.error(request, "Erreur de base de données.")
         return redirect("produits:vendre_produit")
 
     except Exception as e:
-        # 🔹 Affichage détaillé pour debug
         logger.exception("Erreur vente produit")
         messages.error(
             request,
-            f"Une erreur inattendue est survenue: {str(e)}"
+            f"Une erreur inattendue est survenue : {str(e)}"
         )
         return redirect("produits:vendre_produit")
 
@@ -758,6 +799,10 @@ def recu_vente_global(request, vente_code):
 
     # --- calcul du total ---
     total = sum(Decimal(l.sous_total) for l in lignes)
+    # -- Calcul du total quantite vendu
+    total_quantite = sum(Decimal(l.quantite) for l in lignes)
+    # -- Calcul du total de reduction
+    total_reduction = sum(Decimal(l.montant_reduction) for l in lignes)
 
     # --- génération QR code ---
     try:
@@ -793,6 +838,8 @@ def recu_vente_global(request, vente_code):
         "lignes": lignes,
         "total": total,
         "today": now(),
+        'total_quantite' : total_quantite,
+        'total_reduction' : total_reduction,
         "qr_code_base64": qr_code_base64,
         "entreprise": Entreprise.objects.first(),  # Assure-toi qu'il y a bien une instance
     }
@@ -1988,13 +2035,6 @@ def filtrer_listes_ventes(request):
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
 
-    total_ventes = 0
-    total_montant_ventes = 0
-    benefice_global = 0
-    total_par_categorie = []
-    listes_ventes_filtre = []
-    total_vendus = 0
-
     try:
         # ================== QUERYSET DE BASE ==================
         ventes_qs = LigneVente.objects.select_related(
@@ -2009,39 +2049,43 @@ def filtrer_listes_ventes(request):
                 vente__date_vente__date__range=[date_debut, date_fin]
             )
 
-        # ================== TOTAL DES VENTES ==================
+        # ================== STATISTIQUES (AVANT PAGINATION) ==================
+
         total_ventes = ventes_qs.count()
-        
-        total_vendus = LigneVente.objects.aggregate(
+
+        total_vendus = ventes_qs.aggregate(
             total=Sum('quantite')
         )['total'] or 0
 
-        # ================== TOTAL PAR CATÉGORIE ==================
-        total_par_categorie = ventes_qs.values(
-            'produit__categorie__desgcategorie'
-        ).annotate(
-            total_quantite=Sum('quantite'),
-            total_montant=Sum('sous_total')
-        ).order_by('produit__categorie__desgcategorie')
-        
-        # Total par produit
+        total_montant_ventes = ventes_qs.aggregate(
+            total=Sum('sous_total')
+        )['total'] or 0
+
+        benefice_global = ventes_qs.aggregate(
+            total=Sum('benefice')
+        )['total'] or 0
+
+        total_par_categorie = (
+            ventes_qs
+            .values('produit__categorie__desgcategorie')
+            .annotate(
+                total_quantite=Sum('quantite'),
+                total_montant=Sum('sous_total')
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+
         total_par_produit = (
             ventes_qs
             .values('produit__desgprod')
             .annotate(
-                    total_quantite=Sum('quantite'),
-                    total_montant=Sum('sous_total')
-                )
-                .order_by('produit__desgprod')
+                total_quantite=Sum('quantite'),
+                total_montant=Sum('sous_total')
             )
+            .order_by('produit__desgprod')
+        )
 
-        # ================== CALCUL BÉNÉFICE ==================
-        for ligne in ventes_qs:
-
-            benefice_global += ligne.benefice
-            total_montant_ventes += ligne.sous_total
-
-        # ================== PAGINATION ==================
+        # ================== PAGINATION (TOUT À LA FIN) ==================
         listes_ventes_filtre = pagination_lis(request, ventes_qs)
 
     except Exception as ex:
@@ -2049,7 +2093,6 @@ def filtrer_listes_ventes(request):
             request,
             f"Erreur lors du filtrage des ventes : {str(ex)}"
         )
-        # Initialisation en cas d'erreur
         listes_ventes_filtre = []
         total_ventes = 0
         total_montant_ventes = 0
@@ -2067,8 +2110,8 @@ def filtrer_listes_ventes(request):
         "benefice_global": benefice_global,
         "total_par_categorie": total_par_categorie,
         "total_montant_ventes": total_montant_ventes,
-        'total_par_produit' : total_par_produit,
-        'total_vendus' : total_vendus,
+        "total_par_produit": total_par_produit,
+        "total_vendus": total_vendus,
     }
 
     return render(
@@ -2317,7 +2360,7 @@ def ajouter_stock_multiple(request):
 @login_required
 def listes_produits_impression(request):
 
-    listes_produits = Produits.objects.all()
+    listes_produits = Produits.objects.all().order_by('desgprod')
 
     total_quantite_restante = StockProduit.objects.aggregate(
             total=Sum('qtestock')

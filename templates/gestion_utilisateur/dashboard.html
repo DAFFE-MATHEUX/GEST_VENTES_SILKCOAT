@@ -64,7 +64,7 @@
         <div class="small-box bg-red">
             <div class="inner">
                 <h3>{{ total_stock }}</h3>
-                <p>Stock Total</p>
+                <p>Total Stock des Produits</p>
             </div>
             <div class="icon"><i class="ion ion-cube"></i></div>
             <a href="{% url 'produits:listes_produits_stock' %}" class="small-box-footer">
@@ -76,7 +76,7 @@
         <div class="small-box bg-red">
             <div class="inner">
                 <h3>{{ total_ventes }}</h3>
-                <p>Ventes (Semaine)</p>
+                <p>Ventes (Mois)</p>
             </div>
             <div class="icon"><i class="ion ion-cash"></i></div>
             <a href="{% url 'produits:listes_des_ventes' %}" class="small-box-footer">
@@ -96,7 +96,7 @@
         <div class="small-box bg-yellow">
             <div class="inner">
                 <h3>{{ total_commandes }}</h3>
-                <p>Commandes (Semaine)</p>
+                <p>Commandes (Mois)</p>
             </div>
             <div class="icon"><i class="ion ion-bag"></i></div>
             <a href="{% url 'produits:listes_des_commandes' %}" class="small-box-footer">
@@ -109,7 +109,7 @@
         <div class="small-box bg-yellow">
             <div class="inner">
                 <h3>{{ total_livraisons }}</h3>
-                <p>Livraisons (Semaine)</p>
+                <p>Livraisons (Mois)</p>
             </div>
             <div class="icon"><i class="ion ion-bag"></i></div>
             <a href="{% url 'produits:listes_des_livraisons' %}" class="small-box-footer">
@@ -223,7 +223,7 @@
     <div class="col-md-6">
         <div class="box box-success">
             <div class="box-header with-border">
-                <h3 class="box-title">📊 Produits les plus vendus</h3>
+                <h3 class="box-title">📊 Produits les plus vendus Dans le Mois</h3>
             </div>
             <div class="box-body">
                 <canvas id="chartTopProduits"></canvas>
@@ -234,7 +234,7 @@
     <div class="col-md-6">
         <div class="box box-success">
             <div class="box-header with-border">
-                <h3 class="box-title">📊 Rentabilité</h3>
+                <h3 class="box-title">📊 Rentabilité Mensuelle</h3>
             </div>
             <div class="box-body">
                 <canvas id="chartRentabilite"></canvas>

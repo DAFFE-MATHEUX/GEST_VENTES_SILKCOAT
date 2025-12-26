@@ -222,13 +222,21 @@
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="3" class="text-center">Totaux</th>
+                <th class="text-center">{{  total_quantite|floatformat:0 }}</th>
+                <th class="text-center">-</th>
+                <th class="text-center">{{ total_reduction|floatformat:0 }} GNF</th>
+                <th colspan="3" class="text-center"> {{ total|floatformat:0 }} GNF</th>
+            </tr>
+        </tfoot>
     </table>
 
     <!-- ================= TOTAL & BANQUE ================= -->
     <table>
         <tr>
             <td>
-                <img src="{% static 'img/logo_uba.jpg' %}" alt="Logo UBA" width="70"><br>
                 <strong>LES PRODUITS SONT D’ORIGINE TURQUE</strong><br>
                 <strong>LES PRODUITS SONT PRODUITS EN GUINÉE</strong>
             </td>
@@ -245,6 +253,7 @@
 
         <div class="footer-left">
             <!-- réservé si besoin futur -->
+            <img src="{% static 'img/logo_uba.jpg' %}" alt="Logo UBA" width="70"><br>
                 <strong>INTITULÉ DE COMPTE :</strong> ITRACO BTP SARLU<br>
                 <strong>COMPTE :</strong> 60011030023275<br>
                 <strong>CLÉ RIB :</strong> 56<br>
