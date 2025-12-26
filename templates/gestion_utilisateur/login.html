@@ -192,6 +192,15 @@
 
         <h2><i class="fa fa-user-circle"></i> Connexion</h2>
         <p class="subtitle">Connectez-vous pour accéder à votre espace</p>
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
 
         <form action="" method="POST">
             {% csrf_token %}
@@ -210,12 +219,6 @@
             <button type="submit"><i class="fa fa-sign-in-alt"></i> Se Connecter</button>
         </form>
 
-        <!-- Bouton Google 
-        <a href="{% url 'social:begin' 'google-oauth2' %}" class="google-btn">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo">
-            Se connecter avec Google
-        </a>
--->
         <div class="login">
             <p>Pas encore de compte ?
                 <a href="{% url 'gestionUtilisateur:inscription_utilisateur' %}">

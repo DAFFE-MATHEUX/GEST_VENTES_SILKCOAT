@@ -204,45 +204,7 @@ def home(request):
     return render(request, 'gestion_utilisateur/dashboard.html', context)
 
 # ===============================================
-# Connexion
-# ===============================================
-def login_user(request):
-    if request.method == 'POST':
-        identifiant = request.POST.get('username')
-        password = request.POST.get('password')
-        username = identifiant
-
-        if '@' in identifiant:
-            try:
-                user_obj = Utilisateur.objects.get(email=identifiant)
-                username = user_obj.username
-            except Utilisateur.DoesNotExist:
-                messages.error(request, "Aucun utilisateur avec cet e-mail !")
-                return redirect('gestionUtilisateur:connexion_utilisateur')
-
-        user = authenticate(request, username=username, password=password)
-        if user:
-            login(request, user)
-            return redirect('gestionUtilisateur:tableau_bord')
-        else:
-            messages.error(request, "Identifiant ou mot de passe incorrect !")
-            return redirect('gestionUtilisateur:connexion_utilisateur')
-
-    return render(request, 'gestion_utilisateur/login.html')
-
-# ===============================================
-# Déconnexion
-# ===============================================
-def Logoutuser(request):
-    logout(request)
-    messages.success(request, 'Vous êtes maintenant déconnecté')
-    return redirect('/')
-
-def page_bienvenue(request):
-        return render(request, 'gestion_utilisateur/page_bienvenue.html')
-
-# ===============================================
-# Inscription
+# Inscription utilisateur avec approbation admin
 # ===============================================
 def inscriptionutilisateur(request):
     choix_utilisateur = Utilisateur.ROLE_CHOICES
@@ -278,63 +240,157 @@ def inscriptionutilisateur(request):
             return redirect('gestionUtilisateur:inscription_utilisateur')
 
         try:
-            Utilisateur.objects.create_user(
+            user = Utilisateur.objects.create_user(
                 username=username,
                 email=email,
                 password=password1,
                 first_name=first_name,
                 last_name=last_name,
                 type_utilisateur=type_utilisateur,
-                photo_utilisateur=photo_utilisateur
+                photo_utilisateur=photo_utilisateur,
+                is_approved=False  # Nouveau : l'utilisateur doit être approuvé par l'admin
             )
-            messages.success(request, "Utilisateur ajouté avec succès.")
-            return redirect('gestionUtilisateur:tableau_bord')
+
+            messages.success(request, "Utilisateur ajouté avec succès. En attente d'approbation par l'administrateur.")
+
+            # --- Envoi notification à tous les admins ---
+            admins = Utilisateur.objects.filter(type_utilisateur='Admin', is_active=True)
+            for admin in admins:
+                Notification.objects.create(
+                    titre="Nouvel utilisateur à approuver",
+                    message=f"L'utilisateur {user.username} vient de s'inscrire et nécessite votre approbation.",
+                    destinataire=admin
+                )
+
+            return redirect('gestionUtilisateur:connexion_utilisateur')
+
         except Exception as e:
             messages.error(request, f"Erreur lors de l'enregistrement : {str(e)}")
-    context = {
-        'choix_utilisateur' : choix_utilisateur,
-    }
+
+    context = {'choix_utilisateur': choix_utilisateur}
     return render(request, 'gestion_utilisateur/inscription_utilisateur.html', context)
+
+
+# ===============================================
+# Connexion utilisateur avec vérification approbation
+# ===============================================
+def login_user(request):
+    if request.method == 'POST':
+        identifiant = request.POST.get('username')
+        password = request.POST.get('password')
+        username = identifiant
+
+        # Si l'identifiant est un email, on récupère le username correspondant
+        if '@' in identifiant:
+            try:
+                user_obj = Utilisateur.objects.get(email=identifiant)
+                username = user_obj.username
+            except Utilisateur.DoesNotExist:
+                messages.error(request, "Aucun utilisateur avec cet e-mail !")
+                return redirect('gestionUtilisateur:connexion_utilisateur')
+
+        # Authentification
+        user = authenticate(request, username=username, password=password)
+        if user:
+            # Vérification si l'utilisateur est actif
+            if not user.is_active:
+                messages.error(request, "Votre compte est désactivé ! Contactez l'administrateur.")
+                return redirect('gestionUtilisateur:connexion_utilisateur')
+
+            # Vérification si l'utilisateur est approuvé (sauf pour les Admin)
+            if user.type_utilisateur != 'Admin' and not user.is_approved:
+                messages.error(request, "Votre compte n'a pas encore été approuvé par un administrateur !")
+                return redirect('gestionUtilisateur:connexion_utilisateur')
+
+            # Connexion réussie
+            login(request, user)
+            messages.success(request, f"Bienvenue {user.first_name} !")
+            return redirect('gestionUtilisateur:tableau_bord')
+        else:
+            messages.error(request, "Identifiant ou mot de passe incorrect !")
+            return redirect('gestionUtilisateur:connexion_utilisateur')
+
+    return render(request, 'gestion_utilisateur/login.html')
+
+# ===============================================
+# Déconnexion
+# ===============================================
+def Logoutuser(request):
+    logout(request)
+    messages.success(request, 'Vous êtes maintenant déconnecté')
+    return redirect('/')
+
+def page_bienvenue(request):
+        return render(request, 'gestion_utilisateur/page_bienvenue.html')
 
 
 # ===============================================
 # Liste utilisateurs
 # ===============================================
+
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def liste_utilisateur(request):
+    """
+    Vue pour afficher la liste des utilisateurs, gérer l'approbation et la désapprobation par un admin,
+    et envoyer une notification à l'utilisateur concerné.
+    """
+
+    # 🔹 Récupération de tous les utilisateurs, triés par nom
     listeuser_qs = Utilisateur.objects.all().order_by('last_name')
+    
+    # 🔹 Pagination : 7 utilisateurs par page
     pageuser = Paginator(listeuser_qs, 7)
-    numpage = request.GET.get('page')
+    numpage = request.GET.get("page")
     listeuser = pageuser.get_page(numpage)
-    context = {'listeuser': listeuser, 'total_utilisateur': listeuser_qs.count()}
-    return render(request, 'gestion_utilisateur/liste_utilisateur.html', context)
 
+    # 🔹 Gestion de l'approbation / désapprobation
+    if request.method == "POST":
+        user_id = request.POST.get("user_id")
+        action = request.POST.get("action")  # 'approve' ou 'refuse'
 
-# ===============================================
-# Modifier utilisateur
-# ===============================================
-@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-def modifier_utilisateur(request, pk):
-    utilisateur = get_object_or_404(Utilisateur, id=pk)
-    if request.method == 'POST':
-        if request.POST['password'] != request.POST['confirmation_password']:
-            messages.warning(request, 'Vos mots de passe ne sont pas conformes')
-        else:
-            utilisateur.username = request.POST['username']
-            utilisateur.email = request.POST['email']
-            utilisateur.first_name = request.POST['first_name']
-            utilisateur.last_name = request.POST['last_name']
-            password = request.POST['password']
-            if password:
-                utilisateur.set_password(password)
-            new_photo = request.FILES.get('new_photo_user')
-            if new_photo:
-                utilisateur.photo_utilisateur = new_photo
-            utilisateur.save()
-            messages.success(request, "Utilisateur modifié avec succès")
+        if user_id and action:
+            try:
+                user_obj = Utilisateur.objects.get(id=user_id)
+
+                if action == "approve":
+                    # ✅ Approuver l'utilisateur
+                    user_obj.is_approved = True
+                    user_obj.is_active = True  # Optionnel : rendre actif
+                    user_obj.save()
+
+                    # 🔔 Créer une notification pour l'utilisateur
+                    Notification.objects.create(
+                        destinataire=user_obj,
+                        message="✅ Votre compte a été approuvé par l'administrateur."
+                    )
+                    messages.success(request, f"Utilisateur {user_obj.username} approuvé avec succès.")
+
+                elif action == "refuse":
+                    # ❌ Désapprouver / bloquer l'utilisateur
+                    user_obj.is_approved = False
+                    user_obj.is_active = False  # Optionnel : désactiver l'accès
+                    user_obj.save()
+
+                    # 🔔 Notification pour informer l'utilisateur
+                    Notification.objects.create(
+                        destinataire=user_obj,
+                        message="❌ Votre compte n'a pas été approuvé par l'administrateur."
+                    )
+                    messages.info(request, f"Utilisateur {user_obj.username} désapprouvé avec succès.")
+
+            except Utilisateur.DoesNotExist:
+                messages.error(request, "Utilisateur introuvable.")
+
+            # Redirection pour éviter le double POST
             return redirect('gestionUtilisateur:liste_utilisateur')
-    return redirect('gestionUtilisateur:liste_utilisateur')
 
+    # 🔹 Contexte pour le template
+    context = {
+        'listeuser': listeuser,
+        'total_utilisateur': listeuser_qs.count()
+    }
+
+    return render(request, 'gestion_utilisateur/liste_utilisateur.html', context)
 
 # ===============================================
 # Supprimer utilisateur
@@ -366,15 +422,16 @@ def supprimerutilisateur(request):
                     "❌ Impossible de supprimer cet utilisateur : il possède déjà des notifications enregistrées."
                 )
                 return redirect('gestionUtilisateur:liste_utilisateur')
-            # 🔒 2. Empêcher suppression si l'utilisateur a reçu des notifications
-            if LigneVente.objects.filter(utilisateur=utilisateur_obj).exists():
+
+            # 🔒 3. Empêcher suppression si l'utilisateur a déjà des ventes enregistrées
+            if LigneVente.objects.filter(vente__utilisateur=utilisateur_obj).exists():
                 messages.warning(
                     request,
                     "❌ Impossible de supprimer cet utilisateur : il possède déjà des ventes enregistrées."
                 )
                 return redirect('gestionUtilisateur:liste_utilisateur')
 
-            # 🔒 3. Empêcher suppression si l'utilisateur apparaît dans l'audit
+            # 🔒 4. Empêcher suppression si l'utilisateur apparaît dans l'audit
             if AuditLog.objects.filter(utilisateur=utilisateur_obj).exists():
                 messages.warning(
                     request,
@@ -382,7 +439,7 @@ def supprimerutilisateur(request):
                 )
                 return redirect('gestionUtilisateur:liste_utilisateur')
 
-            # --- 4. Audit avant suppression ---
+            # --- 5. Audit avant suppression ---
             details_ancienne_valeur = {
                 "Nom": utilisateur_obj.first_name,
                 "Prénom": utilisateur_obj.last_name,

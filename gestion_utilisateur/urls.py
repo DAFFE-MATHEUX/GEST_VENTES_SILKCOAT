@@ -13,7 +13,6 @@ urlpatterns = [
     #=========================================================================
 
     # ===== Utilisateurs =====
-    path('modificationUser/<int:pk>/', modifier_utilisateur, name="modification_User"),
     path('listeUser/', liste_utilisateur, name="liste_utilisateur"),
     path('inscription_utilisateur/', inscriptionutilisateur, name="inscription_utilisateur"),
     path('supprimer_utilisateur/', supprimerutilisateur, name="supprimerutilisateur"),
