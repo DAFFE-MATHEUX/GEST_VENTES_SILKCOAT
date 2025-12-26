@@ -29,7 +29,8 @@
      BOÎTES DE STATISTIQUES
      ===================== -->
 <div class="row">
-    <div class="col-lg-3 col-xs-6">
+    <!-- Total catégories produit -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
         <div class="small-box bg-green">
             <div class="inner">
                 <h3>{{ total_categories }}</h3>
@@ -42,7 +43,8 @@
         </div>
     </div>
 
-    <div class="col-lg-3 col-xs-6">
+    <!-- Total produits -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
         <div class="small-box bg-aqua">
             <div class="inner">
                 <h3>{{ total_produits }}</h3>
@@ -55,7 +57,8 @@
         </div>
     </div>
 
-    <div class="col-lg-3 col-xs-6">
+    <!-- Stock total -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
         <div class="small-box bg-red">
             <div class="inner">
                 <h3>{{ total_stock }}</h3>
@@ -68,7 +71,8 @@
         </div>
     </div>
 
-    <div class="col-lg-3 col-xs-6">
+    <!-- Ventes du mois -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
         <div class="small-box bg-red">
             <div class="inner">
                 <h3>{{ total_ventes }}</h3>
@@ -86,7 +90,8 @@
      COMMANDES / LIVRAISONS
      ===================== -->
 <div class="row">
-    <div class="col-lg-3 col-xs-6">
+    <!-- Commandes du mois -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
         <div class="small-box bg-yellow">
             <div class="inner">
                 <h3>{{ total_commandes }}</h3>
@@ -99,7 +104,8 @@
         </div>
     </div>
 
-    <div class="col-lg-3 col-xs-6">
+    <!-- Livraisons du mois -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
         <div class="small-box bg-yellow">
             <div class="inner">
                 <h3>{{ total_livraisons }}</h3>
@@ -117,13 +123,13 @@
      5 DERNIÈRES VENTES
      ===================== -->
 <div class="row">
-    <div class="col-md-12">
+    <div class="col-xs-12">
         <div class="box box-info">
             <div class="box-header with-border">
                 <h3 class="box-title">5 Dernières Ventes</h3>
             </div>
             <div class="box-body table-responsive">
-                <table class="table table-bordered table-striped">
+                <table class="table table-bordered table-striped table-condensed">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -164,13 +170,13 @@
      TOP 5 PRODUITS RENTABLES
      ===================== -->
 <div class="row">
-    <div class="col-md-12">
+    <div class="col-xs-12">
         <div class="box box-warning">
             <div class="box-header with-border">
                 <h3 class="box-title">💰 TOP 5 PRODUITS LES PLUS RENTABLES (Mois)</h3>
             </div>
             <div class="box-body table-responsive">
-                <table class="table table-bordered table-striped">
+                <table class="table table-bordered table-striped table-condensed">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -179,7 +185,7 @@
                             <th>Produit</th>
                             <th>Qté</th>
                             {% if request.user.type_utilisateur != 'Gerante' %}
-                            <th>Bénéfice</th>
+                                <th>Bénéfice</th>
                             {% endif %}
                         </tr>
                     </thead>
@@ -213,9 +219,8 @@
      GRAPHIQUES
      ===================== -->
 <div class="row">
-
     <!-- Produits les plus vendus -->
-    <div class="col-md-6">
+    <div class="col-md-6 col-xs-12 mb-3">
         <div class="box box-success">
             <div class="box-header with-border">
                 <h3 class="box-title">📊 Produits les plus vendus (Mois)</h3>
@@ -228,7 +233,7 @@
 
     {% if request.user.type_utilisateur != 'Gerante' %}
     <!-- Rentabilité mensuelle -->
-    <div class="col-md-6">
+    <div class="col-md-6 col-xs-12 mb-3">
         <div class="box box-success">
             <div class="box-header with-border">
                 <h3 class="box-title">📊 Rentabilité Mensuelle</h3>
@@ -239,16 +244,11 @@
         </div>
     </div>
     {% endif %}
-
 </div>
 
-<!-- =====================
-     Comparaison mois & courbe journalière
-     ===================== -->
 <div class="row">
-
-    <!-- Comparaison Mois actuel vs Mois précédent -->
-    <div class="col-md-6">
+    <!-- Comparaison Mois -->
+    <div class="col-md-6 col-xs-12 mb-3">
         <div class="box box-info">
             <div class="box-header with-border">
                 <h3 class="box-title">📊 Comparaison Mois Actuel vs Mois Précédent</h3>
@@ -259,8 +259,8 @@
         </div>
     </div>
 
-    <!-- Courbe journalière du mois -->
-    <div class="col-md-6">
+    <!-- Courbe journalière -->
+    <div class="col-md-6 col-xs-12 mb-3">
         <div class="box box-info">
             <div class="box-header with-border">
                 <h3 class="box-title">📈 Courbe Journalière du Mois</h3>
@@ -270,7 +270,6 @@
             </div>
         </div>
     </div>
-
 </div>
 
 </section>
