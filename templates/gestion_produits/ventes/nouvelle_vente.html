@@ -5,12 +5,10 @@
 <hr>
 
 {% if messages %}
-  {% for m in messages %}
-    <div class="alert alert-{{ m.tags }} alert-dismissible fade show" role="alert">
-      {{ m|escape }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  {% endfor %}
+        <!-- MESSAGES -->
+        {% for mgs in messages %}
+        <div class="alert alert-{{ mgs.tags|default:'info' }}">{{ mgs }}</div>
+        {% endfor %}
 {% endif %}
 
 <form method="post" id="form-vente">
@@ -66,23 +64,26 @@
         </td>
 
         <td class="pu" data-pu="{{ p.pu }}">{{ p.pu }}</td>
-        <td class="stock" data-stock="{{ p.stocks.qtestock }}">{{ p.stocks.qtestock }}</td>
+        <td class="stock" data-stock="{{ p.stocks.qtestock|default:0 }}">{{ p.stocks.qtestock|default:0 }}</td>
 
+        <!-- 🔒 QUANTITÉ -->
         <td>
-          <input type="number"
+          <input type="text"
                  name="quantite[]"
-                 class="form-control qte"
-                 min="0"
-                 max="{{ p.qtestock_magasin }}"
-                 value="0">
+                 class="form-control qte only-numbers"
+                 value="0"
+                 inputmode="numeric"
+                 autocomplete="off">
         </td>
 
+        <!-- 🔒 RÉDUCTION -->
         <td>
-          <input type="number"
+          <input type="text"
                  name="reduction[]"
-                 class="form-control reduction"
-                 min="0"
-                 value="0">
+                 class="form-control reduction only-numbers"
+                 value="0"
+                 inputmode="numeric"
+                 autocomplete="off">
         </td>
 
         <td class="sous-total">0</td>
@@ -105,8 +106,17 @@
   </button>
 </form>
 
-<!-- ================= SCRIPT ================= -->
+<!-- ================= SCRIPTS ================= -->
+
 <script>
+/* 🔒 Bloquer lettres & caractères spéciaux */
+document.addEventListener("input", function (e) {
+  if (e.target.classList.contains("only-numbers")) {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+  }
+});
+
+/* 🔄 Recalcul */
 function recalc() {
   let total = 0;
 
@@ -114,17 +124,22 @@ function recalc() {
     const qteInput = row.querySelector(".qte");
     const reductionInput = row.querySelector(".reduction");
 
-    let qte = Math.max(0, parseInt(qteInput.value || 0));
-    let reduction = Math.max(0, parseInt(reductionInput.value || 0));
+    let qte = parseInt(qteInput.value || "0", 10);
+    let reduction = parseInt(reductionInput.value || "0", 10);
 
-    const pu = parseInt(row.querySelector(".pu").dataset.pu);
-    const stock = parseInt(row.querySelector(".stock").dataset.stock);
+    if (isNaN(qte)) qte = 0;
+    if (isNaN(reduction)) reduction = 0;
 
+    const pu = parseInt(row.querySelector(".pu").dataset.pu, 10);
+    const stock = parseInt(row.querySelector(".stock").dataset.stock, 10);
+
+    // 🔒 Sécurité stock
     if (qte > stock) {
       qte = stock;
       qteInput.value = stock;
     }
 
+    // 🔒 Sécurité réduction
     if (reduction > pu) {
       reduction = pu;
       reductionInput.value = pu;
@@ -143,6 +158,7 @@ document.querySelectorAll(".qte, .reduction").forEach(i => {
   i.addEventListener("input", recalc);
 });
 
+/* 🔍 Recherche produit */
 document.getElementById("search").addEventListener("input", function () {
   const q = this.value.toLowerCase();
   document.querySelectorAll(".produit-row").forEach(row => {

@@ -207,7 +207,6 @@ def vendre_produit(request):
         # 🔐 Affichage sécurisé du stock
         for p in produits:
             stock = StockProduit.objects.filter(produit=p).first()
-            #p.qtestock_magasin = stock.qtestock if stock else 0
 
         if request.method == "POST":
 

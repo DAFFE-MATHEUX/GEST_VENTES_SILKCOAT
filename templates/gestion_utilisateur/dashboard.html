@@ -90,7 +90,6 @@
 <!-- =====================
      COMMANDES / LIVRAISONS 
      ===================== -->
-      {% if not request.user.type_utilisateur == 'Gerante' %}
 <div class="row">
 
     <div class="col-lg-3 col-xs-6">
@@ -121,7 +120,6 @@
 
 
 </div>
-{% endif %}
 <!-- =====================
      5 DERNIÈRES VENTES
      ===================== -->
@@ -187,7 +185,7 @@
                             <th>Catégorie</th>
                             <th>Produit</th>
                             <th>Qté</th>
-                             {% if not request.user.type_utilisateur == 'Gerante' %}
+                             {% if request.user.type_utilisateur != 'Gerante' %}
                             <th>Bénéfice</th>
                             {% endif %}
                         </tr>
@@ -200,7 +198,7 @@
                             <td>{{ p.produit__categorie__desgcategorie }}</td>
                             <td>{{ p.produit__desgprod }}</td>
                             <td>{{ p.qte_vendue }}</td>
-                             {% if not request.user.type_utilisateur == 'Gerante' %}
+                             {% if request.user.type_utilisateur != 'Gerante' %}
                             <td class="text-success">
                                 <strong>{{ p.benefice_total|floatformat:0 }} GNF</strong>
                             </td>
@@ -232,7 +230,7 @@
             </div>
         </div>
     </div>
- {% if not request.user.type_utilisateur == 'Gerante' %}
+ {% if request.user.type_utilisateur != 'Gerante' %}
     <div class="col-md-6">
         <div class="box box-success">
             <div class="box-header with-border">

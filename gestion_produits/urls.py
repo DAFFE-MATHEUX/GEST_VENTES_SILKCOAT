@@ -4,6 +4,15 @@ app_name = 'produits'
 
 urlpatterns = [
     #=================================================================================================================================================
+    # Gestion des Catégories de produits
+    #=================================================================================================================================================
+    
+    path('ajouter_categorie/', ajouter_categorie, name='ajouter_categorie'),
+    path('supprimer_categorie/', supprimer_categorie, name='supprimer_categorie'), 
+    path('listes_categorie/', listes_categorie, name='listes_categorie'), 
+    path('modifier_categorie/', modifier_categorie, name='modifier_categorie'), 
+    
+    #=================================================================================================================================================
     # Gestion des produits
     #=================================================================================================================================================
     
@@ -57,15 +66,6 @@ urlpatterns = [
     #====================================================================================================================================================
 
     path('approv/approvisionner_produits/', approvisionner_produits, name='approvisionner_produits'),
-    
-    #=================================================================================================================================================
-    # Gestion des catégories de produits
-    #=================================================================================================================================================
-    
-    path('ajouter_categorie/', ajouter_categorie, name='ajouter_categorie'),
-    path('supprimer_categorie/', supprimer_categorie, name='supprimer_categorie'), 
-    path('listes_categorie/', listes_categorie, name='listes_categorie'), 
-    path('modifier_categorie/', modifier_categorie, name='modifier_categorie'), 
     
     #=================================================================================================================================================
     # Impression listes

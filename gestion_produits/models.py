@@ -10,6 +10,7 @@ class CategorieProduit(models.Model):
     desgcategorie = models.CharField(max_length=65, unique=True)
     description = models.TextField(null = True, blank = True)
     date_maj = models.DateField(auto_now = True)
+    history = HistoricalRecords() # Pour l'historique dans la partie administration de Django
     
     def __str__(self):
         return f"Catégorie : {self.desgcategorie}"
@@ -27,6 +28,7 @@ class Produits(models.Model):
     photoprod = models.ImageField(upload_to = 'Produits/', null = True, blank = True)
     date_maj = models.DateField(auto_now = True)
     categorie = models.ForeignKey(CategorieProduit, on_delete=models.CASCADE, related_name='produit')
+    history = HistoricalRecords() # Pour l'historique dans la partie administration de Django
     
     class Meta:
         unique_together = ['refprod', 'categorie']
@@ -49,16 +51,8 @@ class StockProduit(models.Model):
     seuil = models.IntegerField(default=0)
 
     date_maj = models.DateTimeField(auto_now=True)
-    history = HistoricalRecords()
+    history = HistoricalRecords() # Pour l'historique dans la partie administration de Django
 
-    class Meta:
-        verbose_name = "Stock Produit"
-        verbose_name_plural = "Stocks Produits"
-
-    def __str__(self):
-        return f"{self.produit.refprod} | Stock: {self.qtestock}"
-
-""" 
     class Meta:
         verbose_name = "Stock Produit"
         verbose_name_plural = "Stocks Produits"
@@ -68,7 +62,10 @@ class StockProduit(models.Model):
                 name="unique_stock_produit"
             )
         ]
-    """
+
+    def __str__(self):
+        return f"{self.produit.refprod} | Stock: {self.qtestock}"
+
 #==================================================================================
 # Table Ventes des Produits
 #==================================================================================
@@ -82,7 +79,7 @@ class VenteProduit(models.Model):
     adresseclt_client = models.CharField(max_length=60, null=True)
     telclt_client = models.CharField(max_length=65, null=True)
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
-    history = HistoricalRecords()  # <-- Ajoute l'historique
+    history = HistoricalRecords()  # Pour l'historique dans la partie administration de Django
     
     class Meta:
         ordering = ['-code']
@@ -93,6 +90,10 @@ class VenteProduit(models.Model):
         self.total = sum(ligne.sous_total for ligne in self.lignes.all())
         self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
         self.save(update_fields=['total', 'benefice_total'])
+    
+    def save(self, *args, **kwargs):
+        self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
+        super().save(*args, **kwargs)
 
 #==================================================================================
 # Table LigneVente
@@ -116,7 +117,7 @@ class LigneVente(models.Model):
         self.sous_total = (self.prix * self.quantite) - self.montant_reduction
 
         self.pu_reduction = self.prix - self.montant_reduction
-        self.benefice = (self.produit.prix_en_gros - self.pu_reduction) * self.quantite
+        self.benefice = (self.pu_reduction - self.produit.prix_en_gros ) * self.quantite
 
         super().save(*args, **kwargs)
    
@@ -129,7 +130,7 @@ class Commandes(models.Model):
     datecmd = models.DateField(auto_now_add = True)
     statuts = models.CharField(max_length=60, null=True, default="Non Livrer")
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
-    history = HistoricalRecords()  # <-- Ajoute l'historique
+    history = HistoricalRecords() # Pour l'historique dans la partie administration de Django
     # Information du Fournisseur
     nom_complet_fournisseur = models.CharField(max_length=70, null=True)
     adresse_fournisseur = models.CharField(max_length=60, null=True)
@@ -148,7 +149,7 @@ class LivraisonsProduits(models.Model):
     produits = models.ForeignKey(Produits, on_delete = models.CASCADE)
     datelivrer = models.DateField(auto_now_add = True)
     statuts = models.CharField(max_length=60, null=True)
-    history = HistoricalRecords()  # <-- Ajoute l'historique
+    history = HistoricalRecords()  # Pour l'historique dans la partie administration de Django
     def __str__(self):
         return f"Produits : {self.produits} | Statuts : {self.statuts}"
     

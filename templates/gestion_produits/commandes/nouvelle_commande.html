@@ -6,33 +6,43 @@
 
 {% if messages %}
   {% for m in messages %}
-    <div class="alert alert-{{ m.tags }}">{{ m }}</div>
+    <div class="alert alert-{{ m.tags }} alert-dismissible fade show">
+      {{ m }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
   {% endfor %}
 {% endif %}
 
-<form method="post">
+<form method="post" id="form-commande">
   {% csrf_token %}
 
-  <!-- Fournisseur -->
-  <div class="form-group">
+  <!-- ================= FOURNISSEUR ================= -->
+  <div class="form-group mb-3">
     <label>Nom complet du Fournisseur</label>
     <input type="text" class="form-control" name="nom_complet_fournisseur" required>
   </div>
-  <div class="form-group">
+
+  <div class="form-group mb-3">
     <label>Téléphone</label>
-    <input type="text" class="form-control" name="telephone_fournisseur" required>
+    <input type="text"
+           class="form-control"
+           name="telephone_fournisseur"
+           pattern="[0-9+ ]+"
+           maxlength="15"
+           required>
   </div>
-  <div class="form-group">
+
+  <div class="form-group mb-3">
     <label>Adresse</label>
     <input type="text" class="form-control" name="adresse_fournisseur" required>
   </div>
 
-  <!-- Recherche -->
+  <!-- ================= RECHERCHE ================= -->
   <div class="mb-3">
     <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)">
   </div>
 
-  <!-- Table Produits -->
+  <!-- ================= TABLE PRODUITS ================= -->
   <table class="table table-bordered" id="table-produits">
     <thead class="table-dark">
       <tr>
@@ -41,13 +51,23 @@
         <th>Quantité à commander</th>
       </tr>
     </thead>
+
     <tbody>
       {% for p in produits_data %}
       <tr class="produit-row">
+
         <td>{{ p.produit.categorie.desgcategorie }}</td>
         <td>{{ p.produit.desgprod }}</td>
+
         <td>
-          <input type="number" name="quantite[]" class="form-control qte" value="0" min="0">
+          <!-- 🔒 QUANTITÉ SÉCURISÉE -->
+          <input type="text"
+                 name="quantite[]"
+                 class="form-control qte only-numbers"
+                 value="0"
+                 inputmode="numeric"
+                 autocomplete="off">
+
           <input type="hidden" name="produit_id[]" value="{{ p.produit.id }}">
         </td>
       </tr>
@@ -59,16 +79,45 @@
     </tbody>
   </table>
 
-  <button class="btn btn-success mt-3">Valider la commande</button>
+  <button class="btn btn-success mt-3" id="btn-valider" disabled>
+    Valider la commande
+  </button>
 </form>
 
+<!-- ================= SCRIPTS ================= -->
+
 <script>
+/* 🔒 Bloquer lettres et caractères spéciaux */
+document.addEventListener("input", function (e) {
+  if (e.target.classList.contains("only-numbers")) {
+    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+  }
+});
+
+/* 🔄 Activer bouton si au moins une quantité > 0 */
+function verifierCommande() {
+  let actif = false;
+  document.querySelectorAll(".qte").forEach(input => {
+    if (parseInt(input.value || "0", 10) > 0) {
+      actif = true;
+    }
+  });
+  document.getElementById("btn-valider").disabled = !actif;
+}
+
+document.querySelectorAll(".qte").forEach(input => {
+  input.addEventListener("input", verifierCommande);
+});
+
+/* 🔍 Recherche produit */
 document.getElementById("search").addEventListener("input", function () {
   const q = this.value.toLowerCase();
   document.querySelectorAll(".produit-row").forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
   });
 });
+
+verifierCommande();
 </script>
 
 {% endblock %}
