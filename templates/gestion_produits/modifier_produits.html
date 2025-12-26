@@ -69,14 +69,14 @@
 
                                     <div class="form-group">
                                         <label>Prix Unitaire Détail (PU)</label>
-                                        <input class="form-control" name="pu" type="number"
+                                        <input class="form-control input-number" name="pu" type="text"
                                                value="{{ produit.pu }}" required>
                                     </div>
 
-                                         {% if request.user.type_utilisateur != 'Gerante' %}
+                                    {% if request.user.type_utilisateur != 'Gerante' %}
                                     <div class="form-group">
                                         <label>Prix Unitaire en Gros(PU)</label>
-                                        <input class="form-control" name="prix_en_gros" type="number"
+                                        <input class="form-control input-number" name="prix_en_gros" type="text"
                                                value="{{ produit.prix_en_gros }}" required>
                                     </div>
                                     {% endif %}
@@ -93,7 +93,6 @@
                                             {% endfor %}
                                         </select>
                                     </div>
-
 
                                     {% if produit.photoprod %}
                                         <div class="form-group">
@@ -136,5 +135,15 @@ setTimeout(function() {
         setTimeout(() => el.remove(), 500);
     });
 }, 5000);
+
+// Bloquer les caractères non numériques pour les champs PU
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.input-number');
+    inputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
+});
 </script>
 {% endblock %}

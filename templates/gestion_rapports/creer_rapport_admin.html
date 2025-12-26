@@ -1,0 +1,110 @@
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
+
+<style>
+  body { overflow-x: hidden; }
+  .mb-3 { margin-bottom: 15px; }
+  .form-control { width: 100%; padding: 8px; margin-bottom: 10px; }
+</style>
+
+<div id="page-wrapper">
+  <div id="page-inner">
+
+    <div class="row">
+      <div class="col-md-12">
+        <h2>Génération de Rapports</h2>
+        <p>Remplissez le formulaire pour générer un rapport PDF.</p>
+      </div>
+    </div>
+    <br>
+
+    {% if messages %}
+      {% for mgs in messages %}
+        <div class="alert {% if mgs.tags == 'success' %} alert-success {% elif mgs.tags == 'error' %} alert-danger {% else %} alert-info {% endif %}">
+          {{ mgs }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="panel panel-default">
+      <div class="panel-heading">Créer un nouveau rapport Admin</div>
+      <div class="panel-body">
+
+        <form method="POST" action="{% url 'rapports:generer_rapport_admin' %}">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label for="titre">Titre du rapport</label>
+            <input type="text" name="titre" id="titre" class="form-control"
+                   placeholder="Ex: Rapport des ventes du mois..." required>
+          </div>
+
+          <div class="mb-3">
+            <label for="type">Type de rapport</label>
+            <select name="type" id="type" class="form-control" required>
+              <option value="">-- Sélectionner --</option>
+
+              <!-- COMMERCIAL -->
+              <option value="VENTES">Ventes</option>
+              <option value="COMMANDES">Commandes</option>
+              <option value="LIVRAISONS">Livraisons</option>
+            </select>
+
+          </div>
+
+          <!-- PÉRIODE (pour la majorité des rapports) -->
+          <div id="periode-container" class="mb-3">
+            <label for="periode_debut">Période début</label>
+            <input type="date" name="periode_debut" id="periode_debut" class="form-control">
+
+            <label for="periode_fin">Période fin</label>
+            <input type="date" name="periode_fin" id="periode_fin" class="form-control">
+          </div>
+
+          <div class="mb-3 text-right">
+            <button type="submit" class="btn btn-success">
+              <i class="fa fa-file-pdf-o"></i> Générer le PDF
+            </button>
+            <a href="{% url 'rapports:liste_rapports' %}" class="btn btn-secondary">Annuler</a>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const typeSelect = document.getElementById('type');
+const periodeContainer = document.getElementById('periode-container');
+const debut = document.getElementById('periode_debut');
+const fin = document.getElementById('periode_fin');
+
+function updatePeriodeVisibility() {
+  const typesAvecPeriode = [
+    'VENTES',
+    'COMMANDES',
+    'LIVRAISONS',
+    'STOCKS'
+  ];
+
+  if (typesAvecPeriode.includes(typeSelect.value)) {
+    periodeContainer.style.display = 'block';
+    debut.required = true;
+    fin.required = true;
+  } else {
+    periodeContainer.style.display = 'none';
+    debut.required = false;
+    fin.required = false;
+  }
+}
+
+typeSelect.addEventListener('change', updatePeriodeVisibility);
+updatePeriodeVisibility();
+</script>
+
+
+{% endblock %}

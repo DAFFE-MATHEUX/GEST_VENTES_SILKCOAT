@@ -8,9 +8,9 @@
      PAGE D'ACCUEIL ADMINISTRATION
      =========================== -->
 <section class="content-header">
-    {% if not request.user.type_utilisateur == 'Gerante' %} 
+    {% if request.user.type_utilisateur != 'Gerante' %}
         <h1>TABLEAU DE BORD D'ADMINISTRATION</h1>
-    {% else %} 
+    {% else %}
         <h1>BIENVENUE DANS VOTRE ESPACE</h1>
     {% endif %}
     <ol class="breadcrumb">
@@ -23,16 +23,12 @@
     </ol>
 </section>
 
-<!-- ===========================
-     CONTENU PRINCIPAL
-     =========================== -->
 <section class="content">
 
 <!-- =====================
      BOÎTES DE STATISTIQUES
      ===================== -->
 <div class="row">
-
     <div class="col-lg-3 col-xs-6">
         <div class="small-box bg-green">
             <div class="inner">
@@ -59,12 +55,11 @@
         </div>
     </div>
 
-    <!-- ✅ STOCK TOTAL -->
     <div class="col-lg-3 col-xs-6">
         <div class="small-box bg-red">
             <div class="inner">
                 <h3>{{ total_stock }}</h3>
-                <p>Total Stock des Produits</p>
+                <p>Stock Total</p>
             </div>
             <div class="icon"><i class="ion ion-cube"></i></div>
             <a href="{% url 'produits:listes_produits_stock' %}" class="small-box-footer">
@@ -72,7 +67,8 @@
             </a>
         </div>
     </div>
-        <div class="col-lg-3 col-xs-6">
+
+    <div class="col-lg-3 col-xs-6">
         <div class="small-box bg-red">
             <div class="inner">
                 <h3>{{ total_ventes }}</h3>
@@ -84,14 +80,12 @@
             </a>
         </div>
     </div>
-
 </div>
 
 <!-- =====================
-     COMMANDES / LIVRAISONS 
+     COMMANDES / LIVRAISONS
      ===================== -->
 <div class="row">
-
     <div class="col-lg-3 col-xs-6">
         <div class="small-box bg-yellow">
             <div class="inner">
@@ -117,9 +111,8 @@
             </a>
         </div>
     </div>
-
-
 </div>
+
 <!-- =====================
      5 DERNIÈRES VENTES
      ===================== -->
@@ -156,9 +149,9 @@
                             </tr>
                             {% endfor %}
                         {% empty %}
-                            <tr>
-                                <td colspan="7" class="text-center">Aucune vente récente</td>
-                            </tr>
+                        <tr>
+                            <td colspan="7" class="text-center">Aucune vente récente</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -174,7 +167,7 @@
     <div class="col-md-12">
         <div class="box box-warning">
             <div class="box-header with-border">
-                <h3 class="box-title">💰 TOP 5 PRODUITS LES PLUS RENTABLES</h3>
+                <h3 class="box-title">💰 TOP 5 PRODUITS LES PLUS RENTABLES (Mois)</h3>
             </div>
             <div class="box-body table-responsive">
                 <table class="table table-bordered table-striped">
@@ -185,7 +178,7 @@
                             <th>Catégorie</th>
                             <th>Produit</th>
                             <th>Qté</th>
-                             {% if request.user.type_utilisateur != 'Gerante' %}
+                            {% if request.user.type_utilisateur != 'Gerante' %}
                             <th>Bénéfice</th>
                             {% endif %}
                         </tr>
@@ -198,7 +191,7 @@
                             <td>{{ p.produit__categorie__desgcategorie }}</td>
                             <td>{{ p.produit__desgprod }}</td>
                             <td>{{ p.qte_vendue }}</td>
-                             {% if request.user.type_utilisateur != 'Gerante' %}
+                            {% if request.user.type_utilisateur != 'Gerante' %}
                             <td class="text-success">
                                 <strong>{{ p.benefice_total|floatformat:0 }} GNF</strong>
                             </td>
@@ -220,17 +213,21 @@
      GRAPHIQUES
      ===================== -->
 <div class="row">
+
+    <!-- Produits les plus vendus -->
     <div class="col-md-6">
         <div class="box box-success">
             <div class="box-header with-border">
-                <h3 class="box-title">📊 Produits les plus vendus Dans le Mois</h3>
+                <h3 class="box-title">📊 Produits les plus vendus (Mois)</h3>
             </div>
             <div class="box-body">
                 <canvas id="chartTopProduits"></canvas>
             </div>
         </div>
     </div>
- {% if request.user.type_utilisateur != 'Gerante' %}
+
+    {% if request.user.type_utilisateur != 'Gerante' %}
+    <!-- Rentabilité mensuelle -->
     <div class="col-md-6">
         <div class="box box-success">
             <div class="box-header with-border">
@@ -242,6 +239,38 @@
         </div>
     </div>
     {% endif %}
+
+</div>
+
+<!-- =====================
+     Comparaison mois & courbe journalière
+     ===================== -->
+<div class="row">
+
+    <!-- Comparaison Mois actuel vs Mois précédent -->
+    <div class="col-md-6">
+        <div class="box box-info">
+            <div class="box-header with-border">
+                <h3 class="box-title">📊 Comparaison Mois Actuel vs Mois Précédent</h3>
+            </div>
+            <div class="box-body">
+                <canvas id="chartComparaisonMois"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Courbe journalière du mois -->
+    <div class="col-md-6">
+        <div class="box box-info">
+            <div class="box-header with-border">
+                <h3 class="box-title">📈 Courbe Journalière du Mois</h3>
+            </div>
+            <div class="box-body">
+                <canvas id="chartCourbeJour"></canvas>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 </section>
@@ -250,33 +279,76 @@
      SCRIPTS CHARTS
      ===================== -->
 <script>
-new Chart(document.getElementById('chartTopProduits'), {
-    type: 'bar',
-    data: {
-        labels: {{ labels_produits|safe }},
-        datasets: [{
-            label: 'Quantité vendue',
-            data: {{ quantites_produits|safe }},
-            backgroundColor: 'rgba(54,162,235,0.7)'
-        }]
-    },
-    options: { responsive: true }
-});
-</script>
+if ({{ labels_produits|length }} > 0) {
+    new Chart(document.getElementById('chartTopProduits'), {
+        type: 'bar',
+        data: {
+            labels: {{ labels_produits|safe }},
+            datasets: [{
+                label: 'Quantité vendue',
+                data: {{ quantites_produits|safe }},
+                backgroundColor: 'rgba(54,162,235,0.7)'
+            }]
+        },
+        options: { responsive: true }
+    });
+}
 
-<script>
-new Chart(document.getElementById('chartRentabilite'), {
-    type: 'bar',
-    data: {
-        labels: {{ labels_rentables|safe }},
-        datasets: [{
-            label: 'Bénéfice (GNF)',
-            data: {{ benefices|safe }},
-            backgroundColor: 'rgba(40,167,69,0.7)'
-        }]
-    },
-    options: { responsive: true }
-});
+{% if request.user.type_utilisateur != 'Gerante' %}
+if ({{ labels_rentables|length }} > 0) {
+    new Chart(document.getElementById('chartRentabilite'), {
+        type: 'bar',
+        data: {
+            labels: {{ labels_rentables|safe }},
+            datasets: [{
+                label: 'Bénéfice (GNF)',
+                data: {{ benefices|safe }},
+                backgroundColor: 'rgba(40,167,69,0.7)'
+            }]
+        },
+        options: { responsive: true }
+    });
+}
+{% endif %}
+
+if ({{ labels_mois|length }} > 0) {
+    new Chart(document.getElementById('chartComparaisonMois'), {
+        type: 'bar',
+        data: {
+            labels: {{ labels_mois|safe }},
+            datasets: [
+                {
+                    label: 'Mois Précédent',
+                    data: {{ data_mois_precedent|safe }},
+                    backgroundColor: 'rgba(255,99,132,0.6)'
+                },
+                {
+                    label: 'Mois Actuel',
+                    data: {{ data_mois_actuel|safe }},
+                    backgroundColor: 'rgba(54,162,235,0.6)'
+                }
+            ]
+        },
+        options: { responsive: true }
+    });
+}
+
+if ({{ labels_jours|length }} > 0) {
+    new Chart(document.getElementById('chartCourbeJour'), {
+        type: 'line',
+        data: {
+            labels: {{ labels_jours|safe }},
+            datasets: [{
+                label: 'Ventes journalières',
+                data: {{ ventes_journalieres|safe }},
+                fill: false,
+                borderColor: 'rgba(75,192,192,1)',
+                tension: 0.2
+            }]
+        },
+        options: { responsive: true }
+    });
+}
 </script>
 
 {% endblock %}

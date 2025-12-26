@@ -178,6 +178,48 @@
                     </tr>
                 </tfoot>
             </table>
+
+                            <h5 class="mt-4">📦 RECAPITULATIF PAR PRODUIT</h5>
+
+<table class="table table-bordered table-sm">
+    <thead class="table-dark">
+        <tr>
+            <th>#</th>
+            <th>Produit</th>
+            <th>Catégorie</th>
+            <th>Qté commandée</th>
+            <th>Nb Commande</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for elem in total_par_produit %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ elem.produits__desgprod }}</td>
+                <td>{{ elem.produits__categorie__desgcategorie }}</td>
+                <td class="text-center">{{ elem.total_quantite|default:0 }}</td>
+                <td>{{ elem.nombre_commandes }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="4" class="text-center text-muted">
+                    Aucune commande par produit
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+
+    <!-- FOOTER TABLEAU PAR PRODUIT -->
+    <tfoot class="table-secondary">
+        <tr>
+            <th colspan="3" class="text-center">Totaux globaux</th>
+            <th class="text-center">{{ total_quantite|default:0 }}</th>
+            <th>{{ total_commande }}</th>
+        </tr>
+    </tfoot>
+</table>
+
         {% elif listes_commandes_filtre %}
                     <!-- TOTAL -->
             <div class="mb-3">

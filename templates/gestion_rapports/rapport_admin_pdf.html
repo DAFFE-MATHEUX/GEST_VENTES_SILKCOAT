@@ -1,0 +1,419 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ rapport.titre }}</title>
+
+    <style>
+        @page {
+            size: A4;
+            margin: 40px 30px 60px 30px;
+        }
+
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            margin: 0;
+            font-size: 12px;
+            color: #333;
+        }
+
+        h1, h2, h3, h4, h5 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 6px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .empty {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 15px;
+        }
+
+        .resume {
+            margin-top: 20px;
+            border-top: 2px solid #000;
+            padding-top: 10px;
+            width: 60%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .resume td {
+            text-align: left;
+            padding: 4px;
+        }
+
+        .resume strong {
+            color: #0b6df0;
+        }
+
+        .highlight {
+            color: #d9534f;
+            font-weight: bold;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- ================= ENTÊTE ENTREPRISE ================= -->
+<div style="
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+">
+    <div style="font-size: 12px; line-height: 1.5;">
+        <strong>Entreprise :</strong> {{ entreprise.nom_entrepriese|upper }}<br>
+        <strong>Adresse :</strong> {{ entreprise.adresse|default:"-" }}<br>
+        <strong>Contact 1 :</strong> {{ entreprise.contact1|default:"-" }}<br>
+        <strong>Contact 2 :</strong> {{ entreprise.contact2|default:"-" }}<br>
+        <strong>Email :</strong> {{ entreprise.email|default:"Aucun" }}
+    </div>
+
+    <div style="text-align: center; flex: 1;">
+        {% if entreprise.logo %}
+            <img src="{{ entreprise.logo.url }}" style="width:80px;height:80px;object-fit:contain;">
+        {% else %}
+            <p><small>Logo indisponible</small></p>
+        {% endif %}
+        <h2 style="margin: 5px 0; font-size: 16px; color: #003366;">
+            {{ entreprise.nom_entrepriese }}
+        </h2>
+    </div>
+</div>
+
+<!-- ================= INFOS RAPPORT ================= -->
+<div>
+    <h1>{{ rapport.titre }}</h1>
+
+    <p><strong>Type :</strong> {{ rapport.type }}</p>
+
+    {% if rapport.periode_debut %}
+        <p>
+            <strong>Période :</strong>
+            {{ rapport.periode_debut }} → {{ rapport.periode_fin }}
+        </p>
+    {% endif %}
+
+    <p><strong>Généré par :</strong> {{ rapport.genere_par.username }}</p>
+    <p><strong>Date :</strong> {{ rapport.date_generation|date:"d/m/Y H:i" }}</p>
+</div>
+
+<!-- ===================================================== -->
+<!-- ======================= VENTES ====================== -->
+<!-- ===================================================== -->
+{% if rapport.type == "VENTES" %}
+
+<h3>LISTE DES PRODUITS VENDUS</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Code Vente</th>
+            <th>Produit</th>
+            <th>Quantité</th>
+            <th>Date Vente</th>
+            <th>Sous-total (GNF)</th>
+            {% if request.user.type_utilisateur|lower != "gerante" %}
+                <th>Bénéfice (GNF)</th>
+            {% endif %}
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for vente_data in data %}
+            {% for ligne in vente_data.lignes %}
+                <tr>
+                    <td>{{ forloop.parentloop.counter }}-{{ forloop.counter }}</td>
+                    <td>{{ vente_data.vente.code }}</td>
+                    <td>{{ ligne.produit.desgprod }}</td>
+                    <td>{{ ligne.quantite }}</td>
+                    <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
+                    <td>{{ ligne.sous_total|floatformat:0 }}</td>
+
+                    {% if request.user.type_utilisateur|lower != "gerante" %}
+                        <td>{{ ligne.benefice|floatformat:0 }}</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+
+            <!-- TOTAL PAR VENTE -->
+            <tr class="resume">
+                <td colspan="5" style="text-align: right;">
+                    <strong>Total vente {{ vente_data.vente.code }}</strong>
+                </td>
+                <td><strong>{{ vente_data.total_vente|floatformat:0 }}</strong></td>
+
+                {% if request.user.type_utilisateur|lower != "gerante" %}
+                    <td><strong>{{ vente_data.benefice_vente|floatformat:0 }}</strong></td>
+                {% endif %}
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7" class="empty">
+                    Aucune vente trouvée
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- ================= RÉSUMÉ GLOBAL ================= -->
+{% if total_montant %}
+<div class="resume">
+    <table>
+        <tr>
+            <td><strong>Total des ventes :</strong></td>
+            <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
+        </tr>
+
+        <tr>
+            <td><strong>Bénéfice brut :</strong></td>
+            <td><strong>{{ benefice_global|floatformat:0 }} GNF</strong></td>
+        </tr>
+        <tr>
+            <td><strong>Total dépenses :</strong></td>
+            <td class="highlight"><strong>{{ depenses_total|floatformat:0 }} GNF</strong></td>
+        </tr>
+        <tr>
+            <td><strong>Bénéfice net :</strong></td>
+            <td class="highlight"><strong>{{ benefice_net|floatformat:0 }} GNF</strong></td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+<!-- ===================================================== -->
+<!-- ====================== COMMANDES ==================== -->
+<!-- ===================================================== -->
+{% elif rapport.type == "COMMANDES" %}
+
+<h3>LISTE DES COMMANDES</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Fournisseur</th>
+            <th>Contact</th>
+            <th>Code</th>
+            <th>Catégorie</th>
+            <th>Produit</th>
+            <th>Quantité</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in data %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.nom_complet_fournisseur }}</td>
+                <td>{{ item.telephone_fournisseur }}</td>
+                <td>{{ item.numcmd }}</td>
+                <td>{{ item.produits.categorie.desgcategorie }}</td>
+                <td>{{ item.produits.desgprod }}</td>
+                <td>{{ item.qtecmd }}</td>
+                <td>{{ item.datecmd|date:"d/m/Y" }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="8" class="empty">Aucune commande</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Totaux par catégorie -->
+<h4>Commandes par catégorie</h4>
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Total Quantité</th>
+            <th>Nb Commande</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ cat.produits__categorie__desgcategorie }}</td>
+            <td>{{ cat.total_quantite }}</td>
+            <td>{{ cat.nombre_commandes }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center">Aucune donnée</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="2" class="text-center">Totaux globaux</th>
+            <th>{{ total_quantite }}</th>
+            <th>{{ total_quantite_cmd }}</th>
+        </tr>
+    </tfoot>
+</table>
+
+<h5 class="mt-4">📦 Récapitulatif par produit</h5>
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Produit</th>
+            <th>Catégorie</th>
+            <th>Qté commandée</th>
+            <th>Nb Commande</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for elem in total_par_produit %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ elem.produits__desgprod }}</td>
+            <td>{{ elem.produits__categorie__desgcategorie }}</td>
+            <td>{{ elem.total_quantite }}</td>
+            <td>{{ elem.nombre_commandes }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center text-muted">Aucune commande par produit</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- ===================================================== -->
+<!-- ====================== LIVRAISONS =================== -->
+<!-- ===================================================== -->
+{% elif rapport.type == "LIVRAISONS" %}
+
+<h3>LISTE DES LIVRAISONS</h3>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Numéro</th>
+            <th>Produit</th>
+            <th>Quantité livrée</th>
+            <th>Date</th>
+            <th>Statut</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ligne in data %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ ligne.numlivrer }}</td>
+            <td>{{ ligne.produits.desgprod }}</td>
+            <td>{{ ligne.qtelivrer }}</td>
+            <td>{{ ligne.datelivrer|date:"d/m/Y" }}</td>
+            <td>{{ ligne.statuts }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="empty">Aucune livraison trouvée</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h4>Totaux par catégorie</h4>
+<table>
+    <thead>
+        <tr>
+            <th>Catégorie</th>
+            <th>Total Quantité Livrée</th>
+            <th>Quantité Restante</th>
+            <th>Nombre de Livraisons</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in total_par_categorie %}
+        <tr>
+            <td>{{ cat.produits__categorie__desgcategorie }}</td>
+            <td>{{ cat.total_qtelivree }}</td>
+            <td>{{ cat.reste }}</td>
+            <td>{{ cat.nombre_livraison }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center">Aucune livraison</td></tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th class="text-center">Totaux :</th>
+            <th class="text-center">{{ total_quantite_livrer }}</th>
+            <th class="text-center">{{ total_quantite_restante }}</th>
+            <th></th>
+        </tr>
+    </tfoot>
+</table>
+
+<h5 class="mt-4">📦 Récapitulatif par produit</h5>
+<table>
+    <thead>
+        <tr>
+            <th>Produit</th>
+            <th>Catégorie</th>
+            <th>Livraisons</th>
+            <th>Qté commandée</th>
+            <th>Qté livrée</th>
+            <th>Qté restante</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for prod in total_par_produit %}
+        <tr>
+            <td>{{ prod.produits__desgprod }}</td>
+            <td>{{ prod.produits__categorie__desgcategorie }}</td>
+            <td>{{ prod.nombre_livraison }}</td>
+            <td>{{ prod.total_cmd }}</td>
+            <td>{{ prod.total_qtelivree }}</td>
+            <td class="highlight">{{ prod.reste }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center text-muted">Aucune livraison</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endif %}
+
+</body>
+</html>

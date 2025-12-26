@@ -36,19 +36,17 @@
                 </td>
 
                 <td>
-                    <input type="number"
+                    <input type="text"
                            name="qtestock[]"
-                           class="form-control"
-                           min="0"
+                           class="form-control input-number"
                            value="0"
                            required>
                 </td>
 
                 <td>
-                    <input type="number"
+                    <input type="text"
                            name="seuil[]"
-                           class="form-control"
-                           min="0"
+                           class="form-control input-number"
                            value="0"
                            required>
                 </td>
@@ -61,5 +59,27 @@
         💾 Enregistrer les stocks
     </button>
 </form>
+
+<script>
+// Bloquer les caractères non numériques pour tous les champs avec class input-number
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.input-number');
+    inputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
+});
+
+// Disparition des messages après 4 secondes
+setTimeout(function() {
+    let messages = document.querySelectorAll('.alert');
+    messages.forEach(function(el) {
+        el.style.transition = "opacity 0.5s";
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 500);
+    });
+}, 4000);
+</script>
 
 {% endblock %}

@@ -18,87 +18,117 @@ from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmVie
 from gestion_produits.models import *
 from django.db.models import Sum, F
 from django.utils import timezone
-from datetime import timedelta
+
+import calendar
+from datetime import date, datetime, timedelta
+
+
 # ===============================================
 # Tableau de bord
 # ===============================================
-@login_required
+
+@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def home(request):
     # ===============================
-    # PROFIL ENTREPRISE & UTILISATEUR
+    # PROFIL & UTILISATEUR
     # ===============================
     profil = Entreprise.objects.first()
     utilisateur = request.user
 
     # ===============================
-    # DATES (MOIS EN COURS)
+    # MOIS / ANNÉE SÉLECTIONNÉS
     # ===============================
     aujourd_hui = timezone.now().date()
+    mois = int(request.GET.get("mois", aujourd_hui.month))
+    annee = int(request.GET.get("annee", aujourd_hui.year))
 
-    debut_mois = aujourd_hui.replace(day=1)
+    # Début & fin mois courant
+    debut_mois = date(annee, mois, 1)
+    dernier_jour = calendar.monthrange(annee, mois)[1]
+    fin_mois = date(annee, mois, dernier_jour)
 
-    # Fin du mois (astuce robuste)
-    if debut_mois.month == 12:
-        fin_mois = debut_mois.replace(year=debut_mois.year + 1, month=1) - timedelta(days=1)
+    # ===============================
+    # MOIS PRÉCÉDENT
+    # ===============================
+    if mois == 1:
+        mois_prec = 12
+        annee_prec = annee - 1
     else:
-        fin_mois = debut_mois.replace(month=debut_mois.month + 1) - timedelta(days=1)
+        mois_prec = mois - 1
+        annee_prec = annee
+
+    debut_mois_prec = date(annee_prec, mois_prec, 1)
+    fin_mois_prec = date(
+        annee_prec,
+        mois_prec,
+        calendar.monthrange(annee_prec, mois_prec)[1]
+    )
 
     # ===============================
     # NOTIFICATIONS
     # ===============================
-    notifications = Notification.objects.filter(
-        destinataire=utilisateur
-    ).order_by('-date')
-
+    notifications = Notification.objects.filter(destinataire=utilisateur).order_by('-date')
     non_lues = notifications.filter(lu=False)
     lues = notifications.filter(lu=True)
 
     # ===============================
-    # AUDITS RÉCENTS
+    # AUDITS & LISTES
     # ===============================
     audits = AuditLog.objects.order_by('-date_action')[:5]
-
-    # ===============================
-    # COMMANDES RÉCENTES
-    # ===============================
     listes_commandes = Commandes.objects.order_by('-datecmd')[:3]
-
-    # ===============================
-    # LIVRAISONS RÉCENTES
-    # ===============================
     listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')[:3]
 
-    # Calcul quantités livrées / restantes
-    for elem in listes_livraisons:
-        total_livree = LivraisonsProduits.objects.filter(
-            commande=elem.commande,
-            produits=elem.produits
-        ).aggregate(total=Sum('qtelivrer'))['total'] or 0
-
-        elem.total_livree = total_livree
-        elem.qte_restante = elem.commande.qtecmd - total_livree
-
     # ===============================
-    # 5 DERNIÈRES VENTES
+    # DERNIÈRES VENTES
     # ===============================
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
 
     # ===============================
-    # TOP 5 PRODUITS LES PLUS VENDUS (MOIS)
+    # COMPARAISON MENSUELLE
+    # ===============================
+    total_mois_actuel = (
+        VenteProduit.objects
+        .filter(date_vente__date__range=[debut_mois, fin_mois])
+        .aggregate(total=Sum('total'))['total'] or 0
+    )
+
+    total_mois_precedent = (
+        VenteProduit.objects
+        .filter(date_vente__date__range=[debut_mois_prec, fin_mois_prec])
+        .aggregate(total=Sum('total'))['total'] or 0
+    )
+
+    # Variables pour le graphique comparaison mois
+    labels_mois = ['Mois Précédent', 'Mois Actuel']
+    data_mois_precedent = [total_mois_precedent]
+    data_mois_actuel = [total_mois_actuel]
+
+    # ===============================
+    # COURBE JOURNALIÈRE
+    # ===============================
+    labels_jours = []
+    ventes_journalieres = []
+    for jour in range(1, dernier_jour + 1):
+        date_jour = date(annee, mois, jour)
+        total_jour = (
+            VenteProduit.objects
+            .filter(date_vente__date=date_jour)
+            .aggregate(total=Sum('total'))['total'] or 0
+        )
+        labels_jours.append(str(jour))
+        ventes_journalieres.append(total_jour)
+
+    # ===============================
+    # TOP PRODUITS VENDUS (MOIS)
     # ===============================
     produits_plus_vendus = (
         LigneVente.objects
-        .filter(
-            vente__date_vente__date__range=[debut_mois, fin_mois]
-        )
+        .filter(vente__date_vente__date__range=[debut_mois, fin_mois])
         .values(
-            'produit__refprod',
             'produit__desgprod',
             'produit__categorie__desgcategorie'
         )
-        .annotate(
-            qte_totale=Sum('quantite')
-        )
+        .annotate(qte_totale=Sum('quantite'))
         .order_by('-qte_totale')[:5]
     )
 
@@ -106,13 +136,11 @@ def home(request):
     quantites_produits = [p['qte_totale'] for p in produits_plus_vendus]
 
     # ===============================
-    # TOP 5 PRODUITS LES PLUS RENTABLES (MOIS)
+    # TOP PRODUITS RENTABLES (MOIS)
     # ===============================
     top_produits_rentables = (
         LigneVente.objects
-        .filter(
-            vente__date_vente__date__range=[debut_mois, fin_mois]
-        )
+        .filter(vente__date_vente__date__range=[debut_mois, fin_mois])
         .values(
             'produit__refprod',
             'produit__desgprod',
@@ -133,66 +161,44 @@ def home(request):
     # ===============================
     total_produits = Produits.objects.count()
     total_categories = CategorieProduit.objects.count()
-
-    total_stock = StockProduit.objects.aggregate(
-        total=Sum('qtestock')
-    )['total'] or 0
-
-    # ===============================
-    # STATISTIQUES DU MOIS
-    # ===============================
-    total_commandes = Commandes.objects.filter(
-        datecmd__range=[debut_mois, fin_mois]
-    ).count()
-
-    total_livraisons = LivraisonsProduits.objects.filter(
-        datelivrer__range=[debut_mois, fin_mois]
-    ).count()
-
-    total_ventes = VenteProduit.objects.filter(
-        date_vente__date__range=[debut_mois, fin_mois]
-    ).count()
+    total_stock = StockProduit.objects.aggregate(total=Sum('qtestock'))['total'] or 0
+    total_commandes = Commandes.objects.filter(datecmd__range=[debut_mois, fin_mois]).count()
+    total_livraisons = LivraisonsProduits.objects.filter(datelivrer__range=[debut_mois, fin_mois]).count()
+    total_ventes = VenteProduit.objects.filter(date_vente__date__range=[debut_mois, fin_mois]).count()
 
     # ===============================
-    # CONTEXTE TEMPLATE
+    # CONTEXTE
     # ===============================
     context = {
         'profil': profil,
-
-        # Graphiques
+        'mois_selectionne': mois,
+        'annee_selectionnee': annee,
+        'comparaison_mensuelle': [total_mois_precedent, total_mois_actuel],
+        'labels_jours': labels_jours,
+        'ventes_journalieres': ventes_journalieres,
         'labels_produits': labels_produits,
         'quantites_produits': quantites_produits,
         'labels_rentables': labels_rentables,
         'benefices': benefices,
-
-        # Données principales
         'produits_plus_vendus': produits_plus_vendus,
         'top_produits_rentables': top_produits_rentables,
         'dernieres_ventes': dernieres_ventes,
-
-        # Listes
         'listes_commandes': listes_commandes,
         'listes_livraisons': listes_livraisons,
-
-        # Notifications & audits
         'notifications': notifications,
         'non_lues': non_lues,
         'lues': lues,
         'derniers_audits': audits,
-        'dernieeres_notification': notifications[:5],
-
-        # Statistiques
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_stock': total_stock,
         'total_commandes': total_commandes,
         'total_livraisons': total_livraisons,
         'total_ventes': total_ventes,
-
-        # Période affichée
-        'debut_mois': debut_mois,
-        'fin_mois': fin_mois,
-        'now': date.today(),
+        'labels_mois': labels_mois,
+        'data_mois_precedent': data_mois_precedent,
+        'data_mois_actuel': data_mois_actuel,
+        'now': aujourd_hui,
     }
 
     return render(request, 'gestion_utilisateur/dashboard.html', context)

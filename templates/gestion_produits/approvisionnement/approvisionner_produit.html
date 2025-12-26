@@ -29,10 +29,9 @@
             <span class="badge bg-info">{{ p.stock }}</span>
           </td>
           <td>
-            <input type="number"
+            <input type="text"
                    name="quantite_{{ p.produit.id }}"
-                   class="form-control"
-                   min="0"
+                   class="form-control input-number"
                    value="0">
           </td>
         </tr>
@@ -53,5 +52,17 @@
     </div>
   </div>
 </form>
+
+<script>
+// Bloquer les caractères non numériques pour tous les champs avec class input-number
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.input-number');
+    inputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    });
+});
+</script>
 
 {% endblock %}

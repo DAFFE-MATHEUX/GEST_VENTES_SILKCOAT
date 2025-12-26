@@ -36,7 +36,10 @@ logger = logging.getLogger(__name__)
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-
+from django.http import HttpResponse
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side, numbers
+#================================================================================================
+# Signal pour mettre à jour les totaux de la vente après modification des lignes
 @receiver([post_save, post_delete], sender=LigneVente)
 def mise_a_jour_totaux_vente(sender, instance, **kwargs):
     instance.vente.calculer_totaux()
@@ -158,13 +161,13 @@ def approvisionner_produits(request):
                 try:
                     sujet = "Approvisionnement des produits"
                     contenu = f"""
-Approvisionnement effectué avec succès.
+                    Approvisionnement effectué avec succès.
 
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-Utilisateur : {request.user}
+                    Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+                    Utilisateur : {request.user}
 
-Détails :
-"""
+                    Détails :
+                    """
                     for a in approvisionnements:
                         contenu += f"- {a['produit']} | +{a['quantite']} | Stock final : {a['stock_final']}\n"
 
@@ -1593,7 +1596,6 @@ def listes_des_livraisons(request):
             total=Sum(F('commande__qtecmd') - F('qtelivrer'))
         )['total'] or 0
 
-
         # ================= TOTAUX PAR CATÉGORIE =================
         total_par_categorie = (
             LivraisonsProduits.objects
@@ -2843,45 +2845,193 @@ def confirmation_exportation_vente(request):
 # Fonction pour exporter les données des ventes
 #==============================================================================================
 @login_required
-def export_ventes_excel(request):
-    # 1. Récupérer toutes les ventes
-    ventes = VenteProduit.objects.prefetch_related('lignes', 'lignes__produit').all()
+def export_ventes_excel_complet(request):
+    """
+    Export Excel complet :
+    - Une feuille par catégorie
+    - Une feuille Résumé Général
+    - Une feuille Produits Individuels
+    - Bénéfice masqué si utilisateur Gerante
+    """
+    # 🔐 Vérifier si l'utilisateur peut voir le bénéfice
+    afficher_benefice = request.user.type_utilisateur != 'Gerante'
 
-    # 2. Créer un fichier Excel
+    # 📦 Récupérer toutes les lignes de vente
+    lignes = LigneVente.objects.select_related('produit', 'produit__categorie').all()
+
+    # 🔹 Grouper par catégorie
+    categories = {}
+    for lv in lignes:
+        cat = lv.produit.categorie.desgcategorie
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append(lv)
+
+    # 🔹 Créer le classeur Excel
     wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Liste des Ventes"
+    wb.remove(wb.active)  # Supprimer la feuille par défaut
 
-    # 3. Ajouter les en-têtes
-    headers = [
-        "Code Vente", "Date Vente", "Produit", "Quantité",
-        "Prix Unitaire", "Sous-Total", "Total Vente"
-    ]
-    for col_num, header in enumerate(headers, 1):
-        ws[f"{get_column_letter(col_num)}1"] = header
+    total_global = 0
+    total_quantite_global = 0
+    total_benefice_global = 0
 
-    # 4. Insérer les données ligne par ligne
-    ligne = 2
-    for vente in ventes:
-        for lv in vente.lignes.all():  # Chaque produit de la vente
-            ws[f"A{ligne}"] = vente.code
-            ws[f"B{ligne}"] = vente.date_vente.strftime("%d/%m/%Y %H:%M")
-            ws[f"C{ligne}"] = lv.produit.desgprod
-            ws[f"D{ligne}"] = lv.quantite
-            ws[f"E{ligne}"] = lv.prix
-            ws[f"F{ligne}"] = lv.sous_total
-            ws[f"G{ligne}"] = vente.total
-            ligne += 1
+    # ====================== FEUILLE PAR CATEGORIE ======================
+    for cat_name, lignes_cat in categories.items():
+        ws = wb.create_sheet(title=cat_name[:31])  # Limite 31 caractères
+        # En-têtes
+        headers = ["Produit", "Quantité Vendue", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
+        if afficher_benefice:
+            headers.append("Bénéfice")
+        headers.append("Total Vente par Produit")
 
-    # 5. Ajuster la largeur des colonnes
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 25
+        for col_num, header in enumerate(headers, 1):
+            cell = ws[f"{get_column_letter(col_num)}1"]
+            cell.value = header
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.alignment = Alignment(horizontal="center")
+            cell.fill = PatternFill("solid", fgColor="4F81BD")
+            cell.border = Border(
+                left=Side(style="thin"), right=Side(style="thin"),
+                top=Side(style="thin"), bottom=Side(style="thin")
+            )
 
-    # 6. Retourner le fichier Excel en téléchargement
+        # Remplir les lignes
+        ligne_excel = 2
+        total_categorie = 0
+        total_quantite_categorie = 0
+        total_benefice_categorie = 0
+
+        for lv in lignes_cat:
+            ws[f"A{ligne_excel}"] = lv.produit.desgprod
+            ws[f"B{ligne_excel}"] = lv.quantite
+            ws[f"C{ligne_excel}"] = lv.prix
+            ws[f"D{ligne_excel}"] = lv.montant_reduction
+            ws[f"E{ligne_excel}"] = lv.sous_total
+
+            for col in ['C','D','E']:
+                ws[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+            col_benefice = None
+            if afficher_benefice:
+                col_benefice = 'F'
+                ws[f"{col_benefice}{ligne_excel}"] = lv.benefice
+                ws[f"{col_benefice}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+            col_total = 'G' if afficher_benefice else 'F'
+            ws[f"{col_total}{ligne_excel}"] = lv.sous_total
+            ws[f"{col_total}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+            total_categorie += lv.sous_total
+            total_quantite_categorie += lv.quantite
+            if afficher_benefice:
+                total_benefice_categorie += lv.benefice
+
+            ligne_excel += 1
+
+        # Ligne total par catégorie
+        ws[f"A{ligne_excel}"] = f"TOTAL {cat_name}"
+        ws[f"A{ligne_excel}"].font = Font(bold=True)
+        ws[f"A{ligne_excel}"].alignment = Alignment(horizontal="right")
+        ws[f"B{ligne_excel}"] = total_quantite_categorie
+        ws[f"{col_total}{ligne_excel}"] = total_categorie
+        ws[f"{col_total}{ligne_excel}"].font = Font(bold=True, color="FF0000")
+        if afficher_benefice:
+            ws[f"{col_benefice}{ligne_excel}"] = total_benefice_categorie
+            ws[f"{col_benefice}{ligne_excel}"].font = Font(bold=True, color="008000")
+
+        # Ajuster largeur des colonnes
+        for col in range(1, len(headers)+1):
+            ws.column_dimensions[get_column_letter(col)].width = 20
+
+        total_global += total_categorie
+        total_quantite_global += total_quantite_categorie
+        total_benefice_global += total_benefice_categorie if afficher_benefice else 0
+
+    # ====================== FEUILLE PRODUITS INDIVIDUELS ======================
+    ws_prod = wb.create_sheet(title="Produits Individuels")
+    headers_prod = ["Produit", "Catégorie", "Quantité Vendue", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
+    if afficher_benefice:
+        headers_prod.append("Bénéfice")
+    headers_prod.append("Total Vente par Produit")
+
+    for col_num, header in enumerate(headers_prod, 1):
+        cell = ws_prod[f"{get_column_letter(col_num)}1"]
+        cell.value = header
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center")
+        cell.fill = PatternFill("solid", fgColor="4F81BD")
+
+    ligne_excel = 2
+    for lv in lignes:
+        ws_prod[f"A{ligne_excel}"] = lv.produit.desgprod
+        ws_prod[f"B{ligne_excel}"] = lv.produit.categorie.desgcategorie
+        ws_prod[f"C{ligne_excel}"] = lv.quantite
+        ws_prod[f"D{ligne_excel}"] = lv.prix
+        ws_prod[f"E{ligne_excel}"] = lv.montant_reduction
+        ws_prod[f"F{ligne_excel}"] = lv.sous_total
+        for col in ['D','E','F']:
+            ws_prod[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+        col_benefice = None
+        if afficher_benefice:
+            col_benefice = 'G'
+            ws_prod[f"{col_benefice}{ligne_excel}"] = lv.benefice
+            ws_prod[f"{col_benefice}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+        col_total = 'H' if afficher_benefice else 'G'
+        ws_prod[f"{col_total}{ligne_excel}"] = lv.sous_total
+        ws_prod[f"{col_total}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+        ligne_excel += 1
+
+    # Ajuster largeur colonnes
+    for col in range(1, len(headers_prod)+1):
+        ws_prod.column_dimensions[get_column_letter(col)].width = 20
+
+    # ====================== FEUILLE RESUME GENERAL ======================
+    ws_summary = wb.create_sheet(title="Résumé Général")
+    summary_headers = ["Catégorie", "Quantité Totale", "Total Vente"]
+    if afficher_benefice:
+        summary_headers.append("Bénéfice Total")
+
+    for col_num, header in enumerate(summary_headers, 1):
+        cell = ws_summary[f"{get_column_letter(col_num)}1"]
+        cell.value = header
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center")
+        cell.fill = PatternFill("solid", fgColor="4F81BD")
+
+    ligne_excel = 2
+    for cat_name, lignes_cat in categories.items():
+        total_cat = sum(lv.sous_total for lv in lignes_cat)
+        total_quant_cat = sum(lv.quantite for lv in lignes_cat)
+        total_benef_cat = sum(lv.benefice for lv in lignes_cat) if afficher_benefice else 0
+
+        ws_summary[f"A{ligne_excel}"] = cat_name
+        ws_summary[f"B{ligne_excel}"] = total_quant_cat
+        ws_summary[f"C{ligne_excel}"] = total_cat
+        if afficher_benefice:
+            ws_summary[f"D{ligne_excel}"] = total_benef_cat
+        ligne_excel += 1
+
+    # Ligne total général
+    ws_summary[f"A{ligne_excel}"] = "TOTAL GENERAL"
+    ws_summary[f"A{ligne_excel}"].font = Font(bold=True)
+    ws_summary[f"A{ligne_excel}"].alignment = Alignment(horizontal="right")
+    ws_summary[f"B{ligne_excel}"] = total_quantite_global
+    ws_summary[f"C{ligne_excel}"] = total_global
+    if afficher_benefice:
+        ws_summary[f"D{ligne_excel}"] = total_benefice_global
+
+    # Ajuster largeur colonnes
+    for col in range(1, len(summary_headers)+1):
+        ws_summary.column_dimensions[get_column_letter(col)].width = 20
+
+    # ====================== EXPORT ======================
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = 'attachment; filename=ventes_produits.xlsx'
+    response['Content-Disposition'] = 'attachment; filename=ventes_complet.xlsx'
     wb.save(response)
     return response
 
@@ -2994,7 +3144,104 @@ def export_produits_excel(request):
     wb.save(response)
     return response
 
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+@login_required
+def confirmation_exportation_stocks_produits(request):
+    
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_stocksproduits.html')
+#=============================================================================================
+# Fonction pour exporter les données des stocks avec résumé par catégorie
 #==============================================================================================
+@login_required
+def export_stocks_excel_resume(request):
+    # 1. Vérifier si on doit afficher le prix en gros
+    show_prix_en_gros = request.user.type_utilisateur != 'Gerante'
+
+    # 2. Récupérer tous les stocks avec les relations nécessaires
+    stocks = StockProduit.objects.select_related('produit', 'produit__categorie').all()
+
+    # 3. Créer le fichier Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Stocks Produits"
+
+    # 4. Définir les en-têtes
+    headers = ["Produit", "Catégorie", "Prix de Vente Unitaire", "Stock actuel"]
+    if show_prix_en_gros:
+        headers.append("Prix Unitaire en Gros")
+    headers.append("Valeur Stock")
+
+    for col_num, header in enumerate(headers, 1):
+        ws[f"{get_column_letter(col_num)}1"] = header
+
+    # 5. Insérer les lignes produits
+    ligne = 2
+    for sp in stocks:
+        data = [
+            sp.produit.desgprod,
+            sp.produit.categorie.desgcategorie,
+            sp.produit.pu,       # <-- Prix de vente unitaire
+            sp.qtestock          # <-- Stock actuel
+        ]
+        if show_prix_en_gros:
+            data.append(sp.produit.prix_en_gros)
+        data.append(sp.qtestock * sp.produit.pu)  # Valeur stock
+
+        for col_num, value in enumerate(data, 1):
+            ws[f"{get_column_letter(col_num)}{ligne}"] = value
+        ligne += 1
+
+    # 6. Ajouter un résumé par catégorie
+    ws_summary = wb.create_sheet(title="Résumé par Catégorie")
+
+    summary_headers = ["Catégorie", "Nombre de Produits", "Stock Total", "Prix de Vente Unitaire", "Valeur Stock Totale"]
+    if show_prix_en_gros:
+        summary_headers.insert(3, "Prix Unitaire Moyen en Gros")
+
+    for col_num, header in enumerate(summary_headers, 1):
+        ws_summary[f"{get_column_letter(col_num)}1"] = header
+
+    # Calcul des totaux par catégorie
+    categories = stocks.values(
+        'produit__categorie__desgcategorie'
+    ).annotate(
+        nombre_produits=Count('produit', distinct=True),
+        stock_total=Sum('qtestock'),
+        valeur_stock_totale=Sum(F('qtestock') * F('produit__pu')),
+        prix_en_gros_moyen=Sum('produit__prix_en_gros') / Count('produit')
+    ).order_by('produit__categorie__desgcategorie')
+
+    ligne = 2
+    for cat in categories:
+        data = [
+            cat['produit__categorie__desgcategorie'],
+            cat['nombre_produits'],
+            cat['stock_total'],
+            # Prix de vente unitaire moyen par catégorie
+            round(cat['valeur_stock_totale'] / cat['stock_total'], 2) if cat['stock_total'] else 0
+        ]
+        if show_prix_en_gros:
+            data.insert(3, round(cat['prix_en_gros_moyen'], 2))
+        data.append(cat['valeur_stock_totale'])
+
+        for col_num, value in enumerate(data, 1):
+            ws_summary[f"{get_column_letter(col_num)}{ligne}"] = value
+        ligne += 1
+
+    # 7. Ajuster largeur des colonnes pour les deux feuilles
+    for sheet in [ws, ws_summary]:
+        for col in range(1, sheet.max_column + 1):
+            sheet.column_dimensions[get_column_letter(col)].width = 25
+
+    # 8. Retourner le fichier Excel
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=stocks_produits_resume.xlsx'
+    wb.save(response)
+    return response
 
 #================================================================================================
 # Fonction pour afficher le formulaire de formulaire d'exportation des données

@@ -181,71 +181,61 @@ def filtrer_listes_depenses(request):
 # =================================================================================================
 
 @login_required
+
 def nouvelle_depense(request):
-    """
-    Ajoute une nouvelle dépense et notifie l'administration.
-    Utilise Decimal pour les calculs financiers afin d'éviter les erreurs float/Decimal.
-    """
     if request.method != "POST":
-        messages.warning(request, "⚠️ Méthode non autorisée pour cette opération.")
+        messages.warning(request, "⚠️ Méthode non autorisée.")
         return redirect("liste_depense")
 
     try:
-        # --- Récupération et nettoyage des données ---
         designation = request.POST.get("designation", "").strip()
         destine = request.POST.get("destine_a", "").strip()
         montant = request.POST.get("montant", "").strip()
 
-        # --- Vérification des champs obligatoires ---
         if not all([designation, destine, montant]):
-            messages.error(request, "⚠️ Tous les champs obligatoires doivent être remplis.")
+            messages.error(request, "⚠️ Tous les champs doivent être remplis.")
             return redirect("liste_depense")
 
-            # --- Création de la dépense ---
-        Depenses.objects.create(
-                designation = designation,
-                destine_a = destine,
-                montant = montant,
-                utilisateur = request.user)
-            # --- Audit ---
-        enregistrer_audit(
-                utilisateur = request.user,
-                action = "Ajout",
-                table = "Depenses",
-                nouvelle_valeur = {
-                    "designation": designation,
-                    "Montant": montant,
-                    "destine_a": destine,
-                    "utilisateur": str(request.user),
-            })
+        montant_decimal = Decimal(montant)
 
-        # --- Envoi d'email à l'administration ---
+        depense = Depenses.objects.create(
+            designation=designation,
+            destine_a=destine,
+            montant=montant_decimal,
+            utilisateur=request.user
+        )
+
+        # Audit
+        enregistrer_audit(
+            utilisateur=request.user,
+            action="Ajout",
+            table="Depenses",
+            nouvelle_valeur={
+                "designation": designation,
+                "Montant": montant,
+                "destine_a": destine,
+                "utilisateur": str(request.user),
+            }
+        )
+
+        # Envoi email
         try:
             sujet = "🧾 Nouvelle dépense enregistrée"
             message = (
                 f"Une nouvelle dépense a été ajoutée par {request.user.get_full_name()}.\n\n"
                 f"Détails :\n"
                 f"- Désignation : {designation}\n"
-                f"- Destinée à : {destine}\n\n"
-                f"- Montant à : {montant}\n\n"
+                f"- Destinée à : {destine}\n"
+                f"- Montant : {montant} GNF\n"
             )
             destinataires = [settings.ADMIN_EMAIL] if hasattr(settings, "ADMIN_EMAIL") else ["admin@etablissement.com"]
 
-            send_mail(
-                sujet,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                destinataires,
-                fail_silently=False
-            )
+            send_mail(sujet, message, settings.DEFAULT_FROM_EMAIL, destinataires, fail_silently=False)
         except Exception as email_error:
-            messages.warning(
-                request,
-                f"📧 Dépense enregistrée mais erreur d’envoi d’e-mail : {email_error}"
-            )
-        messages.success(
-            request,
-            f"✅ Dépense enregistrée avec succès GNF.")
+            messages.warning(request, f"📧 Dépense enregistrée mais erreur d’e-mail : {email_error}")
+
+        messages.success(request, f"✅ Dépense enregistrée avec succès GNF.")
+
     except (IntegrityError, DatabaseError) as db_err:
         messages.error(request, f"❌ Erreur de base de données : {db_err}")
     except Exception as e:
