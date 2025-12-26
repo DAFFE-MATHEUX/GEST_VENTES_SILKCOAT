@@ -68,12 +68,12 @@
                                     <h3>DÉTAILS SUPPLÉMENTAIRES</h3>
 
                                     <div class="form-group">
-                                        <label>Prix Unitaire (PU)</label>
+                                        <label>Prix Unitaire Détail (PU)</label>
                                         <input class="form-control" name="pu" type="number"
                                                value="{{ produit.pu }}" required>
                                     </div>
 
-                                         {% if not request.user.type_utilisateur == 'Gerante' %}
+                                         {% if request.user.type_utilisateur != 'Gerante' %}
                                     <div class="form-group">
                                         <label>Prix Unitaire en Gros(PU)</label>
                                         <input class="form-control" name="prix_en_gros" type="number"

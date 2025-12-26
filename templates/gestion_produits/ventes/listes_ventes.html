@@ -74,7 +74,7 @@
         <th>Prix en Gros</th> 
         <th>Réduction</th>
         <th>Sous-total</th>
-         {% if not request.user.type_utilisateur == 'Gerante' %}
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <th>Bénéfice</th>
         <th>Bénéfice Total</th>
         {% endif %}
@@ -98,7 +98,7 @@
         <td>{{ elem.produit.prix_en_gros }} GNF</td>
         <td>{{ elem.montant_reduction }} GNF</td>
         <td>{{ elem.sous_total }} GNF</td>
-         {% if not request.user.type_utilisateur == 'Gerante' %}
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <td>
         {% if elem.benefice >= 0 %}
         <span class="text-success"><b>+{{ elem.benefice }}</b></span>

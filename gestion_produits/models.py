@@ -86,14 +86,15 @@ class VenteProduit(models.Model):
     def __str__(self):
         return f"Vente {self.code} Par {self.utilisateur}"
     
+# Dans VenteProduit
     def calculer_totaux(self):
         self.total = sum(ligne.sous_total for ligne in self.lignes.all())
         self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
         self.save(update_fields=['total', 'benefice_total'])
-    
+
     def save(self, *args, **kwargs):
-        self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
         super().save(*args, **kwargs)
+
 
 #==================================================================================
 # Table LigneVente

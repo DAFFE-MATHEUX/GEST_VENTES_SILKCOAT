@@ -3,6 +3,7 @@ from django.template import TemplateDoesNotExist
 from django.contrib import messages
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from gest_entreprise.models import Entreprise
 from django.utils.timezone import now
 from decimal import Decimal
@@ -204,10 +205,6 @@ def vendre_produit(request):
     try:
         produits = Produits.objects.all()
 
-        # 🔐 Affichage sécurisé du stock
-        for p in produits:
-            stock = StockProduit.objects.filter(produit=p).first()
-
         if request.method == "POST":
 
             ids = request.POST.getlist("produit_id[]")
@@ -218,7 +215,6 @@ def vendre_produit(request):
             telephone = request.POST.get("telephone_client", "").strip()
             adresse = request.POST.get("adresse_client", "").strip()
 
-            # 1️⃣ Validation client
             if not nom_complet or not telephone or not adresse:
                 messages.error(
                     request,
@@ -228,8 +224,8 @@ def vendre_produit(request):
 
             total_general = 0
             lignes = []
+            produits_sans_stock = []
 
-            # 2️⃣ Transaction atomique
             with transaction.atomic():
 
                 for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
@@ -237,6 +233,7 @@ def vendre_produit(request):
                     try:
                         produit = Produits.objects.get(id=prod_id)
                     except Produits.DoesNotExist:
+                        logger.warning(f"Produit inexistant: {prod_id}")
                         continue
 
                     try:
@@ -252,15 +249,17 @@ def vendre_produit(request):
                     if quantite <= 0:
                         continue
 
-                    stock = StockProduit.objects.select_for_update().filter(
-                        produit=produit
-                    ).first()
+                    stock = StockProduit.objects.select_for_update().filter(produit=produit).first()
 
-                    if not stock or stock.qtestock < quantite:
+                    if not stock or stock.qtestock <= 0:
+                        produits_sans_stock.append(produit.desgprod)
+                        continue  # on saute le produit sans stock
+
+                    if stock.qtestock < quantite:
                         messages.error(
                             request,
                             f"Stock insuffisant pour {produit.desgprod} "
-                            f"(Disponible : {stock.qtestock if stock else 0})"
+                            f"(Disponible : {stock.qtestock})"
                         )
                         return redirect("produits:vendre_produit")
 
@@ -271,7 +270,6 @@ def vendre_produit(request):
                         )
                         return redirect("produits:vendre_produit")
 
-                    # 🔹 Calculs sécurisés
                     prix_net = produit.pu - reduction
                     sous_total = prix_net * quantite
                     total_general += sous_total
@@ -285,6 +283,12 @@ def vendre_produit(request):
                         "stock": stock
                     })
 
+                if produits_sans_stock:
+                    messages.warning(
+                        request,
+                        f"Les produits suivants n'ont pas de stock et ont été ignorés: {', '.join(produits_sans_stock)}"
+                    )
+
                 if not lignes:
                     messages.error(
                         request,
@@ -292,7 +296,7 @@ def vendre_produit(request):
                     )
                     return redirect("produits:vendre_produit")
 
-                # 3️⃣ Création vente
+                # Création de la vente
                 vente = VenteProduit.objects.create(
                     code=f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}",
                     total=total_general,
@@ -302,7 +306,7 @@ def vendre_produit(request):
                     adresseclt_client=adresse
                 )
 
-                # 4️⃣ Lignes + mise à jour stock
+                # Création des lignes de vente et mise à jour du stock
                 for ligne in lignes:
                     LigneVente.objects.create(
                         vente=vente,
@@ -312,19 +316,14 @@ def vendre_produit(request):
                         montant_reduction=ligne["reduction"],
                         sous_total=ligne["sous_total"]
                     )
-
                     ligne["stock"].qtestock -= ligne["quantite"]
                     ligne["stock"].save(update_fields=["qtestock"])
 
-                # 5️⃣ Email admin (non bloquant)
+                # Envoi d'email admin (non bloquant)
                 try:
                     contenu = f"Nouvelle vente : {vente.code}\n\n"
                     for l in lignes:
-                        contenu += (
-                            f"- {l['produit'].desgprod} | "
-                            f"Qté: {l['quantite']} | "
-                            f"Sous-total: {l['sous_total']}\n"
-                        )
+                        contenu += f"- {l['produit'].desgprod} | Qté: {l['quantite']} | Reduction: {l['reduction']} | Sous-total: {l['sous_total']}\n"
                     contenu += f"\nTOTAL : {total_general}"
 
                     EmailMessage(
@@ -343,8 +342,7 @@ def vendre_produit(request):
 
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
-                "produits:recu_vente_global",
-                vente_code=vente.code
+                reverse("produits:recu_vente_global", kwargs={"vente_code": vente.code})
             )
 
         return render(
@@ -354,24 +352,19 @@ def vendre_produit(request):
         )
 
     except IntegrityError:
-        messages.error(
-            request,
-            "Erreur d'intégrité des données."
-        )
+        messages.error(request, "Erreur d'intégrité des données.")
         return redirect("produits:vendre_produit")
 
     except DatabaseError:
-        messages.error(
-            request,
-            "Erreur de base de données. Veuillez réessayer."
-        )
+        messages.error(request, "Erreur de base de données. Veuillez réessayer.")
         return redirect("produits:vendre_produit")
 
     except Exception as e:
+        # 🔹 Affichage détaillé pour debug
         logger.exception("Erreur vente produit")
         messages.error(
             request,
-            "Une erreur inattendue est survenue."
+            f"Une erreur inattendue est survenue: {str(e)}"
         )
         return redirect("produits:vendre_produit")
 
@@ -1769,13 +1762,13 @@ def listes_des_ventes(request):
         total_ventes = lignes.count()
         total_montant_ventes = 0
         benefice_global = 0
+        #benefice = 0
         listes_ventes = []
 
         for ligne in lignes:
 
             # Calcul du bénéfice
-            benefice = (ligne.produit.prix_en_gros - ligne.pu_reduction) * ligne.quantite
-            ligne.benefice = benefice
+            #ligne.benefice = benefice
 
             # Mise à jour des totaux
             benefice_global += ligne.benefice
@@ -1813,6 +1806,7 @@ def listes_des_ventes(request):
         total_ventes = 0
         total_montant_ventes = 0
         benefice_global = 0
+        #benefice = 0
         total_vendus = 0
         total_par_categorie = []
         total_par_produit = []
@@ -2043,10 +2037,8 @@ def filtrer_listes_ventes(request):
 
         # ================== CALCUL BÉNÉFICE ==================
         for ligne in ventes_qs:
-            benefice = (ligne.produit.prix_en_gros - ligne.pu_reduction) * ligne.quantite
-            ligne.benefice = benefice
 
-            benefice_global += benefice
+            benefice_global += ligne.benefice
             total_montant_ventes += ligne.sous_total
 
         # ================== PAGINATION ==================
