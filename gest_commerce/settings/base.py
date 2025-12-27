@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     'gestion_produits',
     'gest_entreprise',
     'gestion_rapports',
-     'simple_history',
+    'simple_history',
 
     # Allauth
     'django.contrib.sites',

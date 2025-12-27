@@ -100,7 +100,9 @@
                     {% endfor %}
                     <!-- Totaux par vente -->
                     <tr class="total-row">
-                        <td colspan="6">Total Vente {{ vente_data.vente.code }} :</td>
+                        <td colspan="4">Total Vente {{ vente_data.vente.code }} :</td>
+                        <td>{{ total_quantite_produits|default:0  }}</td>
+                        <td class="text-center">-</td>
                         <td>{{ vente_data.total_vente }} GNF</td>
                         {% if request.user.type_utilisateur != 'Gerante' %}
                         <td>{{ vente_data.benefice_vente }} GNF</td>

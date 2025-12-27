@@ -1811,7 +1811,6 @@ def listes_des_ventes(request):
         total_ventes = lignes.count()
         total_montant_ventes = 0
         benefice_global = 0
-        #benefice = 0
         listes_ventes = []
 
         for ligne in lignes:
@@ -1836,7 +1835,7 @@ def listes_des_ventes(request):
             )
             .order_by('produit__categorie__desgcategorie')
         )
-                # Total par produit
+        #=================  Total par produit ================= 
         total_par_produit = (
             lignes
             .values('produit__desgprod')
@@ -1855,7 +1854,6 @@ def listes_des_ventes(request):
         total_ventes = 0
         total_montant_ventes = 0
         benefice_global = 0
-        #benefice = 0
         total_vendus = 0
         total_par_categorie = []
         total_par_produit = []
@@ -2450,7 +2448,7 @@ def listes_ventes_impression(request):
                 .order_by('-id')
             )
 
-            # Total par catégorie
+            # ------- Total par catégorie -------
             total_par_categorie = (
                 lignes
                 .values('produit__categorie__desgcategorie')
@@ -2495,15 +2493,11 @@ def listes_ventes_impression(request):
                 'benefice_vente': 0
             }
 
-        # Calcul du bénéfice pour chaque ligne
-        benefice_ligne = (ligne.pu_reduction - ligne.produit.prix_en_gros) * ligne.quantite
-        ligne.benefice = benefice_ligne
-
         ventes_dict[code_vente]['lignes'].append(ligne)
         ventes_dict[code_vente]['total_vente'] += ligne.sous_total
-        ventes_dict[code_vente]['benefice_vente'] += benefice_ligne
+        ventes_dict[code_vente]['benefice_vente'] += ligne.benefice
 
-        benefice_global += benefice_ligne
+        benefice_global += ligne.benefice
 
     ventes_liste = list(ventes_dict.values())
     nom_entreprise = Entreprise.objects.first()  # Si plusieurs, prendre le premier
