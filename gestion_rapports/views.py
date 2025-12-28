@@ -155,9 +155,7 @@ def generer_rapport_admin(request):
             data_qs = list(ventes_dict.values())
 
             # ================= Dépenses =================
-            depenses_total = Depenses.objects.filter(
-                date_operation__range=[date_debut, date_fin]
-            ).aggregate(total=Sum('montant'))['total'] or Decimal(0)
+            depenses_total = Depenses.objects.all().aggregate(total=Sum('montant'))['total'] or Decimal(0)
 
             # Bénéfice net
             benefice_net = benefice_global - depenses_total

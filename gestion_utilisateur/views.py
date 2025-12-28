@@ -9,7 +9,7 @@ from django.urls import reverse_lazy
 from .models import Utilisateur
 from rest_framework import viewsets
 from datetime import date
-from gest_entreprise.models import Entreprise
+from gest_entreprise.models import Depenses, Entreprise
 from gestion_audit.views import enregistrer_audit
 from gestion_audit.models import AuditLog
 from gestion_notifications.models import Notification
@@ -67,14 +67,14 @@ def home(request):
     # ===============================
     # NOTIFICATIONS
     # ===============================
-    notifications = Notification.objects.filter(destinataire=utilisateur).order_by('-date')
-    non_lues = notifications.filter(lu=False)
-    lues = notifications.filter(lu=True)
+    dernieeres_notification = Notification.objects.filter(destinataire=utilisateur).order_by('-date')
+    non_lues = dernieeres_notification.filter(lu=False)
+    lues = dernieeres_notification.filter(lu=True)
 
     # ===============================
     # AUDITS & LISTES
     # ===============================
-    audits = AuditLog.objects.order_by('-date_action')[:5]
+    derniers_audits = AuditLog.objects.order_by('-date_action')[:5]
     listes_commandes = Commandes.objects.order_by('-datecmd')[:3]
     listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')[:3]
 
@@ -82,6 +82,8 @@ def home(request):
     # DERNIÈRES VENTES
     # ===============================
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
+    montant_total_ventes = dernieres_ventes.aggregate(total=Sum('total'))['total'] or 0
+    quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('lignes__quantite'))['total'] or 0
 
     # ===============================
     # COMPARAISON MENSUELLE
@@ -153,6 +155,9 @@ def home(request):
         .order_by('-benefice_total')[:5]
     )
 
+    total_quantite_vendu = sum(elem['qte_vendue'] for elem in top_produits_rentables)
+    total_benefice = sum(p['benefice_total'] for p in top_produits_rentables)
+    
     labels_rentables = [p['produit__desgprod'] for p in top_produits_rentables]
     benefices = [p['benefice_total'] for p in top_produits_rentables]
 
@@ -165,6 +170,7 @@ def home(request):
     total_commandes = Commandes.objects.filter(datecmd__range=[debut_mois, fin_mois]).count()
     total_livraisons = LivraisonsProduits.objects.filter(datelivrer__range=[debut_mois, fin_mois]).count()
     total_ventes = VenteProduit.objects.filter(date_vente__date__range=[debut_mois, fin_mois]).count()
+    total_depenses = Depenses.objects.filter(date_operation__range=[debut_mois, fin_mois]).count()
 
     # ===============================
     # CONTEXTE
@@ -185,10 +191,11 @@ def home(request):
         'dernieres_ventes': dernieres_ventes,
         'listes_commandes': listes_commandes,
         'listes_livraisons': listes_livraisons,
-        'notifications': notifications,
+        'dernieeres_notification': dernieeres_notification[:5],
         'non_lues': non_lues,
         'lues': lues,
-        'derniers_audits': audits,
+        'total_depenses' : total_depenses,
+        'derniers_audits': derniers_audits,
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_stock': total_stock,
@@ -199,6 +206,10 @@ def home(request):
         'data_mois_precedent': data_mois_precedent,
         'data_mois_actuel': data_mois_actuel,
         'now': aujourd_hui,
+        'total_quantite_vendu': total_quantite_vendu,
+        'total_benefice': total_benefice,
+        'montant_total_ventes': montant_total_ventes,
+        'quantite_total_ventes': quantite_total_ventes,
     }
 
     return render(request, 'gestion_utilisateur/dashboard.html', context)

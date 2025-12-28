@@ -177,16 +177,9 @@
 <div class="resume">
     <table>
         <tr>
-            <td><strong>Total des ventes :</strong></td>
+            <td class="text-center"><strong>Total des ventes :</strong></td>
             <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
         </tr>
-
-        {% if request.user.type_utilisateur|lower != "gerante" %}
-        <tr>
-            <td><strong>Bénéfice global :</strong></td>
-            <td><strong>{{ benefice_global|floatformat:0 }} GNF</strong></td>
-        </tr>
-        {% endif %}
     </table>
 </div>
 {% endif %}

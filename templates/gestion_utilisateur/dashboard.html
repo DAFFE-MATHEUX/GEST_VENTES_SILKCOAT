@@ -84,6 +84,8 @@
             </a>
         </div>
     </div>
+
+
 </div>
 
 <!-- =====================
@@ -117,6 +119,21 @@
             </a>
         </div>
     </div>
+
+            <!-- Dépnses du mois -->
+    <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12 mb-2">
+        <div class="small-box bg-red">
+            <div class="inner">
+                <h3>{{ total_depenses }}</h3>
+                <p>Dépenses (Mois)</p>
+            </div>
+            <div class="icon"><i class="ion ion-cash"></i></div>
+            <a href="{% url 'liste_depense' %}" class="small-box-footer">
+                Voir Plus <i class="fa fa-arrow-circle-right"></i>
+            </a>
+        </div>
+    </div>
+
 </div>
 
 <!-- =====================
@@ -160,6 +177,13 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="text-center">Totaux : </td>
+                            <td>{{ quantite_total_ventes }}</td>
+                            <td>{{ montant_total_ventes|floatformat:0 }} GNF</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -209,11 +233,84 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-center">Totaux : </td>
+                            <td>{{ total_quantite_vendu }}</td>
+                            <td>{{ total_benefice|floatformat:0 }} GNF</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
     </div>
 </div>
+
+{% comment %} Derniers Audits {% endcomment %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-info">
+                <div class="box-header with-border"><h3 class="box-title">3 Derniers Audits</h3></div>
+                <div class="box-body table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Utilisateur</th><th>Action</th><th>Table concernée</th><th>Ancienne valeur</th><th>Nouvelle valeur</th><th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in derniers_audits %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{% if a.utilisateur %}{{ a.utilisateur.username }}{% else %}Utilisateur supprimé{% endif %}</td>
+                                <td>{{ a.action }}</td>
+                                <td>{{ a.table_modifiee }}</td>
+                                <td><pre>{{ a.ancienne_valeur|default:"-" }}</pre></td>
+                                <td><pre>{{ a.nouvelle_valeur|default:"-" }}</pre></td>
+                                <td>{{ a.date_action|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="8" class="text-center">Aucune action enregistrée pour le moment.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% comment %} Dernières Notifications {% endcomment %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-info">
+                <div class="box-header with-border"><h3 class="box-title">5 Dernières Notifications</h3></div>
+                <div class="box-body table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th><th>Destinataire</th><th>Email</th><th>Titre</th><th>Message</th><th>Lu</th><th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for items in dernieeres_notification %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ items.destinataire }}</td>
+                                <td>{{ items.destinataire_email }}</td>
+                                <td>{{ items.titre }}</td>
+                                <td>{{ items.message }}</td>
+                                <td>{{ items.lu|yesno:"Oui,Non" }}</td>
+                                <td>{{ items.date|date:"d/m/Y" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="8" class="text-center">Aucune notification récente.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <!-- =====================
      GRAPHIQUES
