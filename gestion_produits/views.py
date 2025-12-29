@@ -206,7 +206,7 @@ def approvisionner_produits(request):
 @csrf_protect
 def vendre_produit(request):
     try:
-        produits = Produits.objects.all()
+        produits = Produits.objects.all().order_by('desgprod')
 
         if request.method == "POST":
 
@@ -284,7 +284,6 @@ def vendre_produit(request):
                     if reduction > produit.pu:
                         reduction = produit.pu
 
-                    # ✅ CALCUL CORRECT (identique au JS)
                     prix_net_unitaire = produit.pu - reduction
                     sous_total = prix_net_unitaire * quantite
 
@@ -294,7 +293,7 @@ def vendre_produit(request):
                         "produit": produit,
                         "quantite": quantite,
                         "pu": produit.pu,
-                        "reduction": reduction,          # unitaire
+                        "reduction": reduction,     
                         "prix_net": prix_net_unitaire,
                         "stock": stock
                     })
@@ -305,7 +304,6 @@ def vendre_produit(request):
                         "Produits ignorés (stock vide) : "
                         + ", ".join(produits_sans_stock)
                     )
-
                 if not lignes:
                     messages.error(
                         request,
@@ -323,7 +321,6 @@ def vendre_produit(request):
                         prix=ligne["pu"],                     # PU brut
                         montant_reduction=ligne["reduction"], # réduction UNITAIRE
                     )
-
                     ligne["stock"].qtestock -= ligne["quantite"]
                     ligne["stock"].save(update_fields=["qtestock"])
 
@@ -331,7 +328,17 @@ def vendre_produit(request):
                 vente.total = total_general
                 vente.calculer_totaux() 
                 vente.save(update_fields=["total", "benefice_total"])
+                # 5️Création d'une notification pour l’admin ou l’utilisateur
+                dest_email = None
+                if hasattr(request.user, "email"):
+                    dest_email = request.user.email or None
 
+                Notification.objects.create(
+                    destinataire=None,
+                    destinataire_email=None, 
+                    titre=f"Nouvelle vente {vente.code}",
+                    message=f"Vente enregistrée pour le client {nom_complet} pour un montant total de {vente.total}."
+                )
                 # 5️⃣ Email admin (non bloquant)
                 try:
                     total_quantite = 0
@@ -343,13 +350,11 @@ def vendre_produit(request):
                         f"Téléphone : {telephone}\n"
                         f"Adresse : {adresse}\n\n"
                         f"DÉTAILS DE LA VENTE\n"
-                        f"-------------------\n"
-                    )
+                        f"-----------------------------------\n")
 
                     for l in vente.lignes.all():
                         total_quantite += l.quantite
                         total_reduction += l.montant_reduction * l.quantite
-
                     contenu += (
                         f"- Produit : {l.produit.desgprod}\n"
                         f"  Qté : {l.quantite}\n"
@@ -358,9 +363,8 @@ def vendre_produit(request):
                         f"  Sous-total : {l.sous_total}\n"
                         f"  Bénéfice ligne : {l.benefice}\n\n"
                     )
-
                     contenu += (
-                        f"-------------------\n"
+                        f"------------------------------------------\n"
                         f"TOTAL QUANTITÉ : {total_quantite}\n"
                         f"TOTAL RÉDUCTION : {total_reduction}\n"
                         f"TOTAL MONTANT : {vente.total}\n"
@@ -380,8 +384,6 @@ def vendre_produit(request):
                         request,
                         "Vente enregistrée mais email non envoyé."
                     )
-
-
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
                 reverse(
@@ -389,12 +391,9 @@ def vendre_produit(request):
                     kwargs={"vente_code": vente.code}
                 )
             )
-
-        return render(
-            request,
+        return render(request,
             "gestion_produits/ventes/nouvelle_vente.html",
-            {"produits": produits}
-        )
+            {"produits": produits})
 
     except IntegrityError:
         messages.error(request, "Erreur d'intégrité des données.")
@@ -1501,7 +1500,7 @@ def listes_produits_stock(request):
                 'produit',
                 'produit__categorie'
             )
-            .order_by('-id')
+            .order_by('produit__desgprod')
         )
         total_stocks = StockProduit.objects.aggregate(
             total=Sum('qtestock')
@@ -1510,19 +1509,17 @@ def listes_produits_stock(request):
 
         # ================= TOTAL PAR CATÉGORIE =================
         total_par_categorie = (
-            StockProduit.objects
-            .values(
-                'produit__categorie__desgcategorie',
-                'produit__pu',    
-                )
+            listes_stock
+            .values('produit__categorie__desgcategorie',
+            )
             .annotate(
-                nombre_produits=Count('produit', distinct=True),
-                quantite_stock=Sum('qtestock'),
-                total_stock=Sum('qtestock'),
-                valeur_stock=Sum(
-                    F('qtestock') * F('produit__pu')
-                ),
-            ).order_by('produit__categorie__desgcategorie'))
+                nombre_produits=Count('id', distinct=True),
+                quantite_restante=Sum('qtestock'),
+                valeur_stock=Sum(F('qtestock') * F('produit__pu'))
+            )
+            .order_by('produit__categorie__desgcategorie')
+        )
+        
         listes_stock = pagination_liste(request, listes_stock)
     except Exception as ex:
         messages.error(
@@ -2644,28 +2641,23 @@ def listes_commandes_impression(request):
 @login_required
 def listes_stocks_impression(request):
 
-    listes_produits = StockProduit.objects.all()
+    listes_produits = StockProduit.objects.all().order_by('produit__desgprod')
     total_stocks = StockProduit.objects.aggregate(
         total=Sum('qtestock')
         )['total'] or 0
     total_produit = listes_produits.count()
-            # ================= TOTAL PAR CATÉGORIE =================
+    
+        # ================= TOTAL PAR CATÉGORIE =================
     total_par_categorie = (
-        StockProduit.objects
-        .values(
-            'produit__categorie__desgcategorie',
-            'produit__pu',
-            )
+        listes_produits
+        .values('produit__categorie__desgcategorie',)
         .annotate(
-            nombre_produits=Count('produit', distinct=True),
-            quantite_stock=Sum('qtestock'),
-            total_stock=Sum('qtestock'),
-            valeur_stock=Sum(
-                F('qtestock') * F('produit__pu')
-            ),
+            nombre_produits=Count('id', distinct=True),
+            quantite_restante=Sum('qtestock'),
+            valeur_stock=Sum(F('qtestock') * F('produit__pu'))
         )
         .order_by('produit__categorie__desgcategorie')
-    )
+        )
 
     # ================= CONTEXT =================
     nom_entreprise = Entreprise.objects.first()

@@ -237,7 +237,9 @@
                         <tr>
                             <td colspan="4" class="text-center">Totaux : </td>
                             <td>{{ total_quantite_vendu }}</td>
+                            {% if request.user.type_utilisateur != 'Gerante' %}
                             <td>{{ total_benefice|floatformat:0 }} GNF</td>
+                            {% endif %}
                         </tr>
                     </tfoot>
                 </table>
@@ -250,7 +252,7 @@
     <div class="row">
         <div class="col-md-12">
             <div class="box box-info">
-                <div class="box-header with-border"><h3 class="box-title">3 Derniers Audits</h3></div>
+                <div class="box-header with-border"><h3 class="box-title">5 Derniers Audits</h3></div>
                 <div class="box-body table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead>
@@ -288,7 +290,7 @@
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
-                                <th>#</th><th>Destinataire</th><th>Email</th><th>Titre</th><th>Message</th><th>Lu</th><th>Date</th>
+                                <th>#</th><th>Destinataire</th><th>Email</th><th>Titre</th><th>Message</th><th>Date</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -299,8 +301,7 @@
                                 <td>{{ items.destinataire_email }}</td>
                                 <td>{{ items.titre }}</td>
                                 <td>{{ items.message }}</td>
-                                <td>{{ items.lu|yesno:"Oui,Non" }}</td>
-                                <td>{{ items.date|date:"d/m/Y" }}</td>
+                                <td>{{ items.date|date:"d/m/Y H:i" }}</td>
                             </tr>
                             {% empty %}
                             <tr><td colspan="8" class="text-center">Aucune notification récente.</td></tr>

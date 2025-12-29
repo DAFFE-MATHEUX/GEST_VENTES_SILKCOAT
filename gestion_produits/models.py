@@ -26,6 +26,7 @@ class Produits(models.Model):
     pu = models.IntegerField(default = 0)
     prix_en_gros = models.IntegerField(default = 0)  # Prix unitaire en gros
     photoprod = models.ImageField(upload_to = 'Produits/', null = True, blank = True)
+    image_url = models.URLField(null=True, max_length=690, blank=True)
     date_maj = models.DateField(auto_now = True)
     categorie = models.ForeignKey(CategorieProduit, on_delete=models.CASCADE, related_name='produit')
     history = HistoricalRecords() # Pour l'historique dans la partie administration de Django

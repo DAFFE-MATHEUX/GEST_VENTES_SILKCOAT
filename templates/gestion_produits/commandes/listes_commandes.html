@@ -220,6 +220,35 @@
     </tfoot>
 </table>
 
+        <nav>
+<ul class="pagination justify-content-center">
+    {% if listes_commandes.has_previous %}
+    <li class="page-item">
+        <a class="page-link" href="?pages=1">&laquo;</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_commandes.previous_page_number }}">Préc</a>
+    </li>
+    {% endif %}
+
+    <li class="page-item active">
+        <span class="page-link">
+            {{ listes_commandes.number }} / {{ listes_commandes.paginator.num_pages }}
+        </span>
+    </li>
+
+    {% if listes_commandes.has_next %}
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_commandes.next_page_number }}">Suiv</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_commandes.paginator.num_pages }}">&raquo;</a>
+    </li>
+    {% endif %}
+</ul>
+</nav>
+
+
         {% elif listes_commandes_filtre %}
                     <!-- TOTAL -->
             <div class="mb-3">
@@ -329,6 +358,34 @@
                     </tr>
                 </tfoot>
             </table>
+
+                    <nav>
+<ul class="pagination justify-content-center">
+    {% if listes_commandes_filtre.has_previous %}
+    <li class="page-item">
+        <a class="page-link" href="?pages=1">&laquo;</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_commandes_filtre.previous_page_number }}">Préc</a>
+    </li>
+    {% endif %}
+
+    <li class="page-item active">
+        <span class="page-link">
+            {{ listes_commandes_filtre.number }} / {{ listes_commandes_filtre.paginator.num_pages }}
+        </span>
+    </li>
+
+    {% if listes_commandes_filtre.has_next %}
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_commandes_filtre.next_page_number }}">Suiv</a>
+    </li>
+    <li class="page-item">
+        <a class="page-link" href="?pages={{ listes_commandes_filtre.paginator.num_pages }}">&raquo;</a>
+    </li>
+    {% endif %}
+</ul>
+</nav>
 
         {% else %}
             <p class="text-center">Aucune commande disponible.</p>

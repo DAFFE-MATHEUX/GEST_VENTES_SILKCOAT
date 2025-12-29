@@ -191,9 +191,11 @@ def home(request):
         'dernieres_ventes': dernieres_ventes,
         'listes_commandes': listes_commandes,
         'listes_livraisons': listes_livraisons,
+        
         'dernieeres_notification': dernieeres_notification[:5],
         'non_lues': non_lues,
         'lues': lues,
+        
         'total_depenses' : total_depenses,
         'derniers_audits': derniers_audits,
         'total_produits': total_produits,

@@ -181,7 +181,6 @@ def filtrer_listes_depenses(request):
 # =================================================================================================
 
 @login_required
-
 def nouvelle_depense(request):
     if request.method != "POST":
         messages.warning(request, "⚠️ Méthode non autorisée.")
@@ -378,98 +377,110 @@ def recu_depense_global_interval(request):
 @login_required
 def modifier_depense(request):
     """
-    Modifie une dépense existante, ajuste le solde de la caisse
-    et envoie un e-mail de notification à l’administration.
+    Modifie une dépense existante,
+    enregistre un audit
+    et notifie l’administration par email.
     """
-    if request.method == "POST":
+
+    if request.method != "POST":
+        return redirect("liste_depense")
+
+    try:
+        # 🔹 Récupération de la dépense
+        id_depense = request.POST.get("id_modif")
+        depense = get_object_or_404(Depenses, pk=id_depense)
+
+        # 🔹 Anciennes valeurs (audit)
+        ancienne_valeur = {
+            "designation": depense.designation,
+            "montant": depense.montant,
+            "destine_a": depense.destine_a,
+            "utilisateur": depense.utilisateur.username if depense.utilisateur else "Inconnu",
+        }
+
+        # 🔹 Nouvelles valeurs
+        designation = request.POST.get("modif_designation", "").strip()
+        destine = request.POST.get("modif_destine", "").strip()
+        montant_brut = request.POST.get("modif_montant", "").strip()
+        print(f"montant_brut: {montant_brut}")
+
+        # ❌ Validation champs
+        if not designation or not destine or not montant_brut:
+            messages.error(request, "⚠️ Tous les champs sont obligatoires.")
+            return redirect("liste_depense")
+
+        # 🔒 Validation montant
+        montant_brut = request.POST.get("modif_montant", "").strip()
+
         try:
-            id_depense = request.POST.get("id_modif")
-            depense = get_object_or_404(Depenses, pk=id_depense)
+                # Remplacer la virgule par un point (format FR → format Python)
+            montant_nettoye = montant_brut.replace(" ", "").replace(",", ".")
 
-            # 🔹 Sauvegarde de l'ancienne valeur pour audit
-            ancienne_valeur = {
-                "designation": depense.designation,
-                "montant": depense.montant,
-                "destine_a": depense.destine_a,
-                "utilisateur": str(request.user),
-            }
+            montant = float(montant_nettoye)
 
-            # 🔹 Récupération des nouvelles valeurs
-            designation = request.POST.get("designation")
-            destine = request.POST.get("destine_a")
+            if montant <= 0:
+                raise ValueError
 
-            if not all([designation, destine]):
-                messages.error(request, "⚠️ Tous les champs obligatoires doivent être remplis.")
-                return redirect("liste_depense")
+        except ValueError:
+            messages.error(request, "⚠️ Le montant doit être un nombre positif valide.")
+            return redirect("liste_depense")
 
-            try:
-                quantite = float(quantite)
-                pu = float(pu)
-                montant = quantite * pu
-            except (ValueError, TypeError):
-                messages.error(request, "⚠️ Quantité ou prix unitaire invalide.")
-                return redirect("liste_depense")
+        # ================= TRANSACTION =================
+        with transaction.atomic():
+            depense.designation = designation
+            depense.destine_a = destine
+            depense.montant = montant
+            depense.utilisateur = request.user   # ✅ INSTANCE User
+            depense.save()
 
-            # --- Début de transaction ---
-            with transaction.atomic():
+            # 🔹 Audit
+            enregistrer_audit(
+                utilisateur=request.user,
+                action="Modification",
+                table="Depenses",
+                ancienne_valeur=ancienne_valeur,
+                nouvelle_valeur={
+                    "designation": designation,
+                    "montant": montant,
+                    "destine_a": destine,
+                    "utilisateur": request.user.username,
+                },
+            )
 
-                # 🔹 Mise à jour de la dépense
-                depense.designation = designation
-                depense.montant = montant
-                depense.destine_a = destine
-                depense.utilisateur = request.user
-                depense.save()
+        # ================= EMAIL =================
+        try:
+            destinataires = [settings.ADMIN_EMAIL] if hasattr(settings, "ADMIN_EMAIL") else []
 
-                # 🔹 Audit de modification
-                enregistrer_audit(
-                    utilisateur=request.user,
-                    action="Modification",
-                    table="DepenseEtablissement",
-                    ancienne_valeur=ancienne_valeur,
-                    nouvelle_valeur={
-                        "designation": depense.designation,
-                        "montant": depense.montant,
-                        "destine_a": depense.destine_a,
-                        "utilisateur": str(request.user),
-                    },
-                )
-            # --- 📧 Envoi d’un e-mail à l’administration ---
-            try:
-                sujet = "✏️ Modification d’une dépense"
-                message = (
-                    f"Une dépense vient d’être modifiée par {request.user}.\n\n"
-                    f"Anciennes valeurs :\n"
-                    f" - Désignation : {ancienne_valeur['designation']}\n"
-                    f" - Montant : {ancienne_valeur['montant']} GNF\n\n"
-                    f"Nouvelles valeurs :\n"
-                    f" - Désignation : {depense.designation}\n"
-                    f" - Montant : {depense.montant} GNF\n"
-                    f" - Destinée à : {depense.destine_a}\n\n"
-                )
-
-                destinataires = [settings.ADMIN_EMAIL] if hasattr(settings, "ADMIN_EMAIL") else ["admin@etablissement.com"]
-
+            if destinataires:
                 send_mail(
-                    sujet,
-                    message,
+                    "✏️ Modification d’une dépense",
+                    f"""Une dépense a été modifiée.
+
+Utilisateur : {request.user.username}
+
+Anciennes valeurs :
+- Désignation : {ancienne_valeur['designation']}
+- Montant : {ancienne_valeur['montant']} GNF
+
+Nouvelles valeurs :
+- Désignation : {designation}
+- Montant : {montant} GNF
+- Destinée à : {destine}
+""",
                     settings.DEFAULT_FROM_EMAIL,
                     destinataires,
                     fail_silently=False,
                 )
 
-            except Exception as email_error:
-                messages.warning(request, f"📧 Dépense modifiée mais e-mail non envoyé : {email_error}")
+        except Exception:
+            messages.warning(request, "📧 Dépense modifiée mais e-mail non envoyé.")
 
-            messages.success(request, f"Dépense modifiée avec succès.")
+        messages.success(request, "✅ Dépense modifiée avec succès.")
 
-        except Depenses.DoesNotExist:
-            messages.error(request, "⚠️ La dépense sélectionnée n’existe pas.")
-        except DatabaseError as db_err:
-            messages.error(request, f"⚠️ Erreur de base de données : {db_err}")
-        except Exception as e:
-            messages.error(request, f"⚠️ Erreur inattendue : {e}")
-
-        return redirect("liste_depense")
+    except DatabaseError:
+        messages.error(request, "⚠️ Erreur de base de données.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Erreur inattendue : {e}")
 
     return redirect("liste_depense")
 

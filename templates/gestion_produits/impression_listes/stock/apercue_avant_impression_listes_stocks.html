@@ -47,8 +47,8 @@
         }
 
         .logo {
-            width: 70px;
-            height: 70px;
+            width: 120px;
+            height: 120px;
             object-fit: contain;
         }
 
@@ -136,17 +136,15 @@
             </tr>
         </tfoot>
     </table>
-
+                    <br>
                                 <!-- Totaux par catégorie -->
                             <h4 class="mt-4">Stock par catégorie</h4>
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
                                         <th>Catégorie</th>
-                                        <th>Nb Produits</th>
+                                        <th>Nombre Produits</th>
                                         <th>Quantité</th>
-                                        <th>PU</th>
-                                        <th>Valeur Stock</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -154,9 +152,7 @@
                                     <tr>
                                         <td>{{ cat.produit__categorie__desgcategorie }}</td>
                                         <td>{{ cat.nombre_produits|default:0 }}</td>
-                                        <td>{{ cat.quantite_stock|default:0 }}</td>
-                                        <td>{{ cat.produit__pu|default:0 }}</td>
-                                        <td>{{ cat.valeur_stock|default:0|floatformat:0 }}</td>
+                                        <td>{{ cat.quantite_restante|default:0 }}</td>
                                     </tr>
                                     {% empty %}
                                     <tr>
@@ -169,8 +165,6 @@
                                 <th colspan="1" class="text-center">Totaux :</th>
                                 <th class="text-center">{{ total_produit }}</th>
                                 <th class="text-center">{{ total_stocks }}</th>
-                                <th class="text-center">-</th>
-                                <th class="text-center">-</th>
                             </tr>
                         </tfoot>
                             </table>

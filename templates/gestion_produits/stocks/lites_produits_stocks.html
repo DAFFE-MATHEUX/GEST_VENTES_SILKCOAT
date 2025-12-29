@@ -154,10 +154,8 @@
                                 <thead>
                                     <tr>
                                         <th>Catégorie</th>
-                                        <th>Nb Produits</th>
-                                        <th>Prix de Vente</th>
-                                        <th>Quantité</th>
-                                        <th>Valeur Stock</th>
+                                        <th>Nombre Produits</th>
+                                        <th>Quantite Restante</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -165,9 +163,7 @@
                                     <tr>
                                         <td>{{ cat.produit__categorie__desgcategorie }}</td>
                                         <td>{{ cat.nombre_produits|default:0 }}</td>
-                                        <td>{{ cat.produit__pu|default:0 }}</td>
-                                        <td>{{ cat.quantite_stock|default:0 }}</td>
-                                        <td>{{ cat.valeur_stock|default:0|floatformat:0 }}</td>
+                                        <td>{{ cat.quantite_restante|default:0 }}</td>
                                     </tr>
                                     {% empty %}
                                     <tr>
@@ -179,9 +175,7 @@
                             <tr>
                                 <th colspan="1" class="text-center">Totaux :</th>
                                 <th class="text-center">{{ total_produit }}</th>
-                                <th class="text-center">-</th>
                                 <th class="text-center">{{ total_stocks }}</th>
-                                <th class="text-center">-</th>
                             </tr>
                         </tfoot>
                             </table>

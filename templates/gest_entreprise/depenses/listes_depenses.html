@@ -87,7 +87,6 @@
     
 {% if liste_depenses %}
 
-
     <div class="table-responsive">
       <table class="table table-striped table-bordered table-hover">
         <thead>
@@ -122,7 +121,6 @@
                 data-designation="{{ depense.designation }}"
                 data-montant="{{ depense.montant }}"
                 data-destine="{{ depense.destine_a }}"
-                data-personnel="{{ depense.personnel }}"
                 data-date="{{ depense.date_operation|date:'Y-m-d' }}">
                 <i class="fa fa-eye"></i>
               </button>
@@ -130,10 +128,9 @@
               <!-- Modifier -->
               <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modifier_depense"
                 data-id="{{ depense.id }}"
-                data-type="{{ depense.type_operation }}"
                 data-designation="{{ depense.designation }}"
                 data-destine="{{ depense.destine_a }}"
-                data-personnel="{{ depense.personnel }}">
+                data-montant="{{ depense.montant }}">
                 <i class="fa fa-pencil"></i>
               </button>
 
@@ -229,7 +226,7 @@
                 data-id="{{ depense.id }}"
                 data-designation="{{ depense.designation }}"
                 data-destine="{{ depense.destine_a }}"
-                data-personnel="{{ depense.personnel }}">
+                data-montant="{{ depense.montant }}">
                 <i class="fa fa-pencil"></i>
               </button>
 
@@ -280,8 +277,8 @@
           {% csrf_token %}
           <div class="modal-body">
             <div class="form-group"><label>Désignation</label><input type="text" name="designation" class="form-control" required></div>
-            <div class="form-group"><label>Destiné à</label><input type="text" name="destine_a" class="form-control"></div>
-            <div class="form-group"><label>Montant</label><input type="number" name="montant" class="form-control"></div>
+            <div class="form-group"><label>Destiné à</label><input type="text" name="destine_a" class="form-control" required></div>
+            <div class="form-group"><label>Montant</label><input type="text" name="montant" class="form-control only-numbers" required></div>
 
           </div>
           <div class="modal-footer">
@@ -314,17 +311,17 @@
   <div class="modal fade" id="modifier_depense" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-warning"><h4 class="modal-title">MODIFIER DÉPENSE</h4></div>
+        <div class="modal-header bg-warning"><h4 class="modal-title">MODIFIER LA DÉPENSE</h4></div>
         <form method="post" action="{% url 'modifier_depense' %}">
           {% csrf_token %}
           <div class="modal-body">
             <input type="hidden" name="id_modif" id="modif_id">
-            <div class="form-group"><label>Désignation</label><input type="text" name="designation" id="modif_designation" class="form-control"></div>
-            <div class="form-group"><label>Destiné à</label><input type="text" name="destine_a" id="modif_destine" class="form-control"></div>
-            <div class="form-group"><label>Montant</label><input type="number" name="destine_a" id="modif_destine" class="form-control"></div>
+            <div class="form-group"><label>Désignation</label><input type="text" name="modif_designation" id="modif_designation" class="form-control" required></div>
+            <div class="form-group"><label>Destiné à</label><input type="text" name="modif_destine" id="modif_destine" class="form-control" required></div>
+            <div class="form-group"><label>Montant</label><input type="text" name="modif_montant" id="modif_montant" class="form-control only-numbers" required></div>
           </div>
           <div class="modal-footer">
-            <button type="submit" class="btn btn-warning">Modifier</button>
+            <button type="submit" class="btn btn-warning"><i class="fa fa-edit"></i> Modifier</button>
             <button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button>
           </div>
         </form>
@@ -355,6 +352,21 @@
 </div> <!-- fin #page-wrapper -->
 
 <script>
+
+    // =============================
+  // ✅ CORRECTION MAJEURE ICI
+  // =============================
+  // 🔒 Interdire lettres, symboles, espaces
+  // ✔ Autorise uniquement les chiffres (0-9)
+  // ✔ Fonctionne clavier + copier/coller
+  // ✔ Valable pour TOUS les champs ayant la classe "only-numbers"
+  // =============================
+  document.addEventListener("input", function (e) {
+      if (e.target.classList.contains("only-numbers")) {
+          e.target.value = e.target.value.replace(/[^0-9]/g, "");
+      }
+  });
+
   // Modal Voir
   document.querySelectorAll('button[data-target="#voir_depense"]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -370,9 +382,9 @@
   document.querySelectorAll('button[data-target="#modifier_depense"]').forEach(btn => {
     btn.addEventListener('click', () => {
       document.getElementById('modif_id').value = btn.dataset.id;
-      document.getElementById('modif_type').value = btn.dataset.type;
       document.getElementById('modif_designation').value = btn.dataset.designation;
       document.getElementById('modif_destine').value = btn.dataset.destine;
+      document.getElementById('modif_montant').value = btn.dataset.montant;
     });
   });
 
