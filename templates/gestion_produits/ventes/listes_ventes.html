@@ -71,7 +71,9 @@
         <th>Client</th>
         <th>Qté</th>
         <th>Prix Vente</th> 
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <th>Prix en Gros</th> 
+        {% endif %}
         <th>Réduction</th>
         <th>Sous-total</th>
          {% if request.user.type_utilisateur != 'Gerante' %}
@@ -95,7 +97,10 @@
         <td>{{ elem.vente.nom_complet_client }}</td>
         <td>{{ elem.quantite }}</td>
         <td>{{ elem.prix }} GNF</td>
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <td>{{ elem.produit.prix_en_gros }} GNF</td>
+        {% endif %}
+
         <td>{{ elem.montant_reduction }} GNF</td>
         <td>{{ elem.sous_total }} GNF</td>
          {% if request.user.type_utilisateur != 'Gerante' %}
@@ -110,7 +115,7 @@
             <span class="text-primary"><b>{{ cumul_benefice }}</b></span>
         </td>
         {% endif %}
-        <td>{{ elem.vente.date_vente|date:"Y-m-d" }}</td>
+        <td>{{ elem.vente.date_vente|date:"d/m/Y H:i"  }}</td>
         <td>{% if elem.produit.photoprod %}<img src="{{ elem.produit.photoprod.url }}">{% else %}—{% endif %}</td>
         <td><a class="btn btn-primary btn-sm" href="{% url 'produits:recu_vente_global' elem.vente.code %}"><i class="fa fa-print"></i></a></td>
         <td>
@@ -254,7 +259,9 @@
         <th>Client</th>
         <th>Qté</th>
         <th>Prix Vente</th> 
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <th>Prix en Gros</th> 
+        {% endif %}
         <th>Réduction</th>
         <th>Sous-total</th>
          {% if not request.user.type_utilisateur == 'Gerante' %}
@@ -278,11 +285,13 @@
         <td>{{ elem.vente.nom_complet_client }}</td>
         <td>{{ elem.quantite }}</td>
         <td>{{ elem.prix }} GNF</td>
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <td>{{ elem.produit.prix_en_gros }} GNF</td>
+        {% endif %}
         <td>{{ elem.montant_reduction }} GNF</td>
         <td>{{ elem.sous_total }} GNF</td>
 
-         {% if not request.user.type_utilisateur == 'Gerante' %}
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <td>
         {% if elem.benefice >= 0 %}
         <span class="text-success"><b>+{{ elem.benefice }}</b></span>

@@ -201,13 +201,30 @@ def approvisionner_produits(request):
 #================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
+from django.utils import timezone
+
+def generer_code_vente():
+    prefix = "VENTE"
+    date_str = timezone.now().strftime('%Y%m%d')
+
+    last_vente = VenteProduit.objects.filter(
+        code__startswith=f"{prefix}-{date_str}"
+    ).order_by('-code').first()
+
+    if last_vente:
+        dernier_numero = int(last_vente.code.split('-')[-1])
+    else:
+        dernier_numero = 0
+
+    nouveau_numero = dernier_numero + 1
+
+    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
 
 @login_required
 @csrf_protect
 def vendre_produit(request):
     try:
         produits = Produits.objects.all().order_by('desgprod')
-
         if request.method == "POST":
 
             ids = request.POST.getlist("produit_id[]")
@@ -228,18 +245,18 @@ def vendre_produit(request):
             total_general = 0
             lignes = []
             produits_sans_stock = []
-
             with transaction.atomic():
 
                 # 1️⃣ Création de la vente (vide au départ)
                 vente = VenteProduit.objects.create(
-                    code=f"VENTE{timezone.now().strftime('%Y%m%d%H%M%S')}",
-                    total=0,
-                    benefice_total=0,
-                    utilisateur=request.user,
-                    nom_complet_client=nom_complet,
-                    telclt_client=telephone,
-                    adresseclt_client=adresse
+                    code = generer_code_vente(),
+
+                    total = 0,
+                    benefice_total = 0,
+                    utilisateur = request.user,
+                    nom_complet_client = nom_complet,
+                    telclt_client = telephone,
+                    adresseclt_client = adresse
                 )
 
                 # 2️⃣ Parcours des produits
