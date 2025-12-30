@@ -471,28 +471,9 @@ def suppression_rapport(request):
         # Récupération du rapport à supprimer
         rapport = get_object_or_404(Rapport, id=id_supprimer)
 
-        # --- Enregistrement de l'audit avant suppression ---
-        ancienne_valeur = {
-            "Titre": rapport.titre,
-            "Période début": str(rapport.periode_debut),
-            "Période fin": str(rapport.periode_fin),
-            "Type": rapport.type,
-            "Utilisateur connecté": request.user.get_full_name(),
-            "Généré par": rapport.genere_par.username if rapport.genere_par else ""
-        }
-
-        # Ici on passe l'instance utilisateur, pas juste le nom
-        enregistrer_audit(
-            utilisateur=request.user,
-            action="Suppression",
-            table="Rapport",
-            ancienne_valeur=ancienne_valeur,
-            nouvelle_valeur=None
-        )
-
         # --- Suppression effective ---
         rapport.delete()
-        messages.success(request, "✅ Rapport supprimé avec succès et audit enregistré.")
+        messages.success(request, "✅ Rapport supprimé avec succès.")
 
     except Rapport.DoesNotExist:
         messages.error(request, "❌ Rapport non trouvé.")

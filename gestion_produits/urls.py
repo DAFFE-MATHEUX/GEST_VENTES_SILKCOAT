@@ -4,7 +4,7 @@ app_name = 'produits'
 
 urlpatterns = [
     #=================================================================================================================================================
-    # Gestion des Catégories de produits
+    # Gestion des Catégories de Produits
     #=================================================================================================================================================
     
     path('ajouter_categorie/', ajouter_categorie, name='ajouter_categorie'),
@@ -13,7 +13,7 @@ urlpatterns = [
     path('modifier_categorie/', modifier_categorie, name='modifier_categorie'), 
     
     #=================================================================================================================================================
-    # Gestion des produits
+    # Gestion des Produits
     #=================================================================================================================================================
     
     path('produits/listes_produits/', listes_produits, name='listes_produits'),
@@ -24,7 +24,7 @@ urlpatterns = [
     path('produits/consulter_produit/<int:id>/', consulter_produit, name="consulter_produit"),
 
     #=================================================================================================================================================
-    # Gestion des produits en Stocks
+    # Gestion des Produits en Stocks
     #==================================================================================================================================================
     
     path('listes_produits_stock/', listes_produits_stock, name='listes_produits_stock'),
@@ -32,7 +32,7 @@ urlpatterns = [
     path('supprimer_produits_stock/', supprimer_produits_stock, name='supprimer_produits_stock'),
      
     #=================================================================================================================================================
-    # Gestion des Ventes 
+    # Gestion des Ventes Produits
     #=================================================================================================================================================
     
     path('vente/listes_des_ventes/', listes_des_ventes, name='listes_des_ventes'),
@@ -51,6 +51,7 @@ urlpatterns = [
     path('vente/filtrer_listes_commandes/', filtrer_listes_commandes, name='filtrer_listes_commandes'),
     path('commandes/nouvelle_commande/', nouvelle_commande, name='nouvelle_commande'),
     path('commandes/supprimer_commandes/', supprimer_commandes, name='supprimer_commandes'),
+    
     #====================================================================================================================================================
     # Gestion des Livraisons 
     #====================================================================================================================================================
@@ -62,14 +63,8 @@ urlpatterns = [
     path('supprimer_livraisons/', supprimer_livraisons, name='supprimer_livraisons'),
     path('historique_commandes_livraisons/', historique_commandes_livraisons, name='historique_commandes_livraisons'),
     
-    #====================================================================================================================================================
-    # Gestion des Approvisionnements
-    #====================================================================================================================================================
-
-    path('approv/approvisionner_produits/', approvisionner_produits, name='approvisionner_produits'),
-    
     #=================================================================================================================================================
-    # Impression listes
+    # Impression des listes
     #=================================================================================================================================================
     
     path('produits/listes_produits_impression/', listes_produits_impression, name="listes_produits_impression"),
@@ -90,6 +85,7 @@ urlpatterns = [
     #=================================================================================================================================================
     # Exportation des données vers Excel 
     #=================================================================================================================================================
+    
     path('confirmation_exportation_vente/', confirmation_exportation_vente, name='confirmation_exportation_vente'),
     path('confirmation_exportation_produits/', confirmation_exportation_produits, name='confirmation_exportation_produits'),
     path('confirmation_exportation_stocks_produits/', confirmation_exportation_stocks_produits, name='confirmation_exportation_stocks_produits'),

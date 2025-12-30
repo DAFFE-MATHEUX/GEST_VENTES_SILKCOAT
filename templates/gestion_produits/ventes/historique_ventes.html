@@ -1,7 +1,35 @@
 {% extends 'admin.html' %}
 {% block contents %}
 
-<h2 class="mt-3">📊 Historique des ventes par date</h2>
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .print-area, .print-area * {
+        visibility: visible;
+    }
+    .print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
+</style>
+
+<div class="no-print mb-3 text-end">
+    <button onclick="window.print()" class="btn btn-success">
+        🖨️ Imprimer
+    </button>
+</div>
+
+<div class="print-area">
+
+<h2 class="mt-3 text-center">📊 Historique des ventes</h2>
 <hr>
 
 {% for bloc in historique %}
@@ -14,10 +42,8 @@
         <small>
             💰 Total ventes :
             <strong>{{ bloc.total_montant|floatformat:"0" }} GNF</strong> |
-            📦 Produits vendus :
+            📦 Qté vendue :
             <strong>{{ bloc.total_quantite }}</strong> |
-            🗂️ Catégories :
-            <strong>{{ bloc.total_categories }}</strong> |
             📈 Bénéfice :
             <strong>{{ bloc.total_profit|floatformat:"0" }} GNF</strong>
         </small>
@@ -25,21 +51,20 @@
 
     <!-- TABLE DES VENTES -->
     <div class="card-body">
-        <table class="table table-bordered table-striped table-hover">
+        <table class="table table-bordered table-striped">
             <thead class="table-dark">
                 <tr>
                     <th>#</th>
-                    <th>Code Vente</th>
+                    <th>Code</th>
                     <th>Client</th>
-                    <th>Total (GNF)</th>
-                    <th>Bénéfice (GNF)</th>
+                    <th>Total</th>
+                    <th>Bénéfice</th>
                     <th>Vendeur</th>
                     <th>Heure</th>
-                    <th>Reçu</th>
                 </tr>
             </thead>
             <tbody>
-                {% for v in bloc.ventes %}
+            {% for v in bloc.ventes %}
                 <tr>
                     <td>{{ forloop.counter }}</td>
                     <td><strong>{{ v.code }}</strong></td>
@@ -47,42 +72,78 @@
                         {{ v.nom_complet_client }}<br>
                         <small>{{ v.telclt_client }}</small>
                     </td>
-                    <td><strong>{{ v.total|floatformat:"0" }}</strong></td>
-                    <td><strong>{{ v.benefice_total|floatformat:"0" }}</strong></td>
+                    <td>{{ v.total|floatformat:"0" }} GNF</td>
+                    <td>{{ v.benefice_total|floatformat:"0" }} GNF</td>
                     <td>{{ v.utilisateur.get_full_name }}</td>
                     <td>{{ v.date_vente|date:"H:i" }}</td>
-                    <td>
-                        <a href="{% url 'produits:recu_vente_global' v.code %}"
-                           class="btn btn-primary btn-sm">
-                            <i class="fa fa-file"></i>
-                        </a>
-                    </td>
                 </tr>
 
                 <!-- DÉTAIL DES PRODUITS -->
                 <tr>
-                    <td colspan="8" class="bg-light">
+                    <td colspan="7">
                         <strong>Détails des produits :</strong>
-                        <ul class="mb-0">
-                        {% for ligne in v.lignes.all %}
-                            <li>
-                                {% if ligne.produit %}
-                                    {{ ligne.produit.desgprod }} |
-                                    Catégorie :
-                                    {{ ligne.produit.categorie.desgcategorie }} |
-                                {% else %}
-                                    Produit supprimé |
+                        <table class="table table-sm table-bordered mt-2">
+                            <thead>
+                                <tr>
+                                    <th>Produit</th>
+                                    <th>Qté vendue</th>
+                                    <th>Qté retournée</th>
+                                    <th>Qté restante</th>
+                                    <th>PU</th>
+                                    <th>Sous-total</th>
+                                    <th>Bénéfice</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for ligne in v.lignes.all %}
+                                <tr>
+                                    <td>
+                                        {{ ligne.produit.desgprod }}
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ ligne.produit.categorie.desgcategorie }}
+                                        </small>
+                                    </td>
+                                    <td class="text-center">{{ ligne.quantite }}</td>
+                                    <td class="text-center">
+                                        {{ ligne.quantite_retournee }}
+                                    </td>
+                                    <td class="text-center">
+                                        {{ ligne.quantite_restante }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{ ligne.prix|floatformat:"0" }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{ ligne.sous_total|floatformat:"0" }}
+                                    </td>
+                                    <td class="text-end">
+                                        {{ ligne.benefice|floatformat:"0" }}
+                                    </td>
+                                </tr>
+
+                                {% if ligne.retours.exists %}
+                                <tr>
+                                    <td colspan="7">
+                                        <small class="text-danger">
+                                            🔁 Retours :
+                                            {% for ret in ligne.retours.all %}
+                                                {{ ret.quantite_retour }}
+                                                {% if ret.motif %}
+                                                    ({{ ret.motif }})
+                                                {% endif %}
+                                                {% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </small>
+                                    </td>
+                                </tr>
                                 {% endif %}
-                                Qté : {{ ligne.quantite }} |
-                                PU : {{ ligne.prix|floatformat:"0" }} GNF |
-                                Sous-total : {{ ligne.sous_total|floatformat:"0" }} GNF |
-                                Bénéfice : {{ ligne.benefice|floatformat:"0" }} GNF
-                            </li>
-                        {% endfor %}
-                        </ul>
+                            {% endfor %}
+                            </tbody>
+                        </table>
                     </td>
                 </tr>
-                {% endfor %}
+            {% endfor %}
             </tbody>
         </table>
     </div>
@@ -92,5 +153,7 @@
 {% empty %}
 <p class="text-center text-muted">Aucune vente enregistrée.</p>
 {% endfor %}
+
+</div>
 
 {% endblock %}

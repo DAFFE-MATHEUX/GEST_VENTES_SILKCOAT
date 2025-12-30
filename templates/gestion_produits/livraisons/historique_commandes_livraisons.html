@@ -2,38 +2,94 @@
 {% load static %}
 
 {% block contents %}
+
 <style>
-    .table-responsive {
-        overflow-x: auto;
+/* ================= ÉCRAN ================= */
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.table td, .table th {
+    white-space: nowrap;
+}
+
+.table img {
+    max-width: 60px;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+/* ================= IMPRESSION ================= */
+@media print {
+
+    body {
+        background: white;
+    }
+
+    /* cacher menu, boutons, navbar */
+    .no-print,
+    nav,
+    footer,
+    .btn {
+        display: none !important;
+    }
+
+    /* afficher uniquement la zone imprimable */
+    .print-area {
         width: 100%;
     }
-    .table td, .table th {
-        white-space: nowrap;
+
+    .table-responsive {
+        overflow: visible !important;
     }
-    .table img {
-        max-width: 60px;
-        max-height: 60px;
-        object-fit: contain;
+
+    table {
+        width: 100% !important;
+        font-size: 11px;
+        page-break-inside: auto;
     }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tfoot {
+        display: table-footer-group;
+    }
+}
 </style>
 
-<div class="container mt-3">
-    <h2>📜 Historique des Commandes et Livraisons</h2>
+<div class="container mt-3 print-area">
+
+    <!-- BOUTON IMPRIMER -->
+    <div class="text-end mb-3 no-print">
+        <button onclick="window.print()" class="btn btn-success">
+            🖨️ Imprimer
+        </button>
+    </div>
+
+    <h2 class="text-center">📜 Historique des Commandes et Livraisons</h2>
     <hr>
 
     {% if historique %}
-    <div class="table-responsive overflow-auto">
-        <table class="table table-striped table-bordered align-middle" style="min-width:1200px;">
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle">
             <thead class="table-dark">
                 <tr>
                     <th>#</th>
-                    <th>Numéro Commande</th>
+                    <th>N° Commande</th>
                     <th>Produit</th>
                     <th>Catégorie</th>
-                    <th>Qté Commandée</th>
-                    <th>Total Livrée</th>
-                    <th>Qté Restante</th>
-                    <th>Livraisons</th>
+                    <th>Qté commandée</th>
+                    <th>Total livrée</th>
+                    <th>Qté restante</th>
+                    <th>Détails livraisons</th>
                 </tr>
             </thead>
             <tbody>
@@ -43,9 +99,9 @@
                     <td>{{ item.commande.numcmd }}</td>
                     <td>{{ item.commande.produits.desgprod }}</td>
                     <td>{{ item.commande.produits.categorie.desgcategorie }}</td>
-                    <td>{{ item.commande.qtecmd }}</td>
-                    <td>{{ item.total_livree }}</td>
-                    <td>
+                    <td class="text-center">{{ item.commande.qtecmd }}</td>
+                    <td class="text-center">{{ item.total_livree }}</td>
+                    <td class="text-center">
                         <span class="badge {% if item.qte_restante == 0 %}bg-success{% else %}bg-warning text-dark{% endif %}">
                             {{ item.qte_restante }}
                         </span>
@@ -55,8 +111,9 @@
                             <ul class="mb-0">
                                 {% for liv in item.livraisons %}
                                     <li>
-                                        {{ liv.datelivrer|date:"d/m/Y" }} : {{ liv.qtelivrer }} unité(s)
-                                        {% if liv.lieu %}- {{ liv.lieu }}{% endif %}
+                                        {{ liv.datelivrer|date:"d/m/Y" }} :
+                                        {{ liv.qtelivrer }} unité(s)
+                                        {% if liv.lieu %} – {{ liv.lieu }}{% endif %}
                                     </li>
                                 {% endfor %}
                             </ul>
@@ -69,17 +126,21 @@
             </tbody>
             <tfoot class="table-secondary">
                 <tr>
-                    <th colspan="4" class="text-end">Totaux :</th>
-                    <th>{{ total_commandes }}</th>
-                    <th>{{ total_livrees }}</th>
-                    <th>{{ total_restantes }}</th>
+                    <th colspan="4" class="text-end">Totaux</th>
+                    <th class="text-center">{{ total_commandes }}</th>
+                    <th class="text-center">{{ total_livrees }}</th>
+                    <th class="text-center">{{ total_restantes }}</th>
                     <th></th>
                 </tr>
             </tfoot>
         </table>
     </div>
     {% else %}
-        <p class="text-center text-muted mt-3">Aucune commande ou livraison enregistrée.</p>
+        <p class="text-center text-muted mt-3">
+            Aucune commande ou livraison enregistrée.
+        </p>
     {% endif %}
+
 </div>
+
 {% endblock %}
