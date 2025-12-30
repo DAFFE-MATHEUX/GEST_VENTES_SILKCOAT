@@ -31,7 +31,7 @@
     <!-- ENTÊTE ENTREPRISE -->
     <div class="header-top">
         <div class="header-left">
-            <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
+            <strong>{{ nom_entreprise.nom_entreprise|upper }}</strong><br>
             <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
             <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
             {% if nom_entreprise.email %}
@@ -100,8 +100,8 @@
                     {% endfor %}
                     <!-- Totaux par vente -->
                     <tr class="total-row">
-                        <td colspan="4">Total Vente {{ vente_data.vente.code }} :</td>
-                        <td>{{ total_quantite_produits|default:0  }}</td>
+                        <td colspan="4" style="text-align:center;">Total Vente {{ vente_data.vente.code }} :</td>
+                        <td>{{ vente_data.total_quantite_vente|default:0 }}</td>
                         <td class="text-center">-</td>
                         <td>{{ vente_data.total_vente }} GNF</td>
                         {% if request.user.type_utilisateur != 'Gerante' %}
@@ -113,7 +113,7 @@
                 {% if request.user.type_utilisateur != 'Gerante' %}
                 <!-- Bénéfice global -->
                 <tr class="total-row">
-                    <td colspan="7">Bénéfice Global :</td>
+                    <td colspan="7" style="text-align:center;">Bénéfice Global :</td>
                     <td>{{ benefice_global }} GNF</td>
                     <td colspan="2"></td>
                 </tr>
@@ -125,93 +125,95 @@
             {% endif %}
         </tbody>
     </table>
-<br>
-    <!-- TABLEAU DES VENTES PAR PRODUIT -->
-    <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
 
-    <table style="width:100%; border-collapse: collapse;">
-        <thead>
+<br> <br>
+<!-- TABLEAU DES VENTES PAR PRODUIT -->
+<h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
+
+<table style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Produit</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if total_par_produit %}
+            {% for prod in total_par_produit %}
             <tr>
-                <th>#</th>
-                <th>Produit</th>
-                <th>Quantité Vendue</th>
-                <th>Montant Total (GNF)</th>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ prod.produit__desgprod }}</td>
+                <td>{{ prod.total_quantite }}</td>
+                <td>{{ prod.total_montant|floatformat:"0" }} GNF</td>
             </tr>
-        </thead>
-        <tbody>
-            {% if total_par_produit %}
-                {% for prod in total_par_produit %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ prod.produit__desgprod }}</td>
-                    <td>{{ prod.total_quantite }}</td>
-                    <td>{{ prod.total_montant|floatformat:"0" }} GNF</td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="4" style="text-align:center;">Aucune vente par produit</td>
-                </tr>
-            {% endif %}
-        </tbody>
-        <tfoot>
-            <tr style="font-weight:bold; background-color:#e6f7ff;">
-                <td colspan="2" style="text-align:center;">Totaux :</td>
-                <td>{{ total_quantite_produits|default:0 }}</td>
-                <td>{{ total_montant_produits|floatformat:"0"|default:"0" }} GNF</td>
-            </tr>
-        </tfoot>
-    </table>
-<br>
-    <!-- TABLEAU DES VENTES PAR CATEGORIE -->
-    <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
-
-    <table style="width:100%; border-collapse: collapse;">
-        <thead>
+            {% endfor %}
+        {% else %}
             <tr>
-                <th>#</th>
-                <th>Catégorie</th>
-                <th>Quantité Vendue</th>
-                <th>Montant Total (GNF)</th>
+                <td colspan="4" style="text-align:center;">Aucune vente par produit</td>
             </tr>
-        </thead>
-        <tbody>
-            {% if total_par_categorie %}
-                {% for cat in total_par_categorie %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ cat.produit__categorie__desgcategorie }}</td>
-                    <td>{{ cat.total_quantite }}</td>
-                    <td>{{ cat.total_montant|floatformat:"0" }} GNF</td>
-                </tr>
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="4" style="text-align:center;">Aucune vente par catégorie</td>
-                </tr>
-            {% endif %}
-        </tbody>
-        <tfoot>
-            <tr style="font-weight:bold; background-color:#e6f7ff;">
-                <td colspan="2" style="text-align:center;">Totaux :</td>
-                <td>{{ total_quantite_categories|default:0 }}</td>
-                <td>{{ total_montant_categories|floatformat:"0"|default:"0" }} GNF</td>
+        {% endif %}
+    </tbody>
+    <tfoot>
+        <tr style="font-weight:bold; background-color:#e6f7ff;">
+            <td colspan="2" style="text-align:center;">Totaux :</td>
+            <td>{{ total_quantite_produits|default:0 }}</td>
+            <td>{{ total_montant_produits|floatformat:"0"|default:"0" }} GNF</td>
+        </tr>
+    </tfoot>
+</table>
+
+<br>
+<!-- TABLEAU DES VENTES PAR CATEGORIE -->
+<h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+
+<table style="width:100%; border-collapse: collapse;">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Catégorie</th>
+            <th>Quantité Vendue</th>
+            <th>Montant Total (GNF)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if total_par_categorie %}
+            {% for cat in total_par_categorie %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ cat.produit__categorie__desgcategorie }}</td>
+                <td>{{ cat.total_quantite }}</td>
+                <td>{{ cat.total_montant|floatformat:"0" }} GNF</td>
             </tr>
-        </tfoot>
-    </table>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="4" style="text-align:center;">Aucune vente par catégorie</td>
+            </tr>
+        {% endif %}
+    </tbody>
+    <tfoot>
+        <tr style="font-weight:bold; background-color:#e6f7ff;">
+            <td colspan="2" style="text-align:center;">Totaux :</td>
+            <td>{{ total_quantite_categories|default:0 }}</td>
+            <td>{{ total_montant_categories|floatformat:"0"|default:"0" }} GNF</td>
+        </tr>
+    </tfoot>
+</table>
 
-    <!-- Signature -->
-    <div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">
-        <div style="text-align: right;">
-            <p>Le Responsable</p>
-            <br><br><br>
-            <p>______________________________</p>
-        </div>
+<!-- Signature -->
+<div style="margin-top: 50px; width: 100%; display: flex; justify-content: flex-end;">
+    <div style="text-align: right;">
+        <p>Le Responsable</p>
+        <br><br><br>
+        <p>______________________________</p>
     </div>
+</div>
 
-    <div class="footer">
-        Impression générée le : {{ today|date:"d/m/Y" }}
-    </div>
+<div class="footer">
+    Impression générée le : {{ today|date:"d/m/Y" }}
+</div>
 
 </body>
 </html>

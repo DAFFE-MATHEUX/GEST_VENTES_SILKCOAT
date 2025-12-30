@@ -2495,23 +2495,25 @@ def listes_ventes_impression(request):
         except Exception as ex:
             messages.warning(request, f"Erreur lors de la récupération des ventes : {str(ex)}")
 
-    # Regrouper les lignes par vente
-    ventes_dict = {}
-    for ligne in lignes:
-        code_vente = ligne.vente.code
-        if code_vente not in ventes_dict:
-            ventes_dict[code_vente] = {
-                'vente': ligne.vente,
-                'lignes': [],
-                'total_vente': 0,
-                'benefice_vente': 0
-            }
+        # Regrouper les lignes par vente
+        ventes_dict = {}
+        for ligne in lignes:
+            code_vente = ligne.vente.code
+            if code_vente not in ventes_dict:
+                ventes_dict[code_vente] = {
+                    'vente': ligne.vente,
+                    'lignes': [],
+                    'total_vente': 0,
+                    'total_quantite_vente': 0,   # <- ajouter
+                    'benefice_vente': 0
+                }
 
-        ventes_dict[code_vente]['lignes'].append(ligne)
-        ventes_dict[code_vente]['total_vente'] += ligne.sous_total
-        ventes_dict[code_vente]['benefice_vente'] += ligne.benefice
+            ventes_dict[code_vente]['lignes'].append(ligne)
+            ventes_dict[code_vente]['total_vente'] += ligne.sous_total
+            ventes_dict[code_vente]['total_quantite_vente'] += ligne.quantite  # <- ajouter
+            ventes_dict[code_vente]['benefice_vente'] += ligne.benefice
 
-        benefice_global += ligne.benefice
+            benefice_global += ligne.benefice
 
     ventes_liste = list(ventes_dict.values())
     nom_entreprise = Entreprise.objects.first()  # Si plusieurs, prendre le premier
