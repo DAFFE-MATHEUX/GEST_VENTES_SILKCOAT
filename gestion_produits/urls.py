@@ -87,6 +87,7 @@ urlpatterns = [
     #=================================================================================================================================================
     
     path('confirmation_exportation_vente/', confirmation_exportation_vente, name='confirmation_exportation_vente'),
+    path('confirmation_exportation_retours_vente/', confirmation_exportation_retours_vente, name='confirmation_exportation_retours_vente'),
     path('confirmation_exportation_produits/', confirmation_exportation_produits, name='confirmation_exportation_produits'),
     path('confirmation_exportation_stocks_produits/', confirmation_exportation_stocks_produits, name='confirmation_exportation_stocks_produits'),
     path('confirmation_exportation_categorie/', confirmation_exportation_categorie, name='confirmation_exportation_categorie'),
@@ -95,6 +96,7 @@ urlpatterns = [
     
     
     path('export_ventes_excel_complet/', export_ventes_excel_complet, name='export_ventes_par_categorie_excel'),
+    path('export_retours_ventes_excel/', export_retours_ventes_excel, name='export_retours_ventes_excel'),
     path('export_produits_excel/', export_produits_excel, name='export_produits_excel'),
     path('export_stocks_excel_resume/', export_stocks_excel_resume, name='export_stocks_excel_resume'),
     path('export_categories_excel/', export_categories_excel, name='export_categories_excel'),

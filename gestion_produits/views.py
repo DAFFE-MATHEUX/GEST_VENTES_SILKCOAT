@@ -132,6 +132,7 @@ def generer_code_vente():
 def vendre_produit(request):
     try:
         produits = Produits.objects.all().order_by('desgprod')
+
         if request.method == "POST":
 
             ids = request.POST.getlist("produit_id[]")
@@ -152,38 +153,33 @@ def vendre_produit(request):
             total_general = 0
             lignes = []
             produits_sans_stock = []
+
             with transaction.atomic():
 
-                # 1️⃣ Création de la vente (vide au départ)
+                # 1️⃣ Création de la vente
                 vente = VenteProduit.objects.create(
-                    code = generer_code_vente(),
-
-                    total = 0,
-                    benefice_total = 0,
-                    utilisateur = request.user,
-                    nom_complet_client = nom_complet,
-                    telclt_client = telephone,
-                    adresseclt_client = adresse
+                    code=generer_code_vente(),
+                    total=0,
+                    benefice_total=0,
+                    utilisateur=request.user,
+                    nom_complet_client=nom_complet,
+                    telclt_client=telephone,
+                    adresseclt_client=adresse
                 )
 
-                # 2️⃣ Parcours des produits
+                # 2️⃣ Vérification des produits
                 for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
 
                     try:
                         produit = Produits.objects.get(id=prod_id)
                     except Produits.DoesNotExist:
-                        logger.warning(f"Produit inexistant : {prod_id}")
                         continue
 
                     try:
                         quantite = int(qte_str or 0)
                         reduction = int(red_str or 0)
                     except ValueError:
-                        messages.error(
-                            request,
-                            f"Quantité ou réduction invalide pour {produit.desgprod}"
-                        )
-                        raise IntegrityError()
+                        raise IntegrityError("Quantité ou réduction invalide")
 
                     if quantite <= 0:
                         continue
@@ -204,110 +200,84 @@ def vendre_produit(request):
                         )
                         raise IntegrityError()
 
-                    # 🔒 Sécurité réduction
                     if reduction > produit.pu:
                         reduction = produit.pu
 
-                    prix_net_unitaire = produit.pu - reduction
-                    sous_total = prix_net_unitaire * quantite
-
+                    prix_net = produit.pu - reduction
+                    sous_total = prix_net * quantite
                     total_general += sous_total
 
                     lignes.append({
                         "produit": produit,
                         "quantite": quantite,
                         "pu": produit.pu,
-                        "reduction": reduction,     
-                        "prix_net": prix_net_unitaire,
+                        "reduction": reduction,
                         "stock": stock
                     })
 
-                if produits_sans_stock:
-                    messages.warning(
-                        request,
-                        "Produits ignorés (stock vide) : "
-                        + ", ".join(produits_sans_stock)
-                    )
                 if not lignes:
-                    messages.error(
-                        request,
-                        "Aucun produit valide sélectionné pour la vente."
-                    )
+                    messages.error(request, "Aucun produit valide sélectionné.")
                     vente.delete()
                     return redirect("produits:vendre_produit")
 
-                # 3️⃣ Création des lignes + mise à jour du stock
+                # 3️⃣ Création des lignes + mise à jour stock
                 for ligne in lignes:
                     LigneVente.objects.create(
                         vente=vente,
                         produit=ligne["produit"],
                         quantite=ligne["quantite"],
-                        prix=ligne["pu"],                     # PU brut
-                        montant_reduction=ligne["reduction"], # réduction UNITAIRE
+                        prix=ligne["pu"],
+                        montant_reduction=ligne["reduction"],
                     )
-                    ligne["stock"].qtestock -= ligne["quantite"]
-                    ligne["stock"].save(update_fields=["qtestock"])
 
-                # 4️⃣ Mise à jour des totaux (méthode modèle)
+                    stock = ligne["stock"]
+                    stock.qtestock -= ligne["quantite"]
+                    stock.save(update_fields=["qtestock"])
+
+                    # 🔔 ALERTE SEUIL STOCK
+                    if stock.qtestock <= stock.produit.seuil_stock:
+                        Notification.objects.create(
+                            destinataire=None,
+                            destinataire_email=settings.ADMIN_EMAIL,
+                            titre="⚠️ Stock critique",
+                            message=(
+                                f"Le produit '{ligne['produit'].desgprod}' "
+                                f"est presque en rupture.\n"
+                                f"Stock restant : {stock.qtestock} unité(s)."
+                            )
+                        )
+
+                        try:
+                            EmailMessage(
+                                subject="⚠️ Alerte stock critique",
+                                body=(
+                                    f"Produit : {ligne['produit'].desgprod}\n"
+                                    f"Stock restant : {stock.qtestock}\n"
+                                    f"Seuil défini : {stock.produit.seuil_stock}\n\n"
+                                    f"Veuillez réapprovisionner."
+                                ),
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                to=[settings.ADMIN_EMAIL]
+                            ).send(fail_silently=True)
+                        except Exception:
+                            logger.warning("Email alerte stock non envoyé")
+
+                # 4️⃣ Mise à jour des totaux
                 vente.total = total_general
-                vente.calculer_totaux() 
+                vente.calculer_totaux()
                 vente.save(update_fields=["total", "benefice_total"])
-                # 5️Création d'une notification pour l’admin ou l’utilisateur
-                dest_email = None
-                if hasattr(request.user, "email"):
-                    dest_email = request.user.email or None
 
+                # 5️⃣ Notification vente
                 Notification.objects.create(
                     destinataire=None,
-                    destinataire_email=None, 
+                    destinataire_email=None,
                     titre=f"Nouvelle vente {vente.code}",
-                    message=f"Vente enregistrée pour le client {nom_complet} pour un montant total de {vente.total}."
+                    message=(
+                        f"Vente enregistrée pour {nom_complet} "
+                        f"Montant : {vente.total} GNF"
+                    )
                 )
-                # 5️⃣ Email admin (non bloquant)
-                try:
-                    total_quantite = 0
-                    total_reduction = 0
 
-                    contenu = (
-                        f"Nouvelle vente : {vente.code}\n"
-                        f"Client : {nom_complet}\n"
-                        f"Téléphone : {telephone}\n"
-                        f"Adresse : {adresse}\n\n"
-                        f"DÉTAILS DE LA VENTE\n"
-                        f"-----------------------------------\n")
-
-                    for l in vente.lignes.all():
-                        total_quantite += l.quantite
-                        total_reduction += l.montant_reduction * l.quantite
-                    contenu += (
-                        f"- Produit : {l.produit.desgprod}\n"
-                        f"  Qté : {l.quantite}\n"
-                        f"  PU : {l.prix}\n"
-                        f"  Réduction unitaire : {l.montant_reduction}\n"
-                        f"  Sous-total : {l.sous_total}\n"
-                        f"  Bénéfice ligne : {l.benefice}\n\n"
-                    )
-                    contenu += (
-                        f"------------------------------------------\n"
-                        f"TOTAL QUANTITÉ : {total_quantite}\n"
-                        f"TOTAL RÉDUCTION : {total_reduction}\n"
-                        f"TOTAL MONTANT : {vente.total}\n"
-                        f"BÉNÉFICE GLOBAL : {vente.benefice_total}\n"
-                    )
-
-                    EmailMessage(
-                        subject=f"Nouvelle vente : {vente.code}",
-                        body=contenu,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        to=[settings.ADMIN_EMAIL]
-                    ).send(fail_silently=False)
-
-                except Exception as mail_error:
-                    logger.exception("Erreur envoi email vente")
-                    messages.warning(
-                        request,
-                        "Vente enregistrée mais email non envoyé."
-                    )
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
                 reverse(
@@ -315,9 +285,12 @@ def vendre_produit(request):
                     kwargs={"vente_code": vente.code}
                 )
             )
-        return render(request,
+
+        return render(
+            request,
             "gestion_produits/ventes/nouvelle_vente.html",
-            {"produits": produits})
+            {"produits": produits}
+        )
 
     except IntegrityError:
         messages.error(request, "Erreur d'intégrité des données.")
@@ -329,10 +302,7 @@ def vendre_produit(request):
 
     except Exception as e:
         logger.exception("Erreur vente produit")
-        messages.error(
-            request,
-            f"Une erreur inattendue est survenue : {str(e)}"
-        )
+        messages.error(request, f"Erreur inattendue : {str(e)}")
         return redirect("produits:vendre_produit")
 
 #==========================================================
@@ -2830,7 +2800,7 @@ def export_ventes_excel_complet(request):
     for cat_name, lignes_cat in categories.items():
         ws = wb.create_sheet(title=cat_name[:31])  # Limite 31 caractères
         # En-têtes
-        headers = ["Produit", "Quantité Vendue", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
+        headers = ["Produit", "Quantité Vendue", "Quantite Retournée", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
         if afficher_benefice:
             headers.append("Bénéfice")
         headers.append("Total Vente par Produit")
@@ -2855,20 +2825,21 @@ def export_ventes_excel_complet(request):
         for lv in lignes_cat:
             ws[f"A{ligne_excel}"] = lv.produit.desgprod
             ws[f"B{ligne_excel}"] = lv.quantite
-            ws[f"C{ligne_excel}"] = lv.prix
-            ws[f"D{ligne_excel}"] = lv.montant_reduction
-            ws[f"E{ligne_excel}"] = lv.sous_total
+            ws[f"C{ligne_excel}"] = lv.quantite_retournee
+            ws[f"D{ligne_excel}"] = lv.prix
+            ws[f"E{ligne_excel}"] = lv.montant_reduction
+            ws[f"F{ligne_excel}"] = lv.sous_total
 
-            for col in ['C','D','E']:
+            for col in ['C','D','E', 'F']:
                 ws[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
             col_benefice = None
             if afficher_benefice:
-                col_benefice = 'F'
+                col_benefice = 'H'
                 ws[f"{col_benefice}{ligne_excel}"] = lv.benefice
                 ws[f"{col_benefice}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
-            col_total = 'G' if afficher_benefice else 'F'
+            col_total = 'H' if afficher_benefice else 'G'
             ws[f"{col_total}{ligne_excel}"] = lv.sous_total
             ws[f"{col_total}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
@@ -2899,8 +2870,9 @@ def export_ventes_excel_complet(request):
         total_benefice_global += total_benefice_categorie if afficher_benefice else 0
 
     # ====================== FEUILLE PRODUITS INDIVIDUELS ======================
+    
     ws_prod = wb.create_sheet(title="Produits Individuels")
-    headers_prod = ["Produit", "Catégorie", "Quantité Vendue", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
+    headers_prod = ["Produit", "Catégorie", "Quantité Vendue", "Quantite Retournée", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
     if afficher_benefice:
         headers_prod.append("Bénéfice")
     headers_prod.append("Total Vente par Produit")
@@ -2917,19 +2889,20 @@ def export_ventes_excel_complet(request):
         ws_prod[f"A{ligne_excel}"] = lv.produit.desgprod
         ws_prod[f"B{ligne_excel}"] = lv.produit.categorie.desgcategorie
         ws_prod[f"C{ligne_excel}"] = lv.quantite
-        ws_prod[f"D{ligne_excel}"] = lv.prix
-        ws_prod[f"E{ligne_excel}"] = lv.montant_reduction
-        ws_prod[f"F{ligne_excel}"] = lv.sous_total
-        for col in ['D','E','F']:
+        ws_prod[f"D{ligne_excel}"] = lv.quantite_retournee
+        ws_prod[f"E{ligne_excel}"] = lv.prix
+        ws_prod[f"F{ligne_excel}"] = lv.montant_reduction
+        ws_prod[f"G{ligne_excel}"] = lv.sous_total
+        for col in ['D','E','F', 'G']:
             ws_prod[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
         col_benefice = None
         if afficher_benefice:
-            col_benefice = 'G'
+            col_benefice = 'H'
             ws_prod[f"{col_benefice}{ligne_excel}"] = lv.benefice
             ws_prod[f"{col_benefice}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
-        col_total = 'H' if afficher_benefice else 'G'
+        col_total = 'I' if afficher_benefice else 'H'
         ws_prod[f"{col_total}{ligne_excel}"] = lv.sous_total
         ws_prod[f"{col_total}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
@@ -2941,7 +2914,7 @@ def export_ventes_excel_complet(request):
 
     # ====================== FEUILLE RESUME GENERAL ======================
     ws_summary = wb.create_sheet(title="Résumé Général")
-    summary_headers = ["Catégorie", "Quantité Totale", "Total Vente"]
+    summary_headers = ["Catégorie", "Quantité Totale", "Quantite Retournée", "Total Vente"]
     if afficher_benefice:
         summary_headers.append("Bénéfice Total")
 
@@ -2956,13 +2929,15 @@ def export_ventes_excel_complet(request):
     for cat_name, lignes_cat in categories.items():
         total_cat = sum(lv.sous_total for lv in lignes_cat)
         total_quant_cat = sum(lv.quantite for lv in lignes_cat)
+        total_quant_cat_retourner = sum(lv.quantite_retournee for lv in lignes_cat)
         total_benef_cat = sum(lv.benefice for lv in lignes_cat) if afficher_benefice else 0
 
         ws_summary[f"A{ligne_excel}"] = cat_name
         ws_summary[f"B{ligne_excel}"] = total_quant_cat
-        ws_summary[f"C{ligne_excel}"] = total_cat
+        ws_summary[f"C{ligne_excel}"] = total_quant_cat_retourner
+        ws_summary[f"D{ligne_excel}"] = total_cat
         if afficher_benefice:
-            ws_summary[f"D{ligne_excel}"] = total_benef_cat
+            ws_summary[f"E{ligne_excel}"] = total_benef_cat
         ligne_excel += 1
 
     # Ligne total général
@@ -2983,6 +2958,115 @@ def export_ventes_excel_complet(request):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response['Content-Disposition'] = 'attachment; filename=ventes_complet.xlsx'
+    wb.save(response)
+    return response
+
+
+#================================================================================================
+# Fonction pour afficher le formulaire de formulaire d'exportation des données
+#================================================================================================
+@login_required
+def confirmation_exportation_retours_vente(request):
+    
+    return render(request, 'gestion_produits/exportation/confirmation_exportation_retours_ventes.html')
+
+#================================================================================================
+# Fonction pour exporter les retours de vente en Excel
+#================================================================================================
+@login_required
+def export_retours_ventes_excel(request):
+    """
+    Export des retours de vente :
+    - Une feuille par produit
+    - Une feuille résumé général
+    """
+
+    # 🔹 Récupérer toutes les lignes avec leurs retours
+    lignes = LigneVente.objects.select_related('produit', 'vente', 'produit__categorie').all()
+
+    # 🔹 Créer le classeur Excel
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # Supprimer la feuille par défaut
+
+    # ====================== FEUILLE DÉTAIL DES RETOURS ======================
+    ws_detail = wb.create_sheet(title="Retours Détails")
+    headers = ["Code Vente", "Produit", "Catégorie", "Qté Vendue", "Qté Retournée", "Quantité Restante", "Motif", "Date Retour"]
+    
+    for col_num, header in enumerate(headers, 1):
+        cell = ws_detail[f"{get_column_letter(col_num)}1"]
+        cell.value = header
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center")
+        cell.fill = PatternFill("solid", fgColor="4F81BD")
+        cell.border = Border(left=Side(style="thin"), right=Side(style="thin"),
+                             top=Side(style="thin"), bottom=Side(style="thin"))
+
+    ligne_excel = 2
+    for lv in lignes:
+        retours = lv.retours.all()
+        for ret in retours:
+            ws_detail[f"A{ligne_excel}"] = lv.vente.code
+            ws_detail[f"B{ligne_excel}"] = lv.produit.desgprod
+            ws_detail[f"C{ligne_excel}"] = lv.produit.categorie.desgcategorie
+            ws_detail[f"D{ligne_excel}"] = lv.quantite
+            ws_detail[f"E{ligne_excel}"] = ret.quantite_retour
+            ws_detail[f"F{ligne_excel}"] = lv.quantite - ret.quantite_retour
+            ws_detail[f"G{ligne_excel}"] = ret.motif
+            ws_detail[f"H{ligne_excel}"] = ret.date_retour.strftime("%d/%m/%Y %H:%M")
+            
+            for col in ['D','E','F']:
+                ws_detail[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+            ligne_excel += 1
+
+    for col in range(1, len(headers)+1):
+        ws_detail.column_dimensions[get_column_letter(col)].width = 20
+
+    # ====================== FEUILLE RÉSUMÉ PAR PRODUIT ======================
+    ws_summary = wb.create_sheet(title="Résumé Retours")
+    summary_headers = ["Produit", "Catégorie", "Total Vendue", "Total Retournée", "Total Restante"]
+    
+    for col_num, header in enumerate(summary_headers, 1):
+        cell = ws_summary[f"{get_column_letter(col_num)}1"]
+        cell.value = header
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = Alignment(horizontal="center")
+        cell.fill = PatternFill("solid", fgColor="4F81BD")
+
+    ligne_excel = 2
+    produits = {}
+    for lv in lignes:
+        key = lv.produit.id
+        if key not in produits:
+            produits[key] = {
+                "produit": lv.produit,
+                "categorie": lv.produit.categorie,
+                "total_vendue": 0,
+                "total_retournee": 0
+            }
+        produits[key]["total_vendue"] += lv.quantite
+        produits[key]["total_retournee"] += lv.retours.aggregate(total=Sum('quantite_retour'))['total'] or 0
+
+    for p in produits.values():
+        ws_summary[f"A{ligne_excel}"] = p["produit"].desgprod
+        ws_summary[f"B{ligne_excel}"] = p["categorie"].desgcategorie
+        ws_summary[f"C{ligne_excel}"] = p["total_vendue"]
+        ws_summary[f"D{ligne_excel}"] = p["total_retournee"]
+        ws_summary[f"E{ligne_excel}"] = p["total_vendue"] - p["total_retournee"]
+
+        for col in ['C','D','E']:
+            ws_summary[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+
+        ligne_excel += 1
+
+    for col in range(1, len(summary_headers)+1):
+        ws_summary.column_dimensions[get_column_letter(col)].width = 20
+
+    # ====================== EXPORT ======================
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=retours_ventes.xlsx'
     wb.save(response)
     return response
 
