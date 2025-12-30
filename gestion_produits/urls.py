@@ -39,6 +39,7 @@ urlpatterns = [
     path('vente/filtrer_listes_ventes/', filtrer_listes_ventes, name='filtrer_listes_ventes'),
     path('vente/supprimer_ventes/', supprimer_ventes, name='supprimer_ventes'),
     path('vente/vendre_produit/', vendre_produit, name='vendre_produit'),
+    path('vente/enregistrer_retour/<int:ligne_id>/', enregistrer_retour, name='enregistrer_retour'),
     path('vente/historique_ventes_par_date/', historique_ventes, name='historique_ventes_par_date'),
     path('vente/recu_vente_global/<str:vente_code>/', recu_vente_global, name='recu_vente_global'),
         

@@ -248,7 +248,8 @@
     </div>
 </div>
 
-{% comment %} Derniers Audits {% endcomment %}
+{% if request.user.type_utilisateur != 'Gerante' %}
+
     <div class="row">
         <div class="col-md-12">
             <div class="box box-info">
@@ -280,6 +281,7 @@
             </div>
         </div>
     </div>
+{% endif %}
 
     {% comment %} Dernières Notifications {% endcomment %}
     <div class="row">

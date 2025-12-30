@@ -61,16 +61,16 @@
             <tr>
                 <th>#</th>
                 <th>Ref Vente</th>
-                <th>Catégorie Produit</th>
+                <th>Catégorie</th>
                 <th>Produit</th>
                 <th>Qté</th>
+                <th>Qte Retourner</th>
                 <th>Prix Vente</th>
                 <th>Sous-total</th>
                 {% if request.user.type_utilisateur != 'Gerante' %}
                 <th>Bénéfice</th>
                 {% endif %}
                 <th>Date Vente</th>
-                <th>Photo Produit</th>
             </tr>
         </thead>
         <tbody>
@@ -83,25 +83,28 @@
                             <td>{{ ligne.produit.categorie.desgcategorie }}</td>
                             <td>{{ ligne.produit.desgprod }}</td>
                             <td>{{ ligne.quantite }}</td>
+                            <td>
+                            {% if ligne.retours.exists %}
+                                {% for ret in ligne.retours.all %}
+                                    {{ ret.quantite_retour }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                0
+                            {% endif %}
+                            </td>
                             <td>{{ ligne.prix }} GNF</td>
                             <td>{{ ligne.sous_total }} GNF</td>
                             {% if request.user.type_utilisateur != 'Gerante' %}
                             <td>{{ ligne.benefice }} GNF</td>
                             {% endif %}
-                            <td>{{ ligne.vente.date_vente|date:"d/m/Y" }}</td>
-                            <td>
-                                {% if ligne.produit.photoprod %}
-                                    <img src="{{ ligne.produit.photoprod.url }}" class="photo-preview">
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
+                            <td>{{ ligne.vente.date_vente|date:"d/m/Y H:i" }}</td>
                         </tr>
                     {% endfor %}
                     <!-- Totaux par vente -->
                     <tr class="total-row">
                         <td colspan="4" style="text-align:center;">Total Vente {{ vente_data.vente.code }} :</td>
                         <td>{{ vente_data.total_quantite_vente|default:0 }}</td>
+                        <td>{{ vente_data.total_quantite_retourner|default:0 }}</td>
                         <td class="text-center">-</td>
                         <td>{{ vente_data.total_vente }} GNF</td>
                         {% if request.user.type_utilisateur != 'Gerante' %}

@@ -202,6 +202,9 @@
                 <th>Catégorie</th>
                 <th>Désignation</th>
                 <th>Qté</th>
+                 {% if has_retour %}
+                 <th>Qte Retournée</th>
+                 {% endif %}
                 <th>PU (GNF)</th>
                 <th>Réduction</th>
                 <th>Total (GNF)</th>
@@ -214,6 +217,15 @@
                 <td>{{ l.produit.categorie.desgcategorie }}</td>
                 <td>{{ l.produit.desgprod }}</td>
                 <td class="text-center">{{ l.quantite }}</td>
+                 {% if l.retours.exists %}
+                 
+                    <td class="text-center">
+                    {% for ret in l.retours.all %}
+                        {{ ret.quantite_retour }} unité(s)
+                    {% endfor %}
+                    </td>
+                 {% endif %}
+                
                 <td class="text-end">{{ l.prix|floatformat:0 }}</td>
                 <td class="text-end">{{ l.montant_reduction|floatformat:0 }}</td>
                 <td class="text-end">{{ l.sous_total|floatformat:0 }}</td>
@@ -224,6 +236,7 @@
             <tr>
                 <th colspan="3" class="text-center">Totaux</th>
                 <th class="text-center">{{ total_quantite|floatformat:0 }}</th>
+                <th class="text-center">{{ total_quantite_retourner|floatformat:0 }}</th>
                 <th class="text-center">-</th>
                 <th class="text-end">{{ total_reduction|floatformat:0 }} GNF</th>
                 <th class="text-end">{{ total|floatformat:0 }} GNF</th>

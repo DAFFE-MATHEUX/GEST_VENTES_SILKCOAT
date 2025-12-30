@@ -1,0 +1,90 @@
+{% extends 'admin.html' %}
+{% load static %}
+{% block contents %}
+
+<div style="max-width:800px; margin:30px auto; background:#fff; padding:30px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1); font-family:Poppins, sans-serif;">
+
+    <h2 style="text-align:center; color:#007bff; margin-bottom:20px;">Retour du produit</h2>
+
+    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+        <div>
+            <p><strong>Référence :</strong> {{ ligne.vente.code }}</p>
+            <p><strong>Produit :</strong> {{ ligne.produit.desgprod }}</p>
+            <p><strong>Quantité achetée :</strong> {{ ligne.quantite }}</p>
+            <p><strong>Quantité déjà retournée :</strong> {{ ligne.quantite|add:"-"|add:ligne.quantite_restante }}</p>
+        </div>
+        <div>
+            <p><strong>Quantité restante pour retour :</strong></p>
+            {% if ligne.quantite_restante == ligne.quantite %}
+                <span style="background-color: #28a745; color:white; padding:5px 10px; border-radius:6px; font-weight:bold;">
+                    {{ ligne.quantite_restante }}
+                </span>
+            {% elif ligne.quantite_restante > 0 %}
+                <span style="background-color: #ffc107; color:black; padding:5px 10px; border-radius:6px; font-weight:bold;">
+                    {{ ligne.quantite_restante }}
+                </span>
+            {% else %}
+                <span style="background-color: #dc3545; color:white; padding:5px 10px; border-radius:6px; font-weight:bold;">
+                    0
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if ligne.retours.all %}
+    <h4 style="color:#007bff; margin-bottom:10px;">Retours déjà enregistrés</h4>
+    <table style="width:100%; border-collapse: collapse; margin-bottom:20px;">
+        <thead style="background:#f0f0f0; text-align:center;">
+            <tr>
+                <th>#</th>
+                <th>Quantité</th>
+                <th>Motif</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ret in ligne.retours.all %}
+            <tr style="text-align:center; border-bottom:1px solid #ddd;">
+                <td>{{ forloop.counter }}</td>
+                <td>{{ ret.quantite_retour }}</td>
+                <td>{{ ret.motif|default:"-" }}</td>
+                <td>{{ ret.date_retour|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align:center; color:#555; margin-bottom:20px;">Aucun retour enregistré pour ce produit.</p>
+    {% endif %}
+
+    {% if ligne.quantite_restante > 0 %}
+    <form method="post" style="background:#f9f9f9; padding:20px; border-radius:8px; border:1px solid #ddd;">
+        {% csrf_token %}
+        <div style="display:flex; align-items:center; margin-bottom:15px;">
+            <label for="quantite_retour" style="width:150px; font-weight:bold;">Quantité à retourner :</label>
+            <input type="number" id="quantite_retour" name="quantite_retour"
+                   min="1" max="{{ ligne.quantite_restante }}" required
+                   style="flex:1; padding:8px; border-radius:5px; border:1px solid #ccc;">
+        </div>
+        <div style="display:flex; align-items:center; margin-bottom:15px;">
+            <label for="motif" style="width:150px; font-weight:bold;">Motif (optionnel) :</label>
+            <input type="text" id="motif" name="motif" placeholder="Raison du retour"
+                   style="flex:1; padding:8px; border-radius:5px; border:1px solid #ccc;">
+        </div>
+        <button type="submit" style="padding:10px 20px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
+            Enregistrer le retour
+        </button>
+    </form>
+    {% else %}
+    <p style="text-align:center; color:#dc3545; font-weight:bold; margin-top:20px;">
+        Toutes les unités de ce produit ont déjà été retournées.
+    </p>
+    {% endif %}
+
+    <div style="margin-top:20px; text-align:center;">
+        <a href="{% url 'produits:listes_des_ventes' %}" style="color:#007bff; text-decoration:none; font-weight:bold;">← Retour à la liste des ventes</a>
+    </div>
+
+</div>
+
+{% endblock %}

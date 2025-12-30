@@ -145,10 +145,12 @@ def generer_rapport_admin(request):
                     'vente': ligne.vente,
                     'lignes': [],
                     'total_vente': 0,
-                    'benefice_vente': 0
+                    'total_quantite_retourner': 0, 
+                    'benefice_vente': 0,
                 })
                 ventes_dict[code]['lignes'].append(ligne)
                 ventes_dict[code]['total_vente'] += ligne.sous_total
+                ventes_dict[code]['total_quantite_retourner'] += ligne.quantite_retournee or 0
                 ventes_dict[code]['benefice_vente'] += ligne.benefice
                 benefice_global += ligne.benefice
 
@@ -335,10 +337,12 @@ def generer_rapport(request):
                     'vente': ligne.vente,
                     'lignes': [],
                     'total_vente': 0,
-                    'benefice_vente': 0
+                    'benefice_vente': 0,
+                    'total_quantite_retourner' : 0,
                 })
 
                 ventes_dict[code]['lignes'].append(ligne)
+                ventes_dict[code]['total_quantite_retourner'] += ligne.quantite_retournee or 0
                 ventes_dict[code]['total_vente'] += ligne.sous_total
 
             data_qs = list(ventes_dict.values())

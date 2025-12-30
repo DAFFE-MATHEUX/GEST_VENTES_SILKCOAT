@@ -142,6 +142,7 @@
             <th>Code Vente</th>
             <th>Produit</th>
             <th>Quantité</th>
+            <th>Quantite Retourne</th>
             <th>Date Vente</th>
             <th>Sous-total (GNF)</th>
             {% if request.user.type_utilisateur|lower != "gerante" %}
@@ -158,6 +159,15 @@
                     <td>{{ vente_data.vente.code }}</td>
                     <td>{{ ligne.produit.desgprod }}</td>
                     <td>{{ ligne.quantite }}</td>
+                    <td>
+                        {% if ligne.retours.exists %}
+                            {% for ret in ligne.retours.all %}
+                            {{ ret.quantite_retour }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </td>
                     <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
                     <td>{{ ligne.sous_total|floatformat:0 }}</td>
 

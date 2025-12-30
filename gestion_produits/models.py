@@ -1,7 +1,7 @@
 from django.db import models
 from gestion_utilisateur.models import Utilisateur
 from simple_history.models import HistoricalRecords
-
+from django.db.models import Sum
 #==================================================================================
 # Table Categorie Produit
 #==================================================================================
@@ -70,58 +70,118 @@ class StockProduit(models.Model):
 #==================================================================================
 # Table Ventes des Produits
 #==================================================================================
+from django.db import models
+
 class VenteProduit(models.Model):
     code = models.CharField(max_length=45, unique=True)
     date_vente = models.DateTimeField(auto_now_add=True)
-    total = models.IntegerField(default=0)
-    benefice_total = models.IntegerField(default=0)
-    
-    nom_complet_client = models.CharField(max_length=70, null=True)
-    adresseclt_client = models.CharField(max_length=60, null=True)
-    telclt_client = models.CharField(max_length=65, null=True)
-    utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
-    history = HistoricalRecords()  # Pour l'historique dans la partie administration de Django
-    
-    class Meta:
-        ordering = ['-code']
-    def __str__(self):
-        return f"Vente {self.code} Par {self.utilisateur}"
-    
-    def calculer_totaux(self):
-        self.total = sum(ligne.sous_total for ligne in self.lignes.all())
-        self.benefice_total = sum(ligne.benefice for ligne in self.lignes.all())
-        self.save(update_fields=['total', 'benefice_total'])
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+    total = models.PositiveIntegerField(default=0)
+    benefice_total = models.IntegerField(default=0)
+
+    nom_complet_client = models.CharField(max_length=70, null=True, blank=True)
+    adresseclt_client = models.CharField(max_length=60, null=True, blank=True)
+    telclt_client = models.CharField(max_length=65, null=True, blank=True)
+
+    utilisateur = models.ForeignKey(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        null=True
+    )
+
+    def __str__(self):
+        return f"Vente {self.code} - {self.utilisateur}"
+
+    def calculer_totaux(self):
+        self.total = sum(l.sous_total for l in self.lignes.all())
+        self.benefice_total = sum(l.benefice for l in self.lignes.all())
+        self.save(update_fields=['total', 'benefice_total'])
 
 
 #==================================================================================
 # Table LigneVente
 #==================================================================================
+
 class LigneVente(models.Model):
-    vente = models.ForeignKey(VenteProduit, on_delete=models.CASCADE, related_name='lignes')
-    produit = models.ForeignKey(Produits, on_delete=models.CASCADE, related_name='lignes')
-    quantite = models.IntegerField(default=0)
-    prix = models.IntegerField(default=0)  # Prix unitaire en details
-    pu_reduction = models.IntegerField(default=0)  
-    montant_reduction = models.IntegerField(default=0) 
-    sous_total = models.IntegerField(default=0)
+    vente = models.ForeignKey(
+        'VenteProduit',
+        on_delete=models.CASCADE,
+        related_name='lignes'
+    )
+    produit = models.ForeignKey(
+        'Produits',
+        on_delete=models.CASCADE,
+        related_name='lignes'
+    )
+
+    quantite = models.PositiveIntegerField()
+    prix = models.PositiveIntegerField()
+    montant_reduction = models.PositiveIntegerField(default=0)
+
+    sous_total = models.PositiveIntegerField(default=0)
     benefice = models.IntegerField(default=0)
+
     date_saisie = models.DateField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"{self.produit.desgprod} (x{self.quantite})"
+
+    @property
+    def quantite_retournee(self):
+        if not self.pk:
+            return 0
+        return self.retours.aggregate(
+            total=Sum('quantite_retour')
+        )['total'] or 0
+
+    @property
+    def quantite_restante(self):
+        return max(0, self.quantite - self.quantite_retournee)
+
+    @property
+    def pu_net(self):
+        return self.prix - self.montant_reduction
+
+    def recalculer_montants(self):
+        self.sous_total = self.pu_net * self.quantite_restante
+        self.benefice = (
+            (self.pu_net - self.produit.prix_en_gros)
+            * self.quantite_restante
+        )
 
     def save(self, *args, **kwargs):
-        self.pu_reduction = self.prix - self.montant_reduction
-        # Calcul du sous-total
-        self.sous_total = (self.prix - self.montant_reduction) * self.quantite 
+        is_new = self.pk is None
 
-        self.benefice = (self.pu_reduction - self.produit.prix_en_gros ) * self.quantite
+        super().save(*args, **kwargs)  # 🔑 obtenir PK
+
+        self.recalculer_montants()
+
+        super().save(update_fields=['sous_total', 'benefice'])
+
+        if is_new:
+            self.vente.calculer_totaux()
+
+#==================================================================================
+# Table RetourVente
+#==================================================================================
+class RetourVente(models.Model):
+    ligne_vente = models.ForeignKey(
+        LigneVente,
+        on_delete=models.CASCADE,
+        related_name='retours'
+    )
+    quantite_retour = models.PositiveIntegerField()
+    motif = models.CharField(max_length=255, blank=True, null=True)
+    date_retour = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.pk is None:
+            if self.quantite_retour > self.ligne_vente.quantite_restante:
+                raise ValueError("Quantité retournée invalide")
 
         super().save(*args, **kwargs)
-   
+
+        ligne = self.ligne_vente
+        ligne.recalculer_montants()
+        ligne.save(update_fields=['sous_total', 'benefice'])
+
 #==================================================================================
 # Table Commandes
 #==================================================================================

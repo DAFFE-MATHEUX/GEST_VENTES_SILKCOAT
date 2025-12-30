@@ -201,18 +201,20 @@ def approvisionner_produits(request):
 #================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
-from django.utils import timezone
+
+
 
 def generer_code_vente():
     prefix = "VENTE"
     date_str = timezone.now().strftime('%Y%m%d')
 
-    last_vente = VenteProduit.objects.filter(
-        code__startswith=f"{prefix}-{date_str}"
-    ).order_by('-code').first()
+    last_vente = VenteProduit.objects.order_by('-id').first()
 
     if last_vente:
-        dernier_numero = int(last_vente.code.split('-')[-1])
+        try:
+            dernier_numero = int(last_vente.code.split('-')[-1])
+        except (IndexError, ValueError):
+            dernier_numero = 0
     else:
         dernier_numero = 0
 
@@ -427,6 +429,54 @@ def vendre_produit(request):
             f"Une erreur inattendue est survenue : {str(e)}"
         )
         return redirect("produits:vendre_produit")
+
+#==========================================================
+# Fonction pour le retour de vente
+@login_required
+@csrf_protect
+
+def enregistrer_retour(request, ligne_id):
+    ligne = get_object_or_404(LigneVente, id=ligne_id)
+    vente = ligne.vente
+    quantite_restante = ligne.quantite_restante
+
+    if quantite_restante <= 0:
+        messages.warning(request, "Toutes les unités de ce produit ont déjà été retournées.")
+        return redirect('produits:listes_des_ventes')
+
+    if request.method == 'POST':
+        try:
+            quantite_retour = int(request.POST.get('quantite_retour', 0))
+            motif = request.POST.get('motif', '')
+
+            if quantite_retour < 1:
+                messages.error(request, "La quantité à retourner doit être au moins 1.")
+            elif quantite_retour > quantite_restante:
+                messages.error(request, f"Vous ne pouvez retourner que {quantite_restante} unité(s).")
+            else:
+                # Créer le retour
+                retour = RetourVente.objects.create(
+                    ligne_vente =ligne,
+                    quantite_retour=quantite_retour,
+                    motif=motif,
+                    date_retour=timezone.now()
+                )
+
+                # Recalculer les totaux de la vente
+                vente.calculer_totaux()
+
+                messages.success(request, f"{quantite_retour} unité(s) retournée(s) avec succès.")
+                return redirect('produits:listes_des_ventes')
+
+        except ValueError:
+            messages.error(request, "Quantité invalide.")
+
+    context = {
+        'ligne': ligne,
+        'quantite_restante': quantite_restante,
+        'today': timezone.now()
+    }
+    return render(request, 'gestion_produits/ventes/enregistrer_retour.html', context)
 
 #================================================================================================
 # Fonction pour afficher l'historique des ventes par date
@@ -815,6 +865,11 @@ def recu_vente_global(request, vente_code):
     if not lignes.exists():
         messages.error(request, "Aucun produit trouvé pour cette vente.")
         return redirect("produits:listes_des_ventes")
+    
+    has_retour = lignes.filter(retours__isnull=False).exists()
+    total_quantite_retourner = lignes.aggregate(
+        total=Sum('retours__quantite_retour')
+    )['total'] or 0
 
     # --- calcul du total ---
     total = sum(Decimal(l.sous_total) for l in lignes)
@@ -857,6 +912,8 @@ def recu_vente_global(request, vente_code):
         "lignes": lignes,
         "total": total,
         "today": now(),
+        'has_retour' : has_retour,
+        'total_quantite_retourner' : total_quantite_retourner,
         'total_quantite' : total_quantite,
         'total_reduction' : total_reduction,
         "qr_code_base64": qr_code_base64,
@@ -1463,7 +1520,7 @@ def listes_produits(request):
         produits = (
             Produits.objects
             .select_related('categorie')
-            .order_by('-id')
+            .order_by('desgprod')
         )
         total_quantite_restante = StockProduit.objects.aggregate(
             total=Sum('qtestock')
@@ -2380,6 +2437,7 @@ def listes_produits_impression(request):
             total=Sum('qtestock')
         )['total'] or 0
     total_produit = listes_produits.count()
+    
         # ================= TOTAL PAR CATÉGORIE =================
     total_par_categorie = (
         listes_produits
@@ -2451,6 +2509,7 @@ def listes_ventes_impression(request):
     total_montant_produits = 0
     total_quantite_categories = 0
     total_montant_categories = 0
+    total_quantite_retourner = 0
     benefice_global = 0
 
     if date_debut and date_fin:
@@ -2490,6 +2549,7 @@ def listes_ventes_impression(request):
 
             # Totaux globaux par produit
             total_quantite_produits = sum(p['total_quantite'] for p in total_par_produit)
+            
             total_montant_produits = sum(p['total_montant'] for p in total_par_produit)
 
         except Exception as ex:
@@ -2504,14 +2564,15 @@ def listes_ventes_impression(request):
                     'vente': ligne.vente,
                     'lignes': [],
                     'total_vente': 0,
-                    'total_quantite_vente': 0,   # <- ajouter
+                    'total_quantite_vente': 0,  
+                    'total_quantite_retourner': 0,  
                     'benefice_vente': 0
                 }
 
             ventes_dict[code_vente]['lignes'].append(ligne)
             ventes_dict[code_vente]['total_vente'] += ligne.sous_total
-            ventes_dict[code_vente]['total_quantite_vente'] += ligne.quantite  # <- ajouter
-            ventes_dict[code_vente]['benefice_vente'] += ligne.benefice
+            ventes_dict[code_vente]['total_quantite_vente'] += ligne.quantite  
+            ventes_dict[code_vente]['total_quantite_retourner'] += ligne.quantite_retournee or 0
 
             benefice_global += ligne.benefice
 
@@ -2531,6 +2592,7 @@ def listes_ventes_impression(request):
         'total_montant_produits': total_montant_produits,
         'total_quantite_categories': total_quantite_categories,
         'total_montant_categories': total_montant_categories,
+        'total_quantite_retourner' : total_quantite_retourner,
     }
 
     return render(
@@ -2646,14 +2708,11 @@ def listes_commandes_impression(request):
         'total_quantite': total_quantite,
         'total_valeur': total_valeur,
     }
-
     return render(
         request,
         'gestion_produits/impression_listes/apercue_avant_impression_listes_commandes.html',
-        context
-    )
-
-
+        context)
+    
 #================================================================================================
 # Fonction pour imprimer la listes des Produits en Stocks
 #================================================================================================

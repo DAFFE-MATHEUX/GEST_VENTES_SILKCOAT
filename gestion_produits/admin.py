@@ -95,7 +95,7 @@ class AdminLivraison(admin.ModelAdmin):
 from django.contrib import admin
 from simple_history.admin import SimpleHistoryAdmin
 from .models import (
-    CategorieProduit, Produits, StockProduit,
+    CategorieProduit, Produits, StockProduit, RetourVente,
     VenteProduit, LigneVente, Commandes, LivraisonsProduits
 )
 
@@ -159,8 +159,17 @@ class AdminVenteProduit(SimpleHistoryAdmin):
 # ==========================
 @admin.register(LigneVente)
 class AdminLigneVente(SimpleHistoryAdmin):
-    list_display = ('vente', 'produit', 'quantite', 'prix', 'montant_reduction', 'sous_total')
+    list_display = ('vente', 'produit', 'quantite', 'quantite_restante', 'prix', 'montant_reduction', 'sous_total')
     list_editable = ('quantite', 'prix', 'montant_reduction')
+
+# ==========================
+# REOUR DE VENTE
+# ==========================
+@admin.register(RetourVente)
+class AdminRetourVente(SimpleHistoryAdmin):
+    list_display = ('ligne_vente', 'motif', 'quantite_retour', 'date_retour')
+    list_editable = ('quantite_retour', 'motif',)
+    ordering = ('-date_retour',)
 
 # ==========================
 # COMMANDES
