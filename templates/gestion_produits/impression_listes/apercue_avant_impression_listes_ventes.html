@@ -3,8 +3,11 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>LISTE DES VENTES</title>
-
+     {% if date_debut == date_fin %}
+    <title>LISTE DES VENTES D'AUJOURD'HUI</title>
+    {% else %}
+    <title>LISTE DES VENTES DU {{ date_debut }} au {{ date_fin }}</title>
+    {% endif %}
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
         h2, h3, h4 { text-align: center; margin: 0; }
@@ -53,7 +56,11 @@
     </div>
 
     <!-- TITRE -->
-    <h3>Ventes du {{ date_debut }} au {{ date_fin }}</h3>
+     {% if date_debut == date_fin %}
+    <h3>LES VENTES D'AUJOURD'HUI</h3>
+    {% else %}
+    <h3>Les Ventes du {{ date_debut }} au {{ date_fin }}</h3>
+    {% endif %}
 
     <!-- TABLEAU PRINCIPAL DES VENTES -->
     <table>
@@ -65,7 +72,12 @@
                 <th>Produit</th>
                 <th>Qté</th>
                 <th>Qte Retourner</th>
-                <th>Prix Vente</th>
+                {% if request.user.type_utilisateur != 'Gerante' %}
+                <th>Prix en Gros</th>
+                {% endif %}
+
+                <th>Prix de Vente</th>
+                <th>Reduction</th>
                 <th>Sous-total</th>
                 {% if request.user.type_utilisateur != 'Gerante' %}
                 <th>Bénéfice</th>
@@ -78,7 +90,7 @@
                 {% for vente_data in ventes_liste %}
                     {% for ligne in vente_data.lignes %}
                         <tr>
-                            <td>{{ forloop.parentloop.counter }}.{{ forloop.counter }}</td>
+                            <td>{{ forloop.counter }}</td>
                             <td>{{ vente_data.vente.code }}</td>
                             <td>{{ ligne.produit.categorie.desgcategorie }}</td>
                             <td>{{ ligne.produit.desgprod }}</td>
@@ -92,11 +104,17 @@
                                 0
                             {% endif %}
                             </td>
-                            <td>{{ ligne.prix }} GNF</td>
-                            <td>{{ ligne.sous_total }} GNF</td>
                             {% if request.user.type_utilisateur != 'Gerante' %}
-                            <td>{{ ligne.benefice }} GNF</td>
+                            <td> {{ ligne.produit.prix_en_gros }} GNF</td>
                             {% endif %}
+                            <td>{{ ligne.prix }}</td>
+                            <td>{{ ligne.montant_reduction }}</td>
+                            <td>{{ ligne.sous_total }}</td>
+                            
+                            {% if request.user.type_utilisateur != 'Gerante' %}
+                            <td>{{ ligne.benefice }}</td>
+                            {% endif %}
+
                             <td>{{ ligne.vente.date_vente|date:"d/m/Y H:i" }}</td>
                         </tr>
                     {% endfor %}
@@ -105,22 +123,52 @@
                         <td colspan="4" style="text-align:center;">Total Vente {{ vente_data.vente.code }} :</td>
                         <td>{{ vente_data.total_quantite_vente|default:0 }}</td>
                         <td>{{ vente_data.total_quantite_retourner|default:0 }}</td>
-                        <td class="text-center">-</td>
-                        <td>{{ vente_data.total_vente }} GNF</td>
+                        <td style="text-align:center;">-</td>
+                        <td style="text-align:center;">-</td>
+                        <td>{{ vente_data.montant_reduction }}</td>
+                        <td>{{ vente_data.total_vente }}</td>
+
                         {% if request.user.type_utilisateur != 'Gerante' %}
-                        <td>{{ vente_data.benefice_vente }} GNF</td>
+                        <td>{{ vente_data.benefice_vente }}</td>
                         {% endif %}
-                        <td colspan="2" class="text-center">-</td>
+
+                        <td colspan="2" style="text-align:center;">-</td>
                     </tr>
                 {% endfor %}
+                <!-- Quantitée Totale Vendu -->
+                <tr class="total-row">
+                    <td style="text-align:center;" colspan="4">Quantité Total Vendue</td>
+                    <td>
+                        {{ total_quantite_produits|default:0 }}
+                    </td>
+                    <td style="text-align:center;" colspan="7">-</td>
+                </tr>
+                                <!-- Quantitée Totale Retourner -->
+                <tr class="total-row">
+                    <td style="text-align:center;" colspan="5">Quantité Total Retouner</td>
+                    <td>
+                        {{ total_quantite_retourner|default:0 }}
+                    </td>
+                    <td style="text-align:center;" colspan="6">-</td>
+                </tr>
+
+                <!-- Montant Total Vendu -->
+                <tr class="total-row">
+                    <td style="text-align:center;" colspan="9">Montant Total Vendu (GNF)</td>
+                    <td>
+                        {{ total_montant_categories|floatformat:"0"|default:"0" }}
+                    </td>
+                    <td style="text-align:center;" colspan="2">-</td>
+                </tr>
                 {% if request.user.type_utilisateur != 'Gerante' %}
                 <!-- Bénéfice global -->
                 <tr class="total-row">
-                    <td colspan="7" style="text-align:center;">Bénéfice Global :</td>
+                    <td colspan="10" style="text-align:center;">Bénéfice Global :</td>
                     <td>{{ benefice_global }} GNF</td>
-                    <td colspan="2"></td>
+                    <td style="text-align:center;">-</td>
                 </tr>
                 {% endif %}
+
             {% else %}
                 <tr>
                     <td colspan="10" style="text-align:center;">Aucune vente enregistrée pour cette période.</td>
@@ -212,10 +260,6 @@
         <br><br><br>
         <p>______________________________</p>
     </div>
-</div>
-
-<div class="footer">
-    Impression générée le : {{ today|date:"d/m/Y" }}
 </div>
 
 </body>

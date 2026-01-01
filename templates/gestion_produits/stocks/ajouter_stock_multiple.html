@@ -21,7 +21,10 @@
     <table class="table table-bordered table-striped">
         <thead>
             <tr>
+                <th>#</th>
+                <th>Catégorie</th>
                 <th>Produit</th>
+                <th>Qte Disponible</th>
                 <th>Quantité à ajouter</th>
                 <th>Seuil d’alerte</th>
             </tr>
@@ -31,8 +34,17 @@
             {% for p in produits %}
             <tr>
                 <td>
+                    <strong>{{ forloop.counter }}</strong>
+                </td>
+                <td>
+                     <strong>{{ p.categorie.desgcategorie }}</strong>
+                </td>
+                <td>
                     <strong>{{ p.refprod }}</strong> – {{ p.desgprod }}
                     <input type="hidden" name="produit[]" value="{{ p.id }}">
+                </td>
+                <td>
+                    <strong>{{ p.stocks.qtestock }}</strong>
                 </td>
 
                 <td>
@@ -53,6 +65,13 @@
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-center">Totaux : </td>
+                <td>{{ total_quantite }}</td>
+                <td colspan="2" class="text-center">-</td>
+             </tr>
+        </tfoot>
     </table>
 
     <button type="submit" class="btn btn-primary mt-3">

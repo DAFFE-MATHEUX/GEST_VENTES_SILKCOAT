@@ -18,7 +18,6 @@ class CategorieProduit(models.Model):
 #==================================================================================
 # Table Produits
 #==================================================================================
-    
 class Produits(models.Model):
     refprod = models.CharField(max_length = 50)
     desgprod = models.TextField(null=True, blank = True)

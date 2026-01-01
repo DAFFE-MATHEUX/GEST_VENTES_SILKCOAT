@@ -235,7 +235,7 @@ def vendre_produit(request):
                     stock.save(update_fields=["qtestock"])
 
                     # 🔔 ALERTE SEUIL STOCK
-                    if stock.qtestock <= stock.produit.seuil_stock:
+                    if stock.qtestock <= stock.seuil:
                         Notification.objects.create(
                             destinataire=None,
                             destinataire_email=settings.ADMIN_EMAIL,
@@ -253,7 +253,7 @@ def vendre_produit(request):
                                 body=(
                                     f"Produit : {ligne['produit'].desgprod}\n"
                                     f"Stock restant : {stock.qtestock}\n"
-                                    f"Seuil défini : {stock.produit.seuil_stock}\n\n"
+                                    f"Seuil défini : {stock.seuil}\n\n"
                                     f"Veuillez réapprovisionner."
                                 ),
                                 from_email=settings.DEFAULT_FROM_EMAIL,
@@ -277,7 +277,6 @@ def vendre_produit(request):
                         f"Montant : {vente.total} GNF"
                     )
                 )
-
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
                 reverse(
@@ -292,12 +291,12 @@ def vendre_produit(request):
             {"produits": produits}
         )
 
-    except IntegrityError:
-        messages.error(request, "Erreur d'intégrité des données.")
+    except IntegrityError as ie:
+        messages.error(request, f"Erreur d'intégrité des données {str(ie)}.")
         return redirect("produits:vendre_produit")
 
-    except DatabaseError:
-        messages.error(request, "Erreur de base de données.")
+    except DatabaseError as de:
+        messages.error(request, f"Erreur de base de données {str(de)}.")
         return redirect("produits:vendre_produit")
 
     except Exception as e:
@@ -2217,6 +2216,8 @@ def nouveau_produit(request):
 
 def ajouter_stock_multiple(request):
     produits = Produits.objects.all()
+    total_quantite = StockProduit.objects.aggregate(
+        total = Sum('qtestock'))['total'] or 0
 
     if request.method == "POST":
         produit_ids = request.POST.getlist("produit[]")
@@ -2246,7 +2247,7 @@ def ajouter_stock_multiple(request):
                     stock.seuil = seuil
                     stock.save()
 
-                success_count += 1
+                    success_count += 1
 
             except Produits.DoesNotExist:
                 messages.error(
@@ -2254,16 +2255,16 @@ def ajouter_stock_multiple(request):
                     f"Produit introuvable à la ligne {i + 1}."
                 )
 
-            except ValueError:
+            except ValueError as ve:
                 messages.error(
                     request,
-                    f"Quantité ou seuil invalide pour le produit sélectionné."
+                    f"Quantité ou seuil invalide pour le produit sélectionné {str(ve)}."
                 )
 
             except Exception as e:
                 messages.error(
                     request,
-                    f"Erreur pour le produit {produit.refprod} : {e}"
+                    f"Erreur pour le produit {produit.refprod} : {str(e)}"
                 )
 
         messages.success(
@@ -2278,6 +2279,7 @@ def ajouter_stock_multiple(request):
         "gestion_produits/stocks/ajouter_stock_multiple.html",
         {
             "produits": produits,
+            'total_quantite' : total_quantite,
         }
     )
 
@@ -2377,7 +2379,6 @@ def listes_ventes_impression(request):
                 .filter(date_saisie__range=[date_debut, date_fin])
                 .order_by('-id')
             )
-
             # ------- Total par catégorie -------
             total_par_categorie = (
                 lignes
@@ -2423,15 +2424,21 @@ def listes_ventes_impression(request):
                     'total_vente': 0,
                     'total_quantite_vente': 0,  
                     'total_quantite_retourner': 0,  
-                    'benefice_vente': 0
+                    'total_quantite_retourner' : 0,
+                    'benefice_vente': 0,
+                    'montant_reduction' : 0
                 }
 
             ventes_dict[code_vente]['lignes'].append(ligne)
+            ventes_dict[code_vente]['benefice_vente'] += ligne.benefice
             ventes_dict[code_vente]['total_vente'] += ligne.sous_total
+            ventes_dict[code_vente]['montant_reduction'] += ligne.montant_reduction
             ventes_dict[code_vente]['total_quantite_vente'] += ligne.quantite  
             ventes_dict[code_vente]['total_quantite_retourner'] += ligne.quantite_retournee or 0
 
             benefice_global += ligne.benefice
+            total_quantite_retourner += ligne.quantite_retournee
+            print(f"quantite_retournee : {total_quantite_retourner}")
 
     ventes_liste = list(ventes_dict.values())
     nom_entreprise = Entreprise.objects.first()  # Si plusieurs, prendre le premier

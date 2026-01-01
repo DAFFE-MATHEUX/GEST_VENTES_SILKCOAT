@@ -72,10 +72,16 @@ def home(request):
     lues = dernieeres_notification.filter(lu=True)
 
     # ===============================
-    # AUDITS & LISTES
+    # AUDITS 
     # ===============================
-    derniers_audits = AuditLog.objects.order_by('-date_action')[:5]
+    derniers_audits = AuditLog.objects.order_by('-date_action')[:3]
+    # ===============================
+    # COMMANDES DES PRODUITS
+    # ===============================
     listes_commandes = Commandes.objects.order_by('-datecmd')[:3]
+    # ===============================
+    # LIVRAISONS DES PRODUITS
+    # ===============================
     listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')[:3]
 
     # ===============================
@@ -83,6 +89,7 @@ def home(request):
     # ===============================
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
     montant_total_ventes = dernieres_ventes.aggregate(total=Sum('total'))['total'] or 0
+    montant_total_benefice = dernieres_ventes.aggregate(total=Sum('benefice_total'))['total'] or 0
     quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('lignes__quantite'))['total'] or 0
 
     # ===============================
@@ -210,7 +217,9 @@ def home(request):
         'now': aujourd_hui,
         'total_quantite_vendu': total_quantite_vendu,
         'total_benefice': total_benefice,
+        
         'montant_total_ventes': montant_total_ventes,
+        'montant_total_benefice': montant_total_benefice,
         'quantite_total_ventes': quantite_total_ventes,
     }
 

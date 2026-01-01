@@ -5,65 +5,76 @@
     <meta charset="UTF-8">
     <title>Facture - {{ entreprise.nom_entreprise }}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+
     <style>
-        body {
-            background: #f8f9fa;
-            font-family: "Poppins", sans-serif;
-            color: #222;
+        /* ====== RÉGLAGES A4 / PDF (TRÈS IMPORTANT) ====== */
+        @page {
+            size: A4;
+            margin: 5mm 8mm;   /* haut | droite-gauche | bas */
         }
 
+        body {
+            background: #fff;
+            font-family: "Poppins", sans-serif;
+            color: #222;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ====== CONTENEUR FACTURE ====== */
         .recu-container {
             background: white;
             max-width: 1000px;
-            margin: 20px auto;
-            padding: 20px 25px;
+            margin: 2px auto;          /* espace externe réduit */
+            padding: 8px 18px 12px;    /* espace interne haut réduit */
             border: 1px solid #000;
         }
 
-        /* ENTÊTE */
+        /* ====== ENTÊTE ====== */
         .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
+            padding-bottom: 2px;
+            margin-bottom: 2px;
         }
 
         .header-left, .header-right {
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 11px;
+            line-height: 1.3;
             width: 30%;
         }
 
         .header-center {
             text-align: center;
             width: 40%;
+
         }
 
         .header-center h2 {
             font-weight: bold;
             text-transform: uppercase;
-            margin-top: 5px;
-            font-size: 16px;
+            font-size: 15px;
+            margin: 2px  0;
         }
 
         .logo {
-            max-width: 180px;
-            max-height: 150px;
+            max-width: 160px;
+            max-height: 120px;
             object-fit: contain;
         }
 
-        /* TITRE */
+        /* ====== TITRE ====== */
         .facture-title {
             text-align: center;
-            font-size: 22px;
+            font-size: 18px;
             font-weight: bold;
             border: 2px solid #000;
-            padding: 6px;
-            margin: 15px 0;
+            padding: 4px;
+            margin: 13px 0;
         }
 
-        /* TABLEAUX */
+        /* ====== TABLEAUX ====== */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -73,7 +84,7 @@
 
         th, td {
             border: 1px solid #000;
-            padding: 4px 5px;
+            padding: 3px 3px;
             font-size: 12px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -87,33 +98,50 @@
         td.text-center { text-align: center; }
         td.text-end { text-align: right; }
 
+        /* Colonne # */
+        .col-num {
+            width: 28px;
+            min-width: 28px;
+            max-width: 28px;
+            text-align: center;
+            padding: 2px 0;
+        }
+
+        /* Désignation produit */
+        .col-designation {
+            white-space: normal !important;
+            word-wrap: break-word;
+            overflow: visible;
+            line-height: 1.3;
+        }
+
         tfoot tr {
             font-weight: bold;
             background-color: #f1f3f5;
         }
 
+        /* ====== TOTAL ====== */
         .total-box {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             text-align: right;
             color: #0d6efd;
         }
 
-        /* FOOTER */
+        /* ====== FOOTER ====== */
         .footer {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-top: 30px;
-            border-top: 1px solid #000;
-            padding-top: 10px;
-            font-size: 12px;
-            line-height: 1.4;
+            padding-top: 5px;
+            margin-top: 5px;
+            font-size: 11px;
+            line-height: 1.3;
         }
 
         .footer-left img {
-            max-height: 60px;
-            margin-bottom: 5px;
+            max-height: 45px;
+            margin-bottom: 3px;
         }
 
         @media print {
@@ -121,13 +149,7 @@
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
-
-            body {
-                background: white;
-            }
-
             tr { page-break-inside: avoid; }
-            table { page-break-after: auto; }
         }
     </style>
 </head>
@@ -135,7 +157,7 @@
 <body>
 <div class="recu-container">
 
-    <!-- ENTÊTE -->
+    <!-- ====== ENTÊTE ====== -->
     <div class="header-top">
         <div class="header-left">
             <strong>{{ entreprise.nom_entreprise|upper }}</strong><br>
@@ -154,97 +176,97 @@
 
         <div class="header-right text-right">
             {% if qr_code_base64 %}
-                <img src="data:image/png;base64,{{ qr_code_base64 }}" width="80" height="80">
+                <img src="data:image/png;base64,{{ qr_code_base64 }}" width="75" height="75">
             {% endif %}
         </div>
     </div>
 
-    <!-- TITRE -->
+    <!-- ====== TITRE ====== -->
     <div class="facture-title">FACTURE DE VENTES</div>
 
-    <!-- INFOS FACTURE -->
+    <!-- ====== INFOS FACTURE ====== -->
     <table>
         <tr>
-            <th>Numéro de la Facture</th>
+            <th>Numéro Facture</th>
             <td>{{ vente.code }}</td>
             <th>Date</th>
             <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
         </tr>
         <tr>
             <th>Vendu par</th>
-            <td>{{ vente.utilisateur.get_full_name }}</td>
-            <th>Mode de paiement</th>
+            <td>{{ vente.utilisateur.get_full_name|default:"Administrateur" }}</td>
+            <th>Mode paiement</th>
             <td>Comptant</td>
         </tr>
     </table>
 
-    <!-- CLIENT -->
+    <!-- ====== CLIENT ====== -->
     <table>
         <tr>
-            <th>Nom du client</th>
+            <th>Client</th>
             <td>{{ vente.nom_complet_client }}</td>
         </tr>
         <tr>
-            <th>Adresse</th>
-            <td>{{ vente.adresseclt_client|default:"-" }}</td>
-        </tr>
-        <tr>
-            <th>Téléphone</th>
-            <td>{{ vente.telclt_client|default:"-" }}</td>
+            <th>Adresse / Contact</th>
+            <td>{{ vente.adresseclt_client|default:"-" }} {{ vente.telclt_client|default:"-" }}</td>
         </tr>
     </table>
 
-    <!-- PRODUITS -->
+    <!-- ====== PRODUITS ====== -->
     <table>
         <thead>
             <tr>
-                <th>#</th>
+                <th class="col-num">#</th>
                 <th>Catégorie</th>
-                <th>Désignation</th>
-                <th>Qté</th>
-                 {% if has_retour %}
-                 <th>Qte Retournée</th>
-                 {% endif %}
-                <th>PU (GNF)</th>
-                <th>Réduction</th>
-                <th>Total (GNF)</th>
+                <th class="col-designation">Désignation Produit</th>
+                <th class="text-center">Qté(s)</th>
+                {% if has_retour %}
+                <th class="text-center">Qté Ret.</th>
+                {% endif %}
+                <th class="text-center">PU de Vente</th>
+                <th class="text-center">Réduc.</th>
+                <th class="text-center">Total</th>
             </tr>
         </thead>
+
         <tbody>
             {% for l in lignes %}
             <tr>
-                <td>{{ forloop.counter }}</td>
+                <td class="col-num">{{ forloop.counter }}</td>
                 <td>{{ l.produit.categorie.desgcategorie }}</td>
-                <td>{{ l.produit.desgprod }}</td>
+                <td class="col-designation">{{ l.produit.desgprod }}</td>
                 <td class="text-center">{{ l.quantite }}</td>
-                 {% if l.retours.exists %}
-                 
-                    <td class="text-center">
+
+                {% if has_retour %}
+                <td class="text-center">
                     {% for ret in l.retours.all %}
-                        {{ ret.quantite_retour }} unité(s)
-                    {% endfor %}
-                    </td>
-                 {% endif %}
-                
+                        {{ ret.quantite_retour }}
+                    {% empty %}-{% endfor %}
+                </td>
+                {% endif %}
+
                 <td class="text-end">{{ l.prix|floatformat:0 }}</td>
                 <td class="text-end">{{ l.montant_reduction|floatformat:0 }}</td>
                 <td class="text-end">{{ l.sous_total|floatformat:0 }}</td>
             </tr>
             {% endfor %}
         </tbody>
+
         <tfoot>
             <tr>
                 <th colspan="3" class="text-center">Totaux</th>
                 <th class="text-center">{{ total_quantite|floatformat:0 }}</th>
+                {% if has_retour %}
                 <th class="text-center">{{ total_quantite_retourner|floatformat:0 }}</th>
+                {% endif %}
                 <th class="text-center">-</th>
-                <th class="text-end">{{ total_reduction|floatformat:0 }} GNF</th>
-                <th class="text-end">{{ total|floatformat:0 }} GNF</th>
+                <th class="text-end">{{ total_reduction|floatformat:0 }}</th>
+                <th class="text-end">{{ total|floatformat:0 }}</th>
             </tr>
         </tfoot>
     </table>
 
-    <!-- TOTAL & BANQUE -->
+    <!-- ====== TOTAL ====== -->
     <table>
         <tr>
             <td>
@@ -257,16 +279,16 @@
         </tr>
     </table>
 
-    <!-- FOOTER -->
+    <!-- ====== FOOTER ====== -->
     <div class="footer">
         <div class="footer-left">
-            <img src="{% static 'img/logo_uba.jpg' %}" alt="Logo UBA" width="60"><br>
-            <strong>INTITULÉ DE COMPTE :</strong> ITRACO BTP SARLU<br>
+            <img src="{% static 'img/logo_uba.jpg' %}" alt="UBA"><br>
+            <strong>INTITULÉ :</strong> ITRACO BTP SARLU
             <strong>COMPTE :</strong> 60011030023275
             <strong>CLÉ RIB :</strong> 56
         </div>
 
-        <div class="footer-right">
+        <div class="footer-right text-end">
             <strong>Le Responsable</strong><br>
             {{ entreprise.nom_entreprise }}<br>
             {{ today|date:"d/m/Y" }}

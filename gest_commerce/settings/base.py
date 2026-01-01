@@ -90,6 +90,8 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
     'social_core.backends.google.GoogleOAuth2',
     'social_core.backends.facebook.FacebookOAuth2',
+    
+    'axes.backends.AxesStandaloneBackend',
 ]
 
 AUTH_PASSWORD_VALIDATORS = [

@@ -95,7 +95,9 @@
                 <th>Catégorie</th>
                 <th>Réf Produit</th>
                 <th>Désignation</th>
+                {% if request.user.type_utilisateur != 'Gerante' %}
                 <th>Prix En Gros</th>
+                {% endif %}
                 <th>Prix de Vente</th>
                 <th>Date Stock</th>
                 <th>Photo</th>
@@ -109,7 +111,9 @@
                 <td>{{ elem.categorie.desgcategorie }}</td>
                 <td>{{ elem.refprod }}</td>
                 <td>{{ elem.desgprod }}</td>
+                {% if request.user.type_utilisateur != 'Gerante' %}
                 <td>{{ elem.prix_en_gros }}</td>
+                {% endif %}
                 <td>{{ elem.pu }}</td>
                 <td>{{ elem.date_maj|date:'d/m/Y' }}</td>
                 <td>
