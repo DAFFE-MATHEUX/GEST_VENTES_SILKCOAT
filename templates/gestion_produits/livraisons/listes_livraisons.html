@@ -385,7 +385,7 @@
 <form method="POST" action="{% url 'produits:supprimer_livraisons' %}">
 {% csrf_token %}
 <div class="modal-header bg-danger">
-    <h4>SUPPRESSION</h4>
+    <h4>SUPPRESSION D'UNE LIVRAISON</h4>
 </div>
 <div class="modal-body">
     <input type="hidden" name="id_supprimer" id="id_supprimer">
@@ -409,8 +409,6 @@ document.querySelectorAll('.btn-produit-sup').forEach(btn => {
         document.getElementById('id_supprimer').value = btn.dataset.id;
     });
 });
-
-
     // Faire disparaître les messages après 4s
     setTimeout(() => {
         document.querySelectorAll('.alert').forEach(el => {

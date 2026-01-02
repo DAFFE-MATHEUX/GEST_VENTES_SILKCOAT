@@ -8,6 +8,7 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.db import DatabaseError, IntegrityError
 from gestion_audit.views import enregistrer_audit
+from gestion_notifications.models import Notification
 from .models import *
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -25,6 +26,9 @@ from django.shortcuts import get_object_or_404, render, redirect
 from openpyxl.utils import get_column_letter
 from django.db import transaction
 import openpyxl
+
+import logging
+logger = logging.getLogger(__name__)
 
 from collections import defaultdict 
 
@@ -476,58 +480,88 @@ def modifier_depense(request):
 # Supprimer une dépense
 # =================================================================================================
 @login_required
+
 def supprimer_depense(request):
-    if request.method == "POST":
-        try:
-            id_depense = request.POST.get("id_supprimer")
-            depense = get_object_or_404(Depenses, pk=id_depense)
-
-            # ───────────────────────────────────────────
-            # 🔒 Empêcher suppression si l’utilisateur connecté n’est pas celui
-            #     qui a créé la dépense
-            # ───────────────────────────────────────────
-            if hasattr(depense, "utilisateur") and depense.utilisateur:
-                if depense.utilisateur.id != request.user.id:
-                    messages.warning(
-                        request,
-                        "❌ Vous ne pouvez pas supprimer cette dépense : "
-                        f"elle a été enregistrée par un autre utilisateur mais par {depense.utilisateur.get_full_name()}"
-                    )
-                    return redirect("liste_depense")
-
-            # ───────────────────────────────────────────
-            # 🔍 Sauvegarde des anciennes valeurs pour audit
-            # ───────────────────────────────────────────
-            ancienne_valeur = {
-                "designation": depense.designation,
-                "montant": depense.montant,
-                "destine_a": depense.destine_a,
-                "utilisateur": str(depense.utilisateur) if hasattr(depense, "utilisateur") else "Inconnu",
-            }
-
-            # ───────────────────────────────────────────
-            # 🔄 Transaction DB pour cohérence caisse ↔ dépense
-            # ───────────────────────────────────────────
-            with transaction.atomic():
-                # ✔ Audit
-                enregistrer_audit(
-                    utilisateur=request.user,
-                    action="Suppression",
-                    table="DepenseEtablissement",
-                    ancienne_valeur=ancienne_valeur,
-                    nouvelle_valeur= None
-                )
-
-            messages.success(
-                request,
-                f"✅ Dépense supprimée avec succès."
-            )
-        except Depenses.DoesNotExist:
-            messages.error(request, "❌ La dépense spécifiée n’existe pas.")
-        except Exception as e:
-            messages.error(request, f"❌ Erreur inattendue : {e}")
-
+    if request.method != "POST":
         return redirect("liste_depense")
+
+    try:
+        id_depense = request.POST.get("id_supprimer")
+        depense = get_object_or_404(Depenses, pk=id_depense)
+
+        # 🔒 Sécurité : seul le créateur peut supprimer
+        if hasattr(depense, "utilisateur") and depense.utilisateur:
+            if depense.utilisateur.id != request.user.id:
+                messages.warning(
+                    request,
+                    "❌ Vous ne pouvez pas supprimer cette dépense : "
+                    f"elle a été enregistrée par {depense.utilisateur.get_full_name()}."
+                )
+                return redirect("liste_depense")
+
+        # 🔍 Sauvegarde pour audit + email
+        ancienne_valeur = {
+            "designation": depense.designation,
+            "montant": depense.montant,
+            "destine_a": depense.destine_a,
+            "utilisateur": depense.utilisateur.get_full_name() if depense.utilisateur else "Inconnu",
+            "date": depense.date_depense.strftime("%d/%m/%Y %H:%M")
+            if hasattr(depense, "date_depense") else "-"
+        }
+
+        with transaction.atomic():
+
+            # 🧾 Audit
+            enregistrer_audit(
+                utilisateur=request.user,
+                action="Suppression",
+                table="Depenses",
+                ancienne_valeur=ancienne_valeur,
+                nouvelle_valeur=None
+            )
+
+            # ❌ Suppression réelle
+            depense.delete()
+
+        # 📧 EMAIL DE NOTIFICATION
+        try:
+            email_body = (
+                f"SUPPRESSION D’UNE DÉPENSE\n\n"
+                f"Désignation : {ancienne_valeur['designation']}\n"
+                f"Montant : {ancienne_valeur['montant']} GNF\n"
+                f"Destinée à : {ancienne_valeur['destine_a']}\n"
+                f"Enregistrée par : {ancienne_valeur['utilisateur']}\n"
+                f"Supprimée par : {request.user.get_full_name()}\n"
+                f"Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}\n"
+            )
+
+            EmailMessage(
+                subject="Suppression d’une dépense",
+                body=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[settings.ADMIN_EMAIL]
+            ).send(fail_silently=False)
+            
+                    # 6️⃣ Notification interne
+            Notification.objects.create(
+                destinataire=request.user,
+                destinataire_email = settings.ADMIN_EMAIL,
+                titre="🗑 Suppression d'une Dépense",
+                message=(
+                    f"Désignation {depense.designation} \n"
+                    f"Supprimée par : {request.user.get_full_name()}"
+                )
+            )
+
+        except Exception as e:
+            logger.warning(f"Email suppression dépense non envoyé : {e}")
+
+        messages.success(request, "✅ Dépense supprimée avec succès.")
+
+    except Depenses.DoesNotExist:
+        messages.error(request, "❌ La dépense spécifiée n’existe pas.")
+    except Exception as e:
+        messages.error(request, f"❌ Erreur inattendue : {e}")
 
     return redirect("liste_depense")
 

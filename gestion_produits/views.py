@@ -151,8 +151,11 @@ def vendre_produit(request):
                 return redirect("produits:vendre_produit")
 
             total_general = 0
+            total_qte = 0
+            total_reduction = 0
             lignes = []
             produits_sans_stock = []
+            details_lignes = []
 
             with transaction.atomic():
 
@@ -249,7 +252,7 @@ def vendre_produit(request):
 
                         try:
                             EmailMessage(
-                                subject="⚠️ Alerte stock critique",
+                                subject="⚠️ Alerte stock Critique",
                                 body=(
                                     f"Produit : {ligne['produit'].desgprod}\n"
                                     f"Stock restant : {stock.qtestock}\n"
@@ -266,17 +269,61 @@ def vendre_produit(request):
                 vente.total = total_general
                 vente.calculer_totaux()
                 vente.save(update_fields=["total", "benefice_total"])
+                
+                benefice_ligne = (
+                (ligne["pu"] - ligne["produit"].prix_en_gros - ligne["reduction"])
+                * ligne["quantite"]
+)
+
+                details_lignes.append(
+                    f"- Produit : {ligne['produit'].desgprod}\n"
+                    f"  Qté : {ligne['quantite']}\n"
+                    f"  PU : {ligne['pu']}\n"
+                    f"  Réduction unitaire : {ligne['reduction']}\n"
+                    f"  Sous-total : {(ligne['pu'] - ligne['reduction']) * ligne['quantite']}\n"
+                    f"  Bénéfice ligne : {benefice_ligne}\n"
+                )
+
+                total_qte += ligne["quantite"]
+                total_reduction += ligne["reduction"] * ligne["quantite"]
+
 
                 # 5️⃣ Notification vente
                 Notification.objects.create(
                     destinataire=None,
-                    destinataire_email=None,
+                    destinataire_email = settings.ADMIN_EMAIL,
                     titre=f"Nouvelle vente {vente.code}",
                     message=(
                         f"Vente enregistrée pour {nom_complet} "
                         f"Montant : {vente.total} GNF"
                     )
                 )
+                try:
+                    email_body = (
+                    f"Nouvelle vente : {vente.code}\n\n"
+                    f"Client : {vente.nom_complet_client}\n"
+                    f"Téléphone : {vente.telclt_client}\n"
+                    f"Adresse : {vente.adresseclt_client}\n\n"
+                    f"DÉTAILS DE LA VENTE\n"
+                    f"-----------------------------------\n"
+                    f"{''.join(details_lignes)}\n"
+                    f"------------------------------------------\n"
+                    f"TOTAL QUANTITÉ : {total_qte}\n"
+                    f"TOTAL RÉDUCTION : {total_reduction}\n"
+                    f"TOTAL MONTANT : {vente.total}\n"
+                    f"BÉNÉFICE GLOBAL : {vente.benefice_total}\n"
+                    )
+
+                    EmailMessage(
+                        subject=f"Nouvelle vente : {vente.code}",
+                        body=email_body,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[settings.ADMIN_EMAIL]
+                    ).send(fail_silently=False)
+
+                except Exception as e:
+                    logger.warning(f"Email vente non envoyé : {e}")
+
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
                 reverse(
@@ -308,49 +355,111 @@ def vendre_produit(request):
 # Fonction pour le retour de vente
 @login_required
 @csrf_protect
-
 def enregistrer_retour(request, ligne_id):
     ligne = get_object_or_404(LigneVente, id=ligne_id)
     vente = ligne.vente
     quantite_restante = ligne.quantite_restante
 
     if quantite_restante <= 0:
-        messages.warning(request, "Toutes les unités de ce produit ont déjà été retournées.")
+        messages.warning(
+            request,
+            "Toutes les unités de ce produit ont déjà été retournées."
+        )
         return redirect('produits:listes_des_ventes')
 
     if request.method == 'POST':
         try:
             quantite_retour = int(request.POST.get('quantite_retour', 0))
-            motif = request.POST.get('motif', '')
+            motif = request.POST.get('motif', '').strip()
 
             if quantite_retour < 1:
                 messages.error(request, "La quantité à retourner doit être au moins 1.")
-            elif quantite_retour > quantite_restante:
-                messages.error(request, f"Vous ne pouvez retourner que {quantite_restante} unité(s).")
-            else:
-                # Créer le retour
-                retour = RetourVente.objects.create(
-                    ligne_vente =ligne,
-                    quantite_retour=quantite_retour,
-                    motif=motif,
-                    date_retour=timezone.now()
+                return redirect(request.path)
+
+            if quantite_retour > quantite_restante:
+                messages.error(
+                    request,
+                    f"Vous ne pouvez retourner que {quantite_restante} unité(s)."
+                )
+                return redirect(request.path)
+
+            # 1️⃣ Création du retour
+            retour = RetourVente.objects.create(
+                ligne_vente=ligne,
+                quantite_retour=quantite_retour,
+                motif=motif,
+                date_retour=timezone.now()
+            )
+
+            # 2️⃣ Recalcul des totaux
+            vente.calculer_totaux()
+            vente.save(update_fields=["total", "benefice_total"])
+
+            # 3️⃣ Calculs retour
+            prix_net = ligne.prix - ligne.montant_reduction
+            montant_retour = prix_net * quantite_retour
+
+            # 4️⃣ EMAIL RETOUR
+            try:
+                email_body = (
+                    f"RETOUR DE PRODUIT – {vente.code}\n\n"
+                    f"Client : {vente.nom_complet_client}\n"
+                    f"Téléphone : {vente.telclt_client}\n"
+                    f"Adresse : {vente.adresseclt_client}\n\n"
+                    f"PRODUIT RETOURNÉ\n"
+                    f"-----------------------------------\n"
+                    f"- Produit : {ligne.produit.desgprod}\n"
+                    f"  Quantité retournée : {quantite_retour}\n"
+                    f"  Prix unitaire : {ligne.prix}\n"
+                    f"  Réduction unitaire : {ligne.montant_reduction}\n"
+                    f"  Montant retourné : {montant_retour}\n"
+                    f"  Motif : {motif or 'Non précisé'}\n\n"
+                    f"-----------------------------------\n"
+                    f"TOTAL RETOUR : {montant_retour} GNF\n"
+                    f"DATE DU RETOUR : {timezone.now().strftime('%d/%m/%Y %H:%M')}\n"
                 )
 
-                # Recalculer les totaux de la vente
-                vente.calculer_totaux()
+                EmailMessage(
+                    subject=f"Retour produit – {vente.code}",
+                    body=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.ADMIN_EMAIL]
+                ).send(fail_silently=False)
+                
+                #  Notification du Retour de Vente
+                Notification.objects.create(
+                    destinataire=None,
+                    destinataire_email = settings.ADMIN_EMAIL,
+                    titre=f"Retour de vente {vente.code}",
+                    message=(
+                        f"Vente retourer du Client : {vente.nom_complet_client} \n"
+                        f"Quantité retournée : {quantite_retour}\n",
+                        f"Montant : {montant_retour} GNF \n",
+                        f"DATE DU RETOUR : {timezone.now().strftime('%d/%m/%Y %H:%M')}\n"
+                    )
+                )
 
-                messages.success(request, f"{quantite_retour} unité(s) retournée(s) avec succès.")
-                return redirect('produits:listes_des_ventes')
+            except Exception as e:
+                logger.warning(f"Email retour non envoyé : {e}")
+
+            messages.success(
+                request,
+                f"{quantite_retour} unité(s) retournée(s) avec succès."
+            )
+            return redirect('produits:listes_des_ventes')
 
         except ValueError:
             messages.error(request, "Quantité invalide.")
 
-    context = {
-        'ligne': ligne,
-        'quantite_restante': quantite_restante,
-        'today': timezone.now()
-    }
-    return render(request, 'gestion_produits/ventes/enregistrer_retour.html', context)
+    return render(
+        request,
+        'gestion_produits/ventes/enregistrer_retour.html',
+        {
+            'ligne': ligne,
+            'quantite_restante': quantite_restante,
+            'today': timezone.now()
+        }
+    )
 
 #================================================================================================
 # Fonction pour afficher l'historique des ventes par date
@@ -1044,6 +1153,7 @@ def supprimer_produits_stock(request):
         # ----- Notification interne -----
         Notification.objects.create(
             destinataire=request.user,
+            destinataire_email = settings.ADMIN_EMAIL,
             titre="🗑 Suppression de stock",
             message=(
                 f"Le stock du produit {ancienne_valeur['produit']} "
@@ -1055,19 +1165,19 @@ def supprimer_produits_stock(request):
         try:
             sujet = "🗑 Suppression d’un stock produit"
             contenu = f"""
-Une suppression de stock a été effectuée.
+            Une suppression de stock a été effectuée.
 
-Utilisateur : {request.user.get_full_name()}
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+            Utilisateur : {request.user.get_full_name()}
+            Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
 
-Détails du stock supprimé :
-- Produit : {ancienne_valeur['produit']}
-- Référence : {ancienne_valeur['reference']}
-- Quantité : {ancienne_valeur['quantite']}
-- Seuil : {ancienne_valeur['seuil']}
-- Entrepôt : {ancienne_valeur['entrepot']}
-- Magasin : {ancienne_valeur['magasin']}
-"""
+            Détails du stock supprimé :
+            - Produit : {ancienne_valeur['produit']}
+            - Référence : {ancienne_valeur['reference']}
+            - Quantité : {ancienne_valeur['quantite']}
+            - Seuil : {ancienne_valeur['seuil']}
+            - Entrepôt : {ancienne_valeur['entrepot']}
+            - Magasin : {ancienne_valeur['magasin']}
+            """
             EmailMessage(
                 sujet,
                 contenu,
@@ -1140,6 +1250,7 @@ def supprimer_commandes(request):
         # ----- Notification interne -----
         Notification.objects.create(
             destinataire=request.user,
+            destinataire_email = settings.ADMIN_EMAIL,
             titre="🗑 Suppression de commande",
             message=f"La commande {ancienne_valeur['Num Commande']} a été supprimée."
         )
@@ -1148,15 +1259,15 @@ def supprimer_commandes(request):
         try:
             sujet = "🗑 Suppression d'une commande"
             contenu = f"""
-Une commande a été supprimée.
+            Une commande a été supprimée.
 
-Numéro commande : {ancienne_valeur['Num Commande']}
-Produit : {ancienne_valeur['Produit']}
-Qté commandée : {ancienne_valeur['Qté commandée']}
-Fournisseur : {ancienne_valeur['Fournisseur']}
-Utilisateur : {request.user.get_full_name()}
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-"""
+            Numéro commande : {ancienne_valeur['Num Commande']}
+            Produit : {ancienne_valeur['Produit']}
+            Qté commandée : {ancienne_valeur['Qté commandée']}
+            Fournisseur : {ancienne_valeur['Fournisseur']}
+            Utilisateur : {request.user.get_full_name()}
+            Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+            """
             EmailMessage(
                 sujet,
                 contenu,
@@ -1231,6 +1342,7 @@ def supprimer_livraisons(request):
         # 6️⃣ Notification interne
         Notification.objects.create(
             destinataire=request.user,
+            destinataire_email = settings.ADMIN_EMAIL,
             titre="🗑 Suppression de livraison",
             message=(
                 f"La livraison {numlivrer} du produit "
@@ -1242,14 +1354,14 @@ def supprimer_livraisons(request):
         try:
             sujet = "🗑 Suppression d'une livraison"
             contenu = f"""
-Une livraison a été supprimée.
+            Une livraison a été supprimée.
 
-Numéro livraison : {numlivrer}
-Produit : {produit.desgprod}
-Quantité : {quantite}
-Utilisateur : {request.user}
-Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-"""
+            Numéro livraison : {numlivrer}
+            Produit : {produit.desgprod}
+            Quantité : {quantite}
+            Utilisateur : {request.user}
+            Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
+            """
             email = EmailMessage(
                 sujet,
                 contenu,
@@ -1337,6 +1449,7 @@ def supprimer_ventes(request):
             # 6️⃣ Notification
             Notification.objects.create(
                 destinataire=request.user,
+                destinataire_email = settings.ADMIN_EMAIL,
                 titre=f"🗑 Suppression vente {code_vente}",
                 message="La vente a été supprimée et le stock restauré."
             )
