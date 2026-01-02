@@ -204,19 +204,6 @@ def nouvelle_depense(request):
             utilisateur=request.user
         )
 
-        # Audit
-        enregistrer_audit(
-            utilisateur=request.user,
-            action="Ajout",
-            table="Depenses",
-            nouvelle_valeur={
-                "designation": designation,
-                "Montant": montant,
-                "destine_a": destine,
-                "utilisateur": str(request.user),
-            }
-        )
-
         # Envoi email
         try:
             sujet = "🧾 Nouvelle dépense enregistrée"
@@ -568,12 +555,10 @@ def supprimer_depense(request):
     return redirect("liste_depense")
 
 # =================================================================================================
-
-
 @login_required
 def modal_exportation_excel(request):
     
-    return render(request, 'GestionDepenses/exportation/exportation_donnees_excel.html')
+    return render(request, 'gest_entreprise/depenses/exportation/exportation_donnees_excel.html')
 
 
 #=============================================================================================
@@ -582,7 +567,7 @@ def modal_exportation_excel(request):
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur') #Empecher tant que l'utilisateur n'est pas connecté
 def export_depenses_excel(request):
 
-    #Exporte la liste des personnels au format Excel (.xlsx)
+    #Exporte la liste des depenses au format Excel (.xlsx)
 
     # 1. Récupérer tous les Eleves
     depense = Depenses.objects.all()

@@ -97,7 +97,7 @@ def generer_rapport_admin(request):
             genere_par=request.user
         )
 
-        # ================= Variables =================
+        # ================= Les Variables à retourner dans le Template =================
         data_qs = []
         total_montant = 0
         total_vendus = 0
@@ -108,6 +108,8 @@ def generer_rapport_admin(request):
         total_quantite_cmd = 0
         total_quantite_livrer = 0
         total_quantite_restante = 0
+        total_quantite_retourner = 0
+        total_montant_reduction = 0
         total_par_categorie = []
         total_par_produit = []
         entreprise = Entreprise.objects.first()
@@ -146,13 +148,24 @@ def generer_rapport_admin(request):
                     'lignes': [],
                     'total_vente': 0,
                     'total_quantite_retourner': 0, 
+                    'total_quantite_vente' : 0,
+                    'total_quantite_retourner' : 0,
                     'benefice_vente': 0,
+                    'montant_reduction' : 0,
+                    
                 })
                 ventes_dict[code]['lignes'].append(ligne)
                 ventes_dict[code]['total_vente'] += ligne.sous_total
                 ventes_dict[code]['total_quantite_retourner'] += ligne.quantite_retournee or 0
+                ventes_dict[code]['total_quantite_vente'] += ligne.quantite  or 0
+                ventes_dict[code]['total_quantite_retourner'] += ligne.quantite_retournee or 0
+                ventes_dict[code]['montant_reduction'] += ligne.montant_reduction or 0
+                
                 ventes_dict[code]['benefice_vente'] += ligne.benefice
                 benefice_global += ligne.benefice
+                
+                total_quantite_retourner += ligne.quantite_retournee
+                total_montant_reduction += ligne.montant_reduction
 
             data_qs = list(ventes_dict.values())
 
@@ -162,7 +175,7 @@ def generer_rapport_admin(request):
             # Bénéfice net
             benefice_net = benefice_global - depenses_total
 
-        # ================= COMMANDES =================
+        # ================= Gestion des COMMANDES =================
         elif type_rapport == "COMMANDES":
             data_qs = Commandes.objects.select_related(
                 'produits', 'produits__categorie'
@@ -188,7 +201,7 @@ def generer_rapport_admin(request):
                 valeur=Sum(F('qtecmd') * F('produits__pu'))
             )
 
-        # ================= LIVRAISONS =================
+        # ================= Gestion des LIVRAISONS =================
         elif type_rapport == "LIVRAISONS":
             data_qs = LivraisonsProduits.objects.select_related(
                 'produits', 'commande', 'produits__categorie'
@@ -239,6 +252,8 @@ def generer_rapport_admin(request):
             'total_quantite_cmd': total_quantite_cmd,
             'total_quantite_livrer': total_quantite_livrer,
             'total_quantite_restante': total_quantite_restante,
+            'total_quantite_retourner' :total_quantite_retourner,
+            'total_montant_reduction' : total_montant_reduction,
         }
 
         html = get_template('gestion_rapports/rapport_admin_pdf.html').render(context)
@@ -297,10 +312,13 @@ def generer_rapport(request):
         data_qs = []
         total_montant = 0
         total_vendus = 0
+        total_benefice = 0
         total_quantite = 0
         total_quantite_cmd = 0
         total_quantite_livrer = 0
         total_quantite_restante = 0
+        total_quantite_retourner = 0
+        total_montant_reduction = 0
         total_par_categorie = []
         total_par_produit = []
         entreprise = Entreprise.objects.first()
@@ -339,11 +357,22 @@ def generer_rapport(request):
                     'total_vente': 0,
                     'benefice_vente': 0,
                     'total_quantite_retourner' : 0,
+                    'total_quantite_vente': 0,  
+                    'total_quantite_retourner': 0,  
+                    'montant_reduction' : 0,
+                    
                 })
 
                 ventes_dict[code]['lignes'].append(ligne)
                 ventes_dict[code]['total_quantite_retourner'] += ligne.quantite_retournee or 0
                 ventes_dict[code]['total_vente'] += ligne.sous_total
+                ventes_dict[code]['total_quantite_vente'] += ligne.quantite  
+                ventes_dict[code]['total_quantite_retourner'] += ligne.quantite_retournee or 0
+                ventes_dict[code]['montant_reduction'] += ligne.montant_reduction or 0
+                
+                total_quantite_retourner += ligne.quantite_retournee
+                total_montant_reduction += ligne.montant_reduction
+                total_benefice += ligne.benefice
 
             data_qs = list(ventes_dict.values())
 
@@ -427,12 +456,15 @@ def generer_rapport(request):
             'entreprise': entreprise,
             'total_montant': total_montant,
             'total_vendus': total_vendus,
+            'total_benefice' : total_benefice,
             'total_quantite': total_quantite,
             'total_par_categorie': total_par_categorie,
             'total_par_produit': total_par_produit,
             'total_quantite_cmd' : total_quantite_cmd,
             'total_quantite_livrer' : total_quantite_livrer,
             'total_quantite_restante' : total_quantite_restante,
+            'total_quantite_retourner' : total_quantite_retourner,
+            'total_montant_reduction' : total_montant_reduction,
         }
 
         html = get_template('gestion_rapports/rapport_pdf.html').render(context)

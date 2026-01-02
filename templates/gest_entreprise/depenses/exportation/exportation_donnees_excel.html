@@ -1,6 +1,6 @@
 {% extends 'admin.html' %}
 {% load static %}
-{% block content %}
+{% block contents %}
 
 <style>
   .table-responsive { overflow-x: auto; width: 100%; }
@@ -21,7 +21,7 @@
 
     <div class="row">
       <div class="col-md-12">
-        <h2>GESTION DES EXPORTATIONS DES DEPENSES</h2>
+        <h2>EXPORTATIONS DES DEPENSES</h2>
       </div>
     </div>
     <br>
@@ -48,7 +48,7 @@
         <h4 class="modal-title">EXPORTATION TOUT LES DEPENSES VERS EXCEL</h4>
         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
       </div>
-      <form method="post" id="form_export" action="{% url 'gestion_depenses:export_depenses_excel' %}">
+      <form method="post" id="form_export" action="{% url 'export_depenses_excel' %}">
         {% csrf_token %}
         <div class="modal-body">
           <p>Êtes-vous sûr de vouloir exporter tout les Dépenses vers un fichier Excel ?</p>

@@ -2424,7 +2424,6 @@ def listes_ventes_impression(request):
                     'total_vente': 0,
                     'total_quantite_vente': 0,  
                     'total_quantite_retourner': 0,  
-                    'total_quantite_retourner' : 0,
                     'benefice_vente': 0,
                     'montant_reduction' : 0
                 }
@@ -2438,7 +2437,6 @@ def listes_ventes_impression(request):
 
             benefice_global += ligne.benefice
             total_quantite_retourner += ligne.quantite_retournee
-            print(f"quantite_retournee : {total_quantite_retourner}")
 
     ventes_liste = list(ventes_dict.values())
     nom_entreprise = Entreprise.objects.first()  # Si plusieurs, prendre le premier

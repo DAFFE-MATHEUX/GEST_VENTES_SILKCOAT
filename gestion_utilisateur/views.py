@@ -48,6 +48,12 @@ def home(request):
     fin_mois = date(annee, mois, dernier_jour)
 
     # ===============================
+    # DATE ACTUELLE
+    # ===============================
+    aujourd_hui = timezone.now().date()
+    hier = aujourd_hui - timedelta(days=1)
+    
+    # ===============================
     # MOIS PRÉCÉDENT
     # ===============================
     if mois == 1:
@@ -92,6 +98,52 @@ def home(request):
     montant_total_benefice = dernieres_ventes.aggregate(total=Sum('benefice_total'))['total'] or 0
     quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('lignes__quantite'))['total'] or 0
 
+    # ===============================
+    # 📊 COMPARAISON PAR JOUR
+    # ===============================
+    total_hier = (
+        VenteProduit.objects
+        .filter(date_vente__date=hier)
+        .aggregate(total=Sum('total'))['total'] or 0
+    )
+
+    total_aujourdhui = (
+        VenteProduit.objects
+        .filter(date_vente__date=aujourd_hui)
+        .aggregate(total=Sum('total'))['total'] or 0
+    )
+
+    labels_jour_comparaison = ["Hier", "Aujourd’hui"]
+    data_jour_hier = [total_hier, 0]
+    data_jour_aujourdhui = [0, total_aujourdhui]
+    
+    # ===============================
+    # 📈 COMPARAISON PAR SEMAINE
+    # ===============================
+    # Semaine actuelle
+    debut_semaine = aujourd_hui - timedelta(days=aujourd_hui.weekday())
+    fin_semaine = debut_semaine + timedelta(days=6)
+
+    # Semaine précédente
+    debut_semaine_prec = debut_semaine - timedelta(days=7)
+    fin_semaine_prec = debut_semaine - timedelta(days=1)
+
+    total_semaine_actuelle = (
+        VenteProduit.objects
+        .filter(date_vente__date__range=[debut_semaine, fin_semaine])
+        .aggregate(total=Sum('total'))['total'] or 0
+    )
+
+    total_semaine_precedente = (
+        VenteProduit.objects
+        .filter(date_vente__date__range=[debut_semaine_prec, fin_semaine_prec])
+        .aggregate(total=Sum('total'))['total'] or 0
+    )
+
+    labels_semaine = ["Semaine Précédente", "Semaine Actuelle"]
+    data_semaine_precedente = [total_semaine_precedente, 0]
+    data_semaine_actuelle = [0, total_semaine_actuelle]
+    
     # ===============================
     # COMPARAISON MENSUELLE
     # ===============================
@@ -221,6 +273,17 @@ def home(request):
         'montant_total_ventes': montant_total_ventes,
         'montant_total_benefice': montant_total_benefice,
         'quantite_total_ventes': quantite_total_ventes,
+        
+        'hier' : hier,
+        'aujourd_hui' : aujourd_hui,
+        
+        'labels_semaine' : labels_semaine,
+        'data_semaine_precedente' : data_semaine_precedente,
+        'data_semaine_actuelle' : data_semaine_actuelle,
+        
+        'labels_jour_comparaison' : labels_jour_comparaison,
+        'data_jour_hier' : data_jour_hier,
+        'data_jour_aujourdhui' : data_jour_aujourdhui,
     }
 
     return render(request, 'gestion_utilisateur/dashboard.html', context)

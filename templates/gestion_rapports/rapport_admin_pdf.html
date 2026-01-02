@@ -129,7 +129,7 @@
 </div>
 
 <!-- ===================================================== -->
-<!-- ======================= VENTES ====================== -->
+<!-- ======================= Gestion des VENTES ====================== -->
 <!-- ===================================================== -->
 {% if rapport.type == "VENTES" %}
 
@@ -141,8 +141,9 @@
             <th>#</th>
             <th>Code Vente</th>
             <th>Produit</th>
-            <th>Quantité</th>
-            <th>Quantite Retourne</th>
+            <th>Qtes</th>
+            <th>Qtes Retourne</th>
+            <th>Réduction</th>
             <th>Date Vente</th>
             <th>Sous-total (GNF)</th>
             {% if request.user.type_utilisateur|lower != "gerante" %}
@@ -155,7 +156,7 @@
         {% for vente_data in data %}
             {% for ligne in vente_data.lignes %}
                 <tr>
-                    <td>{{ forloop.parentloop.counter }}-{{ forloop.counter }}</td>
+                    <td>{{ forloop.counter }}</td>
                     <td>{{ vente_data.vente.code }}</td>
                     <td>{{ ligne.produit.desgprod }}</td>
                     <td>{{ ligne.quantite }}</td>
@@ -168,6 +169,7 @@
                             0
                         {% endif %}
                     </td>
+                    <td> {{ ligne.montant_reduction }}</td>
                     <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
                     <td>{{ ligne.sous_total|floatformat:0 }}</td>
 
@@ -179,23 +181,29 @@
 
             <!-- TOTAL PAR VENTE -->
             <tr class="resume">
-                <td colspan="5" style="text-align: right;">
+                <td colspan="3" style="text-align: right;">
                     <strong>Total vente {{ vente_data.vente.code }}</strong>
-                </td>
+                </td> 
+                <td><strong>{{ vente_data.total_quantite_vente|floatformat:0 }}</strong></td>
+                <td><strong>{{ vente_data.total_quantite_retourner|floatformat:0 }}</strong></td>
+                <td><strong>{{ vente_data.montant_reduction|floatformat:0 }}</strong></td>
+                <td style="text-align: center;">-</td>
                 <td><strong>{{ vente_data.total_vente|floatformat:0 }}</strong></td>
 
                 {% if request.user.type_utilisateur|lower != "gerante" %}
                     <td><strong>{{ vente_data.benefice_vente|floatformat:0 }}</strong></td>
                 {% endif %}
+
             </tr>
         {% empty %}
             <tr>
-                <td colspan="7" class="empty">
-                    Aucune vente trouvée
+                <td colspan="8" class="empty" style="text-align: center;">
+                    Aucune vente trouvée pour ce rapport dans ces dates
                 </td>
             </tr>
         {% endfor %}
     </tbody>
+
 </table>
 
 <!-- ================= RÉSUMÉ GLOBAL ================= -->
@@ -205,6 +213,21 @@
         <tr>
             <td><strong>Total des ventes :</strong></td>
             <td><strong>{{ total_montant|floatformat:0 }} GNF</strong></td>
+        </tr>
+
+        <tr>
+            <td><strong>Total des Quantités Vendu :</strong></td>
+            <td><strong>{{ total_vendus|floatformat:0 }}</strong></td>
+        </tr>
+
+        <tr>
+            <td><strong>Total des Quantités Retournée :</strong></td>
+            <td><strong>{{ total_quantite_retourner|floatformat:0 }}</strong></td>
+        </tr>
+
+        <tr>
+            <td><strong>Total des Réduction :</strong></td>
+            <td><strong>{{ total_montant_reduction|floatformat:0 }} GNF</strong></td>
         </tr>
 
         <tr>

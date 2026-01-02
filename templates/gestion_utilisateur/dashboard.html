@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block contents %}
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- ===========================
@@ -343,6 +344,32 @@
     </div>
     {% endif %}
 </div>
+ 
+<div class="row">
+    <!-- Comparaison Mois -->
+    <div class="col-md-6 col-xs-12 mb-3">
+        <div class="box box-info">
+            <div class="box-header with-border">
+                <h3 class="box-title">📊 Comparaison Hier vs Aujourd’hui </h3>
+            </div>
+            <div class="box-body">
+                <canvas id="chartComparaisonJour"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Courbe journalière -->
+    <div class="col-md-6 col-xs-12 mb-3">
+        <div class="box box-info">
+            <div class="box-header with-border">
+                <h3 class="box-title">📈 Comparaison entre Les Semaines</h3>
+            </div>
+            <div class="box-body">
+                <canvas id="chartComparaisonSemaine"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="row">
     <!-- Comparaison Mois -->
@@ -376,14 +403,42 @@
      SCRIPTS CHARTS
      ===================== -->
 <script>
-if ({{ labels_produits|length }} > 0) {
+/* =====================
+   VARIABLES SÉCURISÉES
+   ===================== */
+const labelsProduits = {{ labels_produits|default:"[]"|safe }};
+const quantitesProduits = {{ quantites_produits|default:"[]"|safe }};
+
+const labelsRentables = {{ labels_rentables|default:"[]"|safe }};
+const benefices = {{ benefices|default:"[]"|safe }};
+
+const labelsJour = {{ labels_jour_comparaison|default:"[]"|safe }};
+const dataJourHier = {{ data_jour_hier|default:"[]"|safe }};
+const dataJourAuj = {{ data_jour_aujourdhui|default:"[]"|safe }};
+
+const labelsSemaine = {{ labels_semaine|default:"[]"|safe }};
+const dataSemainePrec = {{ data_semaine_precedente|default:"[]"|safe }};
+const dataSemaineAct = {{ data_semaine_actuelle|default:"[]"|safe }};
+
+const labelsMois = {{ labels_mois|default:"[]"|safe }};
+const dataMoisPrec = {{ data_mois_precedent|default:"[]"|safe }};
+const dataMoisAct = {{ data_mois_actuel|default:"[]"|safe }};
+
+const labelsJours = {{ labels_jours|default:"[]"|safe }};
+const ventesJournalieres = {{ ventes_journalieres|default:"[]"|safe }};
+
+
+/* =============================
+   TOP 5 DES PRODUITS VENDUS
+   ============================= */
+if (labelsProduits.length > 0) {
     new Chart(document.getElementById('chartTopProduits'), {
         type: 'bar',
         data: {
-            labels: {{ labels_produits|safe }},
+            labels: labelsProduits,
             datasets: [{
                 label: 'Quantité vendue',
-                data: {{ quantites_produits|safe }},
+                data: quantitesProduits,
                 backgroundColor: 'rgba(54,162,235,0.7)'
             }]
         },
@@ -391,15 +446,19 @@ if ({{ labels_produits|length }} > 0) {
     });
 }
 
+
+/* ================================
+   TOP RENTABILITÉ DES VENTES
+   ================================ */
 {% if request.user.type_utilisateur != 'Gerante' %}
-if ({{ labels_rentables|length }} > 0) {
+if (labelsRentables.length > 0) {
     new Chart(document.getElementById('chartRentabilite'), {
         type: 'bar',
         data: {
-            labels: {{ labels_rentables|safe }},
+            labels: labelsRentables,
             datasets: [{
-                label: 'Bénéfice Réaliser (GNF)',
-                data: {{ benefices|safe }},
+                label: 'Bénéfice (GNF)',
+                data: benefices,
                 backgroundColor: 'rgba(40,167,69,0.7)'
             }]
         },
@@ -408,44 +467,112 @@ if ({{ labels_rentables|length }} > 0) {
 }
 {% endif %}
 
-if ({{ labels_mois|length }} > 0) {
-    new Chart(document.getElementById('chartComparaisonMois'), {
+
+/* =================================================
+   COMPARAISON DES VENTES ENTRE HIER ET AUJOURD'HUI
+   ================================================= */
+if (labelsJour.length > 0) {
+    new Chart(document.getElementById('chartComparaisonJour'), {
         type: 'bar',
         data: {
-            labels: {{ labels_mois|safe }},
+            labels: labelsJour,
             datasets: [
                 {
-                    label: 'Mois Précédent',
-                    data: {{ data_mois_precedent|safe }},
-                    backgroundColor: 'rgba(255,99,132,0.6)'
+                    label: 'Hier',
+                    data: dataJourHier,
+                    backgroundColor: 'rgba(255,159,64,0.7)'
                 },
                 {
-                    label: 'Mois Actuel',
-                    data: {{ data_mois_actuel|safe }},
-                    backgroundColor: 'rgba(54,162,235,0.6)'
+                    label: 'Aujourd’hui',
+                    data: dataJourAuj,
+                    backgroundColor: 'rgba(75,192,192,0.7)'
                 }
             ]
         },
-        options: { responsive: true }
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+        }
     });
 }
 
-if ({{ labels_jours|length }} > 0) {
+
+/* =============================================================
+   COMPARAISON DES VENTES ENTRE LA SEMAINE DERNIERE ET ACTUELLE
+   ============================================================= */
+if (labelsSemaine.length > 0) {
+    new Chart(document.getElementById('chartComparaisonSemaine'), {
+        type: 'bar',
+        data: {
+            labels: labelsSemaine,
+            datasets: [
+                {
+                    label: 'Semaine Précédente',
+                    data: dataSemainePrec,
+                    backgroundColor: 'rgba(153,102,255,0.7)'
+                },
+                {
+                    label: 'Semaine Actuelle',
+                    data: dataSemaineAct,
+                    backgroundColor: 'rgba(54,162,235,0.7)'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+
+/* =======================================
+   COMPARAISON DES VENTES ENTRE LES MOIS
+   ======================================= */
+if (labelsMois.length > 0) {
+    new Chart(document.getElementById('chartComparaisonMois'), {
+        type: 'bar',
+        data: {
+            labels: labelsMois,
+            datasets: [
+                {
+                    label: 'Ventes (GNF)',
+                    data: [dataMoisPrec[0], dataMoisAct[0]],
+                    backgroundColor: [
+                        'rgba(255,99,132,0.7)',
+                        'rgba(54,162,235,0.7)'
+                    ]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+
+/* =====================
+   COURBE JOURNALIÈRE
+   ===================== */
+if (labelsJours.length > 0) {
     new Chart(document.getElementById('chartCourbeJour'), {
         type: 'line',
         data: {
-            labels: {{ labels_jours|safe }},
+            labels: labelsJours,
             datasets: [{
                 label: 'Ventes journalières',
-                data: {{ ventes_journalieres|safe }},
-                fill: false,
+                data: ventesJournalieres,
                 borderColor: 'rgba(75,192,192,1)',
-                tension: 0.2
+                tension: 0.3,
+                fill: false
             }]
         },
         options: { responsive: true }
     });
 }
 </script>
+
 
 {% endblock %}
