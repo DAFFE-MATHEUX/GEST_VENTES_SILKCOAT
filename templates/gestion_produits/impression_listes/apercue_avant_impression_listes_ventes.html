@@ -107,6 +107,7 @@
                             {% if request.user.type_utilisateur != 'Gerante' %}
                             <td> {{ ligne.produit.prix_en_gros }} GNF</td>
                             {% endif %}
+
                             <td>{{ ligne.prix }}</td>
                             <td>{{ ligne.montant_reduction }}</td>
                             <td>{{ ligne.sous_total }}</td>
@@ -132,7 +133,7 @@
                         <td>{{ vente_data.benefice_vente }}</td>
                         {% endif %}
 
-                        <td colspan="2" style="text-align:center;">-</td>
+                        <td style="text-align:center;">-</td>
                     </tr>
                 {% endfor %}
                 <!-- Quantitée Totale Vendu -->

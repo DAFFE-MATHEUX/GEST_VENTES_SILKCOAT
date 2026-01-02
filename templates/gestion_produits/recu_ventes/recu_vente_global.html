@@ -240,7 +240,7 @@
                 {% if has_retour %}
                 <td class="text-center">
                     {% for ret in l.retours.all %}
-                        {{ ret.quantite_retour }}
+                        {{ ret.quantite_retour }} {% if not forloop.last %} , {% endif %}
                     {% empty %}-{% endfor %}
                 </td>
                 {% endif %}

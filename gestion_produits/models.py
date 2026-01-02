@@ -39,7 +39,6 @@ class Produits(models.Model):
 #==================================================================================
 # Table Stock des Produits
 #==================================================================================
-
 class StockProduit(models.Model):
     produit = models.OneToOneField(
         Produits,
@@ -98,7 +97,6 @@ class VenteProduit(models.Model):
 #==================================================================================
 # Table Ligne des Ventes
 #==================================================================================
-
 class LigneVente(models.Model):
     vente = models.ForeignKey(
         'VenteProduit',

@@ -1,2 +1,3 @@
 Forbidden (CSRF token from POST incorrect.): /rapports/generer_rapport/
 Forbidden (CSRF token from POST incorrect.): /secure-admin-2025/login/
+Forbidden (CSRF token from POST incorrect.): /connexion/

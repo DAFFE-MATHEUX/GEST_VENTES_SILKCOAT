@@ -249,7 +249,6 @@ def vendre_produit(request):
                                 f"Stock restant : {stock.qtestock} unité(s)."
                             )
                         )
-
                         try:
                             EmailMessage(
                                 subject="⚠️ Alerte stock Critique",
@@ -273,7 +272,7 @@ def vendre_produit(request):
                 benefice_ligne = (
                 (ligne["pu"] - ligne["produit"].prix_en_gros - ligne["reduction"])
                 * ligne["quantite"]
-)
+                )
 
                 details_lignes.append(
                     f"- Produit : {ligne['produit'].desgprod}\n"
@@ -398,6 +397,15 @@ def enregistrer_retour(request, ligne_id):
             # 3️⃣ Calculs retour
             prix_net = ligne.prix - ligne.montant_reduction
             montant_retour = prix_net * quantite_retour
+            
+            # 🔹 Mise à jour stock
+            stock, created = StockProduit.objects.get_or_create(
+                produit = ligne.produit,
+                defaults = {"qtestock": quantite_retour}
+            )
+            if not created:
+                stock.qtestock += quantite_retour
+                stock.save(update_fields=["qtestock"])
 
             # 4️⃣ EMAIL RETOUR
             try:
