@@ -23,7 +23,7 @@ class Depenses(models.Model):
     utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
-        return f"{self.designation} ({self.date_operation})"
+        return f"Par {self.utilisateur.get_full_name()} {self.designation} ({self.date_operation})"
 
         
         

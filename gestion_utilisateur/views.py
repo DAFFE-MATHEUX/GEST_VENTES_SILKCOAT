@@ -1,13 +1,12 @@
 
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import login, logout, authenticate, get_user_model
+from django.contrib.auth import login, logout, authenticate
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.urls import reverse_lazy
 from .models import Utilisateur
-from rest_framework import viewsets
 from datetime import date
 from gest_entreprise.models import Depenses, Entreprise
 from gestion_audit.views import enregistrer_audit
@@ -20,7 +19,7 @@ from django.db.models import Sum, F
 from django.utils import timezone
 
 import calendar
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 
 # ===============================================
@@ -30,9 +29,8 @@ from datetime import date, datetime, timedelta
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def home(request):
     # ===============================
-    # PROFIL & UTILISATEUR
+    # UTILISATEUR
     # ===============================
-    profil = Entreprise.objects.first()
     utilisateur = request.user
 
     # ===============================
@@ -235,7 +233,7 @@ def home(request):
     # CONTEXTE
     # ===============================
     context = {
-        'profil': profil,
+        'profil': Entreprise.objects.first(),
         'mois_selectionne': mois,
         'annee_selectionnee': annee,
         'comparaison_mensuelle': [total_mois_precedent, total_mois_actuel],

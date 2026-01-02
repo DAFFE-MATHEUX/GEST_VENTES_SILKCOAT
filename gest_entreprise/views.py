@@ -443,17 +443,17 @@ def modifier_depense(request):
                     "✏️ Modification d’une dépense",
                     f"""Une dépense a été modifiée.
 
-Utilisateur : {request.user.username}
+                Utilisateur : {request.user.username}
 
-Anciennes valeurs :
-- Désignation : {ancienne_valeur['designation']}
-- Montant : {ancienne_valeur['montant']} GNF
+                Anciennes valeurs :
+                - Désignation : {ancienne_valeur['designation']}
+                - Montant : {ancienne_valeur['montant']} GNF
 
-Nouvelles valeurs :
-- Désignation : {designation}
-- Montant : {montant} GNF
-- Destinée à : {destine}
-""",
+                Nouvelles valeurs :
+                - Désignation : {designation}
+                - Montant : {montant} GNF
+                - Destinée à : {destine}
+                """,
                     settings.DEFAULT_FROM_EMAIL,
                     destinataires,
                     fail_silently=False,
@@ -483,7 +483,7 @@ def supprimer_depense(request):
             depense = get_object_or_404(Depenses, pk=id_depense)
 
             # ───────────────────────────────────────────
-            # 🔒 1. Empêcher suppression si l’utilisateur connecté n’est pas celui
+            # 🔒 Empêcher suppression si l’utilisateur connecté n’est pas celui
             #     qui a créé la dépense
             # ───────────────────────────────────────────
             if hasattr(depense, "utilisateur") and depense.utilisateur:
@@ -491,30 +491,7 @@ def supprimer_depense(request):
                     messages.warning(
                         request,
                         "❌ Vous ne pouvez pas supprimer cette dépense : "
-                        "elle a été enregistrée par un autre utilisateur."
-                    )
-                    return redirect("liste_depense")
-
-            # ───────────────────────────────────────────
-            # 🔒 2. Empêcher suppression si l’utilisateur créateur a été supprimé
-            #     (si tu veux garder des historiques intacts)
-            # ───────────────────────────────────────────
-            if hasattr(depense, "utilisateur") and depense.utilisateur is None:
-                messages.warning(
-                    request,
-                    "❌ Impossible de supprimer cette dépense car le créateur n'existe plus dans le système."
-                )
-                return redirect("liste_depense")
-
-            # ───────────────────────────────────────────
-            # 🔒 3. Empêcher suppression si la dépense appartient à un administrateur protégé
-            #     Exemple : Super Admin (optionnel)
-            # ───────────────────────────────────────────
-            if hasattr(depense, "utilisateur") and depense.utilisateur:
-                if getattr(depense.utilisateur, "type_utilisateur", "") == "Admin":
-                    messages.warning(
-                        request,
-                        "❌ Cette dépense appartient à un utilisateur protégé. Suppression interdite."
+                        f"elle a été enregistrée par un autre utilisateur mais par {depense.utilisateur.get_full_name()}"
                     )
                     return redirect("liste_depense")
 
@@ -557,7 +534,6 @@ def supprimer_depense(request):
 # =================================================================================================
 @login_required
 def modal_exportation_excel(request):
-    
     return render(request, 'gest_entreprise/depenses/exportation/exportation_donnees_excel.html')
 
 

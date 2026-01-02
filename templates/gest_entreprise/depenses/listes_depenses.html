@@ -96,6 +96,7 @@
             <th>Montant</th>
             <th>Destiné à</th>
             <th>Utilisateur</th>
+            <th>Rôle Utilisateur</th>
             <th>Date</th>
             <th>Recu</th>
             <th>Actions</th>
@@ -108,8 +109,9 @@
             <td>{{ depense.designation }}</td>
             <td>{{ depense.montant }}</td>
             <td>{{ depense.destine_a }}</td>
+            <td>{{ depense.utilisateur.get_full_name }}</td>
             <td>{{ depense.utilisateur }}</td>
-            <td>{{ depense.date_operation|date:"Y-m-d" }}</td>
+            <td>{{ depense.date_operation|date:"d/m/Y" }}</td>
             <td>
               <a href="{% url 'recu_depense' depense.id %}" class="btn btn-primary">  <i class="fa fa-print"></i> </a>
              
