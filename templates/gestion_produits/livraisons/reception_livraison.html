@@ -20,24 +20,20 @@
           <th>Déjà livrée</th>
           <th>Restante</th>
           <th>Qté Livrée</th>
+          <th>Qté à Annuler</th>
         </tr>
       </thead>
 
       <tbody>
         {% for item in commandes %}
         <tr {% if item.qte_restante == 0 %}class="table-success"{% endif %}>
-
           <td>{{ forloop.counter }}</td>
           <td>{{ item.commande.numcmd }}</td>
           <td>{{ item.commande.datecmd }}</td>
           <td>{{ item.commande.produits.desgprod }}</td>
           <td>{{ item.commande.nom_complet_fournisseur }}</td>
           <td>{{ item.commande.qtecmd }}</td>
-
-          <td>
-            <span class="badge bg-info">{{ item.total_livree }}</span>
-          </td>
-
+          <td><span class="badge bg-info">{{ item.total_livree }}</span></td>
           <td>
             <span class="badge {% if item.qte_restante == 0 %}bg-success{% else %}bg-warning text-dark{% endif %}">
               {{ item.qte_restante }}
@@ -45,8 +41,8 @@
           </td>
 
           {% if item.qte_restante > 0 %}
+          <!-- 🔹 Saisie quantité livrée -->
           <td>
-            <!-- 🔒 INPUT TEXTE SÉCURISÉ -->
             <input type="text"
                    name="qte_livree[]"
                    class="form-control qte-livree only-numbers"
@@ -54,11 +50,21 @@
                    data-max="{{ item.qte_restante }}"
                    inputmode="numeric"
                    autocomplete="off">
-
             <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
           </td>
-          {% else %}
+
+          <!-- 🔹 Saisie quantité à annuler -->
           <td>
+            <input type="text"
+                   name="qte_annuler_{{ item.commande.id }}"
+                   class="form-control qte-annuler only-numbers"
+                   value="0"
+                   data-max="{{ item.qte_restante }}"
+                   inputmode="numeric"
+                   autocomplete="off">
+          </td>
+          {% else %}
+          <td colspan="2">
             <input type="hidden" name="qte_livree[]" value="0">
             <input type="hidden" name="commande_id[]" value="{{ item.commande.id }}">
             ✔ Livraison complète
@@ -68,7 +74,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="text-center text-muted">
+          <td colspan="10" class="text-center text-muted">
             Aucune commande à réceptionner
           </td>
         </tr>
@@ -95,20 +101,40 @@ document.addEventListener("input", function (e) {
   }
 });
 
-/* 🔄 Contrôle quantité livrée */
+/* 🔄 Contrôle des quantités livrées et annulées */
 function verifierReception() {
   let actif = false;
 
-  document.querySelectorAll(".qte-livree").forEach(input => {
-    let val = parseInt(input.value || "0", 10);
-    const max = parseInt(input.dataset.max, 10);
+  document.querySelectorAll("tr").forEach(row => {
+    const inputLivree = row.querySelector(".qte-livree");
+    const inputAnnuler = row.querySelector(".qte-annuler");
 
-    if (val > max) {
-      val = max;
-      input.value = max;
+    if (!inputLivree || !inputAnnuler) return;
+
+    const max = parseInt(inputLivree.dataset.max, 10);
+
+    let valLivree = parseInt(inputLivree.value || "0", 10);
+    let valAnnuler = parseInt(inputAnnuler.value || "0", 10);
+
+    // 🔹 Ne pas dépasser la quantité restante
+    if (valLivree > max) {
+      valLivree = max;
+      inputLivree.value = max;
+    }
+    if (valAnnuler > max) {
+      valAnnuler = max;
+      inputAnnuler.value = max;
     }
 
-    if (val > 0) {
+    // 🔹 Somme livrée + annulée ne doit pas dépasser le reste
+    if (valLivree + valAnnuler > max) {
+      const diff = max - valAnnuler;
+      valLivree = diff >= 0 ? diff : 0;
+      inputLivree.value = valLivree;
+    }
+
+    // 🔹 Activer bouton si une action > 0
+    if (valLivree > 0 || valAnnuler > 0) {
       actif = true;
     }
   });
@@ -116,7 +142,8 @@ function verifierReception() {
   document.getElementById("btn-enregistrer").disabled = !actif;
 }
 
-document.querySelectorAll(".qte-livree").forEach(input => {
+// 🔹 Attacher l’événement aux champs
+document.querySelectorAll(".qte-livree, .qte-annuler").forEach(input => {
   input.addEventListener("input", verifierReception);
 });
 

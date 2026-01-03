@@ -4,168 +4,296 @@
 <h2>GESTION DES VENTES</h2>
 <hr>
 
+<!-- ================= MESSAGES ================= -->
 {% if messages %}
-        <!-- MESSAGES -->
-        {% for mgs in messages %}
-        <div class="alert alert-{{ mgs.tags|default:'info' }}">{{ mgs }}</div>
-        {% endfor %}
+  {% for mgs in messages %}
+    <div class="alert alert-{{ mgs.tags|default:'info' }}">
+      {{ mgs }}
+    </div>
+  {% endfor %}
 {% endif %}
 
 <form method="post" id="form-vente">
-  {% csrf_token %}
+{% csrf_token %}
 
-  <!-- ================= CLIENT ================= -->
-  <div class="form-group mb-3">
-    <label>Nom complet du client</label>
-    <input type="text" class="form-control" name="nom_complet_client" required>
+<!-- ================= CLIENT ================= -->
+<div class="card mb-3">
+  <div class="card-header bg-light"><strong>Informations du client</strong></div>
+  <div class="card-body">
+    <div class="form-group mb-2">
+      <label>Nom complet</label>
+      <input type="text" class="form-control" id="client_nom"
+             name="nom_complet_client" required>
+    </div>
+
+    <div class="form-group mb-2">
+      <label>Téléphone</label>
+      <input type="text" class="form-control" id="client_tel"
+             name="telephone_client" required>
+    </div>
+
+    <div class="form-group mb-2">
+      <label>Adresse</label>
+      <input type="text" class="form-control" id="client_adresse"
+             name="adresse_client" required>
+    </div>
   </div>
+</div>
 
-  <div class="form-group mb-3">
-    <label>Téléphone du client</label>
-    <input type="text"
-           class="form-control"
-           name="telephone_client"
-           pattern="[0-9+ ]+"
-           maxlength="15"
-           required>
+<!-- ================= RECHERCHE ================= -->
+<input id="search" class="form-control mb-3"
+       placeholder="Rechercher produit ou catégorie">
+
+<!-- ================= TABLE PRODUITS ================= -->
+<table class="table table-bordered">
+  <thead class="thead-dark">
+    <tr>
+      <th>Produit</th>
+      <th>PU</th>
+      <th>Stock</th>
+      <th>Qté</th>
+      <th>Réduc. / prod</th>
+      <th>Sous-total</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for p in produits %}
+    <tr class="produit-row">
+
+      <td>
+        <strong>{{ p.desgprod }}</strong><br>
+        <small>{{ p.categorie.desgcategorie }}</small>
+        <input type="hidden" name="produit_id[]" value="{{ p.id }}">
+      </td>
+
+      <td class="pu" data-pu="{{ p.pu }}">{{ p.pu }}</td>
+      <td class="stock" data-stock="{{ p.stocks.qtestock|default:0 }}">
+        {{ p.stocks.qtestock|default:0 }}
+      </td>
+
+      <td>
+        <input type="text" name="quantite[]"
+               class="form-control qte only-numbers" value="0">
+      </td>
+
+      <td>
+        <input type="text" name="reduction[]"
+               class="form-control reduction only-numbers" value="0">
+      </td>
+
+      <td class="sous-total">0</td>
+
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ================= TOTAL ================= -->
+<div class="text-right mt-3">
+  <h4>Total brut : <span id="total-brut">0</span> GNF</h4>
+  <h4 class="text-danger">Réduction totale : <span id="total-reduction">0</span> GNF</h4>
+  <h3>Total net à payer : <strong id="total-net">0</strong> GNF</h3>
+  <h5>Total quantité : <span id="total-quantite">0</span></h5>
+</div>
+
+<!-- Bouton validation -->
+<button type="button"
+        id="btn-valider"
+        class="btn btn-success mt-3"
+        data-toggle="modal"
+        data-target="#modalConfirmation"
+        disabled>
+  Valider la vente
+</button>
+
+<!-- ================= MODAL ================= -->
+<div class="modal fade" id="modalConfirmation">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <!-- HEADER -->
+      <div class="modal-header bg-success text-white">
+        <h4>Récapitulatif de la vente</h4>
+      </div>
+
+      <!-- BODY -->
+      <div class="modal-body">
+
+        <!-- CLIENT -->
+        <div class="card mb-3">
+          <div class="card-header"><strong>Informations du client</strong></div>
+          <div class="card-body">
+            <p><strong>Nom :</strong> <span id="recap-client-nom"></span></p>
+            <p><strong>Téléphone :</strong> <span id="recap-client-tel"></span></p>
+            <p><strong>Adresse :</strong> <span id="recap-client-adresse"></span></p>
+          </div>
+        </div>
+
+        <!-- PRODUITS -->
+        <table class="table table-bordered">
+          <thead class="thead-dark">
+            <tr>
+              <th>Produit</th>
+              <th>Qté</th>
+              <th>Sous-total</th>
+              <th>Réduction appliquée</th>
+            </tr>
+          </thead>
+          <tbody id="recap-body"></tbody>
+        </table>
+
+        <!-- TOTAL MODAL -->
+        <h5 class="text-right">
+          Total brut : <span id="modal-total-brut">0</span> GNF<br>
+          Réduction totale : <span id="modal-total-reduction">0</span> GNF<br>
+          Total quantité : <span id="modal-total-quantite">0</span><br>
+          <strong>Total net : <span id="modal-total-net">0</span> GNF</strong>
+        </h5>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div class="modal-footer">
+        <button class="btn btn-default" data-dismiss="modal">Modifier les ventes</button>
+        <button type="submit" class="btn btn-success">Confirmer la vente</button>
+      </div>
+
+    </div>
   </div>
+</div>
 
-  <div class="form-group mb-3">
-    <label>Adresse du client</label>
-    <input type="text" class="form-control" name="adresse_client" required>
-  </div>
-
-  <!-- ================= RECHERCHE ================= -->
-  <div class="mb-3">
-    <input id="search" class="form-control" placeholder="Rechercher produit (nom ou catégorie)">
-  </div>
-
-  <!-- ================= TABLE PRODUITS ================= -->
-  <table class="table table-bordered" id="table-produits">
-    <thead class="table-dark">
-      <tr>
-        <th>Produit</th>
-        <th>PU</th>
-        <th>Stock</th>
-        <th>Quantité</th>
-        <th>Réduction</th>
-        <th>Sous-total</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% for p in produits %}
-      <tr class="produit-row">
-
-        <td>
-          <strong>{{ p.desgprod }}</strong><br>
-          <small>{{ p.categorie.desgcategorie }}</small>
-          <input type="hidden" name="produit_id[]" value="{{ p.id }}">
-        </td>
-
-        <td class="pu" data-pu="{{ p.pu }}">{{ p.pu }}</td>
-        <td class="stock" data-stock="{{ p.stocks.qtestock|default:0 }}">{{ p.stocks.qtestock|default:0 }}</td>
-
-        <!-- 🔒 QUANTITÉ -->
-        <td>
-          <input type="text"
-                 name="quantite[]"
-                 class="form-control qte only-numbers"
-                 value="0"
-                 inputmode="numeric"
-                 autocomplete="off">
-        </td>
-
-        <!-- 🔒 RÉDUCTION -->
-        <td>
-          <input type="text"
-                 name="reduction[]"
-                 class="form-control reduction only-numbers"
-                 value="0"
-                 inputmode="numeric"
-                 autocomplete="off">
-        </td>
-
-        <td class="sous-total">0</td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" class="text-center">Aucun produit disponible.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <!-- ================= TOTAL ================= -->
-  <div class="text-end mt-3">
-    <h4>Total Global : <span id="total-general">0</span> GNF</h4>
-  </div>
-
-  <button class="btn btn-success mt-3" id="btn-valider" disabled>
-    Valider la vente
-  </button>
 </form>
 
-<!-- ================= SCRIPTS ================= -->
-
+<!-- ================= JAVASCRIPT ================= -->
 <script>
-/* 🔒 Bloquer lettres & caractères spéciaux */
-document.addEventListener("input", function (e) {
+/* =====================================================
+   Autoriser uniquement les chiffres
+===================================================== */
+document.addEventListener("input", e => {
   if (e.target.classList.contains("only-numbers")) {
     e.target.value = e.target.value.replace(/[^0-9]/g, '');
   }
 });
 
-/* 🔄 Recalcul */
+/* =====================================================
+   Calcul automatique des totaux
+   - Limite quantité au stock
+   - Limite réduction au PU
+   - Sous-total = (PU - réduction) * quantité
+   - Total net = somme des sous-totaux
+===================================================== */
 function recalc() {
-  let total = 0;
+  let totalBrut = 0;
+  let totalReduction = 0;
+  let totalQuantite = 0;
+  let totalNet = 0;
 
   document.querySelectorAll(".produit-row").forEach(row => {
-    const qteInput = row.querySelector(".qte");
-    const reductionInput = row.querySelector(".reduction");
+    let qte = +row.querySelector(".qte").value || 0;
+    let reduc = +row.querySelector(".reduction").value || 0;
+    const pu = +row.querySelector(".pu").dataset.pu;
+    const stock = +row.querySelector(".stock").dataset.stock;
 
-    let qte = parseInt(qteInput.value || "0", 10);
-    let reduction = parseInt(reductionInput.value || "0", 10);
-
-    if (isNaN(qte)) qte = 0;
-    if (isNaN(reduction)) reduction = 0;
-
-    const pu = parseInt(row.querySelector(".pu").dataset.pu, 10);
-    const stock = parseInt(row.querySelector(".stock").dataset.stock, 10);
-
-    // 🔒 Sécurité stock
+    // Limite la quantité au stock
     if (qte > stock) {
       qte = stock;
-      qteInput.value = stock;
+      row.querySelector(".qte").value = stock;
+      alert("La quantité saisie ne peut pas dépasser le stock disponible !");
     }
 
-    // 🔒 Sécurité réduction
-    if (reduction > pu) {
-      reduction = pu;
-      reductionInput.value = pu;
-    }
+    // Limite réduction au prix unitaire
+    if (reduc > pu) reduc = pu;
 
-    const sousTotal = qte * (pu - reduction);
-    row.querySelector(".sous-total").textContent = sousTotal.toLocaleString();
-    total += sousTotal;
+    // Sous-total par produit
+    const st = qte * (pu - reduc);
+    row.querySelector(".sous-total").textContent = st.toLocaleString();
+
+    // Totaux
+    totalBrut += qte * pu;
+    totalReduction += reduc; // somme des réductions
+    totalQuantite += qte;
+    totalNet += st; // total net = somme des sous-totaux
   });
 
-  document.getElementById("total-general").textContent = total.toLocaleString();
-  document.getElementById("btn-valider").disabled = total <= 0;
+  // Affichage
+  document.getElementById("total-brut").textContent = totalBrut.toLocaleString();
+  document.getElementById("total-reduction").textContent = totalReduction.toLocaleString();
+  document.getElementById("total-net").textContent = totalNet.toLocaleString();
+  document.getElementById("total-quantite").textContent = totalQuantite;
+
+  // Activation bouton validation
+  document.getElementById("btn-valider").disabled = totalNet <= 0;
 }
 
-document.querySelectorAll(".qte, .reduction").forEach(i => {
-  i.addEventListener("input", recalc);
-});
+/* =====================================================
+   Écouteurs sur quantités et réductions
+===================================================== */
+document.querySelectorAll(".qte,.reduction")
+  .forEach(el => el.addEventListener("input", recalc));
 
-/* 🔍 Recherche produit */
-document.getElementById("search").addEventListener("input", function () {
-  const q = this.value.toLowerCase();
+/* =====================================================
+   Recherche dynamique
+===================================================== */
+document.getElementById("search").addEventListener("input", () => {
+  const q = document.getElementById("search").value.toLowerCase();
   document.querySelectorAll(".produit-row").forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
   });
 });
 
+/* =====================================================
+   Remplissage du modal
+   - Affiche correctement les produits sélectionnés
+   - Total net = somme des sous-totaux
+===================================================== */
+document.getElementById("btn-valider").addEventListener("click", () => {
+
+  // Client
+  document.getElementById("recap-client-nom").textContent = client_nom.value;
+  document.getElementById("recap-client-tel").textContent = client_tel.value;
+  document.getElementById("recap-client-adresse").textContent = client_adresse.value;
+
+  const body = document.getElementById("recap-body");
+  body.innerHTML = "";
+
+  let totalBrut = 0;
+  let totalReduction = 0;
+  let totalQuantite = 0;
+  let totalNet = 0;
+
+  document.querySelectorAll(".produit-row").forEach(row => {
+    const qte = +row.querySelector(".qte").value || 0;
+    if (!qte) return;
+
+    const produit = row.querySelector("strong").textContent;
+    const pu = +row.querySelector(".pu").dataset.pu;
+    const reduc = +row.querySelector(".reduction").value || 0;
+    const st = qte * (pu - reduc);
+
+    // Ligne produit dans modal
+    body.innerHTML += `
+      <tr>
+        <td>${produit}</td>
+        <td>${qte}</td>
+        <td>${st.toLocaleString()} GNF</td>
+        <td>${reduc.toLocaleString()} GNF</td>
+      </tr>`;
+
+    totalBrut += qte * pu;
+    totalReduction += reduc;
+    totalQuantite += qte;
+    totalNet += st;
+  });
+
+  // Affichage totals dans modal
+  document.getElementById("modal-total-brut").textContent = totalBrut.toLocaleString();
+  document.getElementById("modal-total-reduction").textContent = totalReduction.toLocaleString();
+  document.getElementById("modal-total-net").textContent = totalNet.toLocaleString();
+  document.getElementById("modal-total-quantite").textContent = totalQuantite;
+});
+
+// Initialisation
 recalc();
 </script>
 

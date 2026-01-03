@@ -710,8 +710,8 @@ Détails :
 def reception_livraison(request):
     """
     Réception des commandes NON encore totalement livrées
+    Avec possibilité d'annuler une partie de la commande
     """
-
     commandes_data = []
 
     # 🔹 Récupérer uniquement les commandes non totalement livrées
@@ -723,10 +723,8 @@ def reception_livraison(request):
             .filter(commande=cmd)
             .aggregate(total=Sum("qtelivrer"))["total"] or 0
         )
-
         qte_restante = cmd.qtecmd - total_livree
 
-        # 🔹 Sécurité supplémentaire (ne garder que celles restantes > 0)
         if qte_restante > 0:
             commandes_data.append({
                 "commande": cmd,
@@ -750,48 +748,65 @@ def reception_livraison(request):
             try:
                 cmd = Commandes.objects.get(id=cmd_id)
                 qte_livree = int(qte_livree_list[i])
+                # 🔹 Récupérer la quantité à annuler depuis POST
+                qte_annuler = int(request.POST.get(f"qte_annuler_{cmd.id}", 0))
             except (Commandes.DoesNotExist, ValueError):
                 continue
 
+            # 🔹 Calcul de la quantité restante
             total_livree = (
                 LivraisonsProduits.objects
                 .filter(commande=cmd)
                 .aggregate(total=Sum("qtelivrer"))["total"] or 0
             )
-
             qte_restante = cmd.qtecmd - total_livree
 
-            if qte_livree <= 0 or qte_livree > qte_restante:
-                continue
+            # 🔹 Sécurité : ne pas dépasser le restant
+            if qte_livree < 0 or qte_livree > qte_restante:
+                qte_livree = min(max(qte_livree, 0), qte_restante)
+            if qte_annuler < 0 or qte_annuler > qte_restante:
+                qte_annuler = min(max(qte_annuler, 0), qte_restante)
+
+            if qte_livree == 0 and qte_annuler == 0:
+                continue  # rien à faire pour cette commande
 
             # 🔹 Enregistrement livraison
-            LivraisonsProduits.objects.create(
-                numlivrer=numlivrer,
-                commande=cmd,
-                produits=cmd.produits,
-                qtelivrer=qte_livree,
-                datelivrer=timezone.now().date(),
-                statuts="Livrée"
-            )
+            if qte_livree > 0:
+                LivraisonsProduits.objects.create(
+                    numlivrer=numlivrer,
+                    commande=cmd,
+                    produits=cmd.produits,
+                    qtelivrer=qte_livree,
+                    datelivrer=timezone.now().date(),
+                    statuts="Livrée"
+                )
 
-            # 🔹 Mise à jour stock
-            stock, created = StockProduit.objects.get_or_create(
-                produit=cmd.produits,
-                defaults={"qtestock": qte_livree}
-            )
-            if not created:
-                stock.qtestock += qte_livree
-                stock.save(update_fields=["qtestock"])
+                # 🔹 Mise à jour stock
+                stock, created = StockProduit.objects.get_or_create(
+                    produit=cmd.produits,
+                    defaults={"qtestock": qte_livree}
+                )
+                if not created:
+                    stock.qtestock += qte_livree
+                    stock.save(update_fields=["qtestock"])
 
-            # 🔹 Mise à jour statut commande
+            # 🔹 Mise à jour commande : retirer quantité annulée
+            cmd.qtecmd -= qte_annuler
             total_livree += qte_livree
-            cmd.statuts = "Livrée" if total_livree == cmd.qtecmd else "Partiellement livrée"
-            cmd.save(update_fields=["statuts"])
+            if total_livree >= cmd.qtecmd:
+                cmd.statuts = "Livrée"
+            elif total_livree > 0:
+                cmd.statuts = "Partiellement livrée"
+            else:
+                cmd.statuts = "Non Livrée"
+            cmd.save(update_fields=["qtecmd", "statuts"])
 
+            # 🔹 Historique pour notification
             livraisons_effectuees.append({
                 "commande": cmd.numcmd,
                 "produit": cmd.produits.desgprod,
                 "qte_livree": qte_livree,
+                "qte_annuler": qte_annuler,
                 "fournisseur": cmd.nom_complet_fournisseur
             })
 
@@ -802,7 +817,8 @@ def reception_livraison(request):
                 contenu += (
                     f"- Commande : {l['commande']} | "
                     f"Produit : {l['produit']} | "
-                    f"Quantité : {l['qte_livree']} | "
+                    f"Livrée : {l['qte_livree']} | "
+                    f"Annulée : {l['qte_annuler']} | "
                     f"Fournisseur : {l['fournisseur']}\n"
                 )
 
