@@ -6,9 +6,7 @@
 
 {% if messages %}
   {% for m in messages %}
-    <div class="alert alert-{{ m.tags }}">
-      {{ m }}
-    </div>
+    <div class="alert alert-{{ m.tags }}">{{ m }}</div>
   {% endfor %}
 {% endif %}
 
@@ -18,31 +16,20 @@
   <!-- ================= FOURNISSEUR ================= -->
   <div class="form-group mb-3">
     <label>Nom complet du Fournisseur</label>
-    <input type="text"
-           class="form-control"
-           id="nom_fournisseur"
-           name="nom_complet_fournisseur"
-           required>
+    <input type="text" class="form-control" id="nom_fournisseur"
+           name="nom_complet_fournisseur" required>
   </div>
 
   <div class="form-group mb-3">
     <label>Téléphone</label>
-    <input type="text"
-           class="form-control"
-           id="tel_fournisseur"
-           name="telephone_fournisseur"
-           pattern="[0-9+ ]+"
-           maxlength="15"
-           required>
+    <input type="text" class="form-control" id="tel_fournisseur"
+           name="telephone_fournisseur" required>
   </div>
 
   <div class="form-group mb-3">
     <label>Adresse</label>
-    <input type="text"
-           class="form-control"
-           id="adresse_fournisseur"
-           name="adresse_fournisseur"
-           required>
+    <input type="text" class="form-control" id="adresse_fournisseur"
+           name="adresse_fournisseur" required>
   </div>
 
   <!-- ================= RECHERCHE ================= -->
@@ -53,10 +40,12 @@
 
   <!-- ================= TABLE PRODUITS ================= -->
   <table class="table table-bordered">
-    <thead class="thead-dark">
+    <thead class="table-dark">
       <tr>
+        <th>#</th>
         <th>Catégorie</th>
         <th>Produit</th>
+        <th>Stock</th>
         <th>Quantité à commander</th>
       </tr>
     </thead>
@@ -64,29 +53,41 @@
     <tbody>
       {% for p in produits_data %}
       <tr class="produit-row">
+        <td>{{ forloop.counter }}</td>
         <td>{{ p.produit.categorie.desgcategorie }}</td>
         <td>{{ p.produit.desgprod }}</td>
+        <td>{{ p.produit.stocks.qtestock }}</td>
         <td>
           <input type="text"
-                 name="quantite[]"
                  class="form-control qte only-numbers"
-                 value="0">
+                 name="quantite[]" value="0">
           <input type="hidden"
                  name="produit_id[]"
                  value="{{ p.produit.id }}">
         </td>
       </tr>
-      {% empty %}
-      <tr>
-        <td colspan="3" class="text-center">
-          Aucun produit disponible
-        </td>
-      </tr>
       {% endfor %}
     </tbody>
+
+    <tfoot>
+      <tr class="table-light">
+        <td colspan="3" class="text-end fw-bold">
+          TOTAL COMMANDE
+        </td>
+        <td>{{ stock_total }}</td>
+        <td>
+          <input type="text"
+                 class="form-control total_commande"
+                 name="total_commande"
+                 value="0"
+                 readonly>
+        </td>
+        
+      </tr>
+    </tfoot>
   </table>
 
-  <!-- ================= BOUTON MODAL ================= -->
+  <!-- ================= BOUTON ================= -->
   <button type="button"
           class="btn btn-success mt-3"
           id="btn-valider"
@@ -96,9 +97,7 @@
     Valider la commande
   </button>
 
-  <!-- ==================================================
-       MODAL CONFIRMATION COMMANDE
-  ================================================== -->
+  <!-- ================= MODAL ================= -->
   <div class="modal fade" id="modalCommande">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -109,22 +108,21 @@
 
         <div class="modal-body">
 
-          <!-- ===== INFOS FOURNISSEUR ===== -->
+          <!-- FOURNISSEUR -->
           <div class="card mb-3">
-            <div class="card-header bg-light">
-              <strong>Informations du fournisseur</strong>
-            </div>
+            <div class="card-header"><strong>Fournisseur</strong></div>
             <div class="card-body">
-              <p><strong>Nom :</strong> <span id="recap-nom"></span></p>
-              <p><strong>Téléphone :</strong> <span id="recap-tel"></span></p>
-              <p><strong>Adresse :</strong> <span id="recap-adresse"></span></p>
+              <p><b>Nom :</b> <span id="recap-nom"></span></p>
+              <p><b>Téléphone :</b> <span id="recap-tel"></span></p>
+              <p><b>Adresse :</b> <span id="recap-adresse"></span></p>
             </div>
           </div>
 
-          <!-- ===== PRODUITS ===== -->
+          <!-- PRODUITS -->
           <table class="table table-bordered">
-            <thead class="thead-dark">
+            <thead class="table-dark">
               <tr>
+                <th>#</th>
                 <th>Catégorie</th>
                 <th>Produit</th>
                 <th>Quantité</th>
@@ -133,7 +131,7 @@
             <tbody id="recap-body"></tbody>
           </table>
 
-          <h5 class="text-right">
+          <h5 class="text-end">
             Total Quantité :
             <strong><span id="total-qte">0</span></strong>
           </h5>
@@ -141,7 +139,7 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn btn-default" data-dismiss="modal">
+          <button class="btn btn-secondary" data-dismiss="modal">
             Modifier
           </button>
           <button type="submit" class="btn btn-success">
@@ -152,25 +150,29 @@
       </div>
     </div>
   </div>
-
 </form>
 
 <!-- ================= JAVASCRIPT ================= -->
 <script>
-/* Chiffres uniquement */
-document.addEventListener("input", function (e) {
+/* Autoriser uniquement les chiffres */
+document.addEventListener("input", e => {
   if (e.target.classList.contains("only-numbers")) {
     e.target.value = e.target.value.replace(/[^0-9]/g, '');
   }
 });
 
-/* Activer bouton */
-function verifierCommande() {
-  let actif = false;
+/* Calcul total commande */
+function calculerTotal() {
+  let total = 0;
+
   document.querySelectorAll(".qte").forEach(input => {
-    if (parseInt(input.value || 0) > 0) actif = true;
+    total += parseInt(input.value || 0);
   });
-  document.getElementById("btn-valider").disabled = !actif;
+
+  document.querySelector(".total_commande").value = total;
+  document.getElementById("total-qte").textContent = total;
+
+  document.getElementById("btn-valider").disabled = total === 0;
 }
 
 /* Recherche */
@@ -184,47 +186,36 @@ document.getElementById("search").addEventListener("input", function () {
 /* Remplir modal */
 document.getElementById("btn-valider").addEventListener("click", function () {
 
-  /* Fournisseur */
   document.getElementById("recap-nom").textContent =
     document.getElementById("nom_fournisseur").value;
-
   document.getElementById("recap-tel").textContent =
     document.getElementById("tel_fournisseur").value;
-
   document.getElementById("recap-adresse").textContent =
     document.getElementById("adresse_fournisseur").value;
 
-  /* Produits */
   const recap = document.getElementById("recap-body");
   recap.innerHTML = "";
-  let totalQte = 0;
+  let i = 1;
 
   document.querySelectorAll(".produit-row").forEach(row => {
     const qte = parseInt(row.querySelector(".qte").value || 0);
-    if (qte <= 0) return;
-
-    const categorie = row.children[0].textContent;
-    const produit = row.children[1].textContent;
-
-    totalQte += qte;
-
-    recap.innerHTML += `
-      <tr>
-        <td>${categorie}</td>
-        <td>${produit}</td>
-        <td>${qte}</td>
-      </tr>
-    `;
+    if (qte > 0) {
+      recap.innerHTML += `
+        <tr>
+          <td>${i++}</td>
+          <td>${row.children[1].textContent}</td>
+          <td>${row.children[2].textContent}</td>
+          <td>${qte}</td>
+        </tr>`;
+    }
   });
-
-  document.getElementById("total-qte").textContent = totalQte;
 });
 
-/* écouteurs */
+/* Écouteurs */
 document.querySelectorAll(".qte")
-  .forEach(input => input.addEventListener("input", verifierCommande));
+  .forEach(input => input.addEventListener("input", calculerTotal));
 
-verifierCommande();
+calculerTotal();
 </script>
 
 {% endblock %}

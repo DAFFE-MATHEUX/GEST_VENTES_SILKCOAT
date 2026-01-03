@@ -26,7 +26,7 @@
 
         <div class="row">
             <div class="col-md-12">
-                <h2>GESTION DE TOUTES LES COMMANDES</h2>
+                <h2>GESTION DES COMMANDES</h2>
             </div>
         </div>
         <br>
@@ -70,13 +70,22 @@
         </form>
 
         {% if listes_commandes %}
-            <!-- TOTAL -->
-            <div class="mb-3">
-                <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
-            </div>
 
             <!-- TABLE COMMANDES -->
             <div class="table-responsive">
+                            <!-- TOTAL ET RECHERCHE-->
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
+                </div>
+            <div class="col-md-6 text-left"> 
+             <input type="text" class="form-control"
+               placeholder="Rechercher une commande..."
+               id="rechercher_informations"
+               style="max-width:300px; float:right;">
+            </div>
+        </div>
                 <table class="table table-bordered table-striped table-hover">
                     <thead>
                         <tr>
@@ -93,7 +102,7 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="my_table">
                         {% for elem in listes_commandes %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
@@ -250,13 +259,24 @@
 
 
         {% elif listes_commandes_filtre %}
-                    <!-- TOTAL -->
-            <div class="mb-3">
-                <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
-            </div>
 
             <!-- TABLE COMMANDES -->
             <div class="table-responsive">
+
+                            <!-- TOTAL ET RECHERCHE-->
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Total commandes : <strong>{{ total_commande }}</strong></h4>
+                </div>
+            <div class="col-md-6 text-left"> 
+             <input type="text" class="form-control"
+               placeholder="Rechercher une vente..."
+               id="rechercher_informations"
+               style="max-width:300px; float:right;">
+            </div>
+        </div>
+
                 <table class="table table-bordered table-striped table-hover">
                     <thead>
                         <tr>
@@ -273,7 +293,7 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="my_table">
                         {% for elem in listes_commandes_filtre %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
@@ -422,6 +442,14 @@
         btn.addEventListener('click', function() {
             document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
         });
+    });
+
+            document.getElementById("rechercher_informations").addEventListener("keyup", function () {
+            let value = this.value.toLowerCase();
+            document.querySelectorAll("#my_table tr").forEach(row=>{
+                row.style.display = row.textContent.toLowerCase().includes(value) ? "" : "none";
+            });
+    
     });
 
                 // Faire disparaître les messages après 4 secondes

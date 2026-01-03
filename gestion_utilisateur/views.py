@@ -17,7 +17,7 @@ from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmVie
 from gestion_produits.models import *
 from django.db.models import Sum, F
 from django.utils import timezone
-
+from django.conf import settings
 import calendar
 from datetime import date, timedelta
 
@@ -304,8 +304,8 @@ def inscriptionutilisateur(request):
             messages.error(request, "Les mots de passe ne sont pas identiques !")
             return redirect('gestionUtilisateur:inscription_utilisateur')
 
-        if len(password1) < 6:
-            messages.error(request, "Le mot de passe doit contenir au moins 6 caractères !")
+        if len(password1) < 8:
+            messages.error(request, "Le mot de passe doit contenir au moins 8 caractères !")
             return redirect('gestionUtilisateur:inscription_utilisateur')
 
         if Utilisateur.objects.filter(username=username).exists():
@@ -334,6 +334,7 @@ def inscriptionutilisateur(request):
             admins = Utilisateur.objects.filter(type_utilisateur='Admin', is_active=True)
             for admin in admins:
                 Notification.objects.create(
+                    destinataire_email = settings.ADMIN_EMAIL,
                     titre="Nouvel utilisateur à approuver",
                     message=f"L'utilisateur {user.username} vient de s'inscrire et nécessite votre approbation.",
                     destinataire=admin

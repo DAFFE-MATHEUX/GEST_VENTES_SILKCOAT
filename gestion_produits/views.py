@@ -629,6 +629,10 @@ def nouvelle_commande(request):
     """
     produits = Produits.objects.all()
     produits_data = [{"produit": p} for p in produits]
+    stock_total = 0
+    stock_total = StockProduit.objects.aggregate(
+    total = Sum('qtestock')
+    )['total'] or 0
 
     if request.method == "POST":
         ids = request.POST.getlist("produit_id[]")
@@ -645,6 +649,7 @@ def nouvelle_commande(request):
 
         lignes = []
         total_general = 0
+
 
         try:
             for i in range(len(ids)):
@@ -716,7 +721,10 @@ def nouvelle_commande(request):
             messages.error(request, "Erreur inattendue lors de l'enregistrement de la commande.")
             return redirect("produits:nouvelle_commande")
 
-    context = {'produits_data': produits_data}
+    context = {
+        'produits_data': produits_data,
+        'stock_total' : stock_total,
+        }
     return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
 
 #================================================================================================

@@ -171,13 +171,19 @@
 
             <div class="input-box">
                 <i class="fa fa-lock"></i>
-                <input type="password" id="password" name="password" placeholder="Mot de passe" required>
+                <input type="password" id="password" name="password" placeholder="Mot de passe" required
+                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}"
+                  title="8 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial"
+                >
                 <i class="fa fa-eye toggle-password" onclick="togglePw('password', this)"></i>
             </div>
 
             <div class="input-box">
                 <i class="fa fa-lock"></i>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirmer le mot de passe" required>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirmer le mot de passe" required 
+                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}"
+                  title="8 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial"
+                >
                 <i class="fa fa-eye toggle-password" onclick="togglePw('confirm_password', this)"></i>
             </div>
 
