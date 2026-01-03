@@ -8,7 +8,7 @@ from django.core.paginator import Paginator
 from django.urls import reverse_lazy
 from .models import Utilisateur
 from datetime import date
-from gest_entreprise.models import Depenses, Entreprise
+from gest_entreprise.models import Depenses
 from gestion_audit.views import enregistrer_audit
 from gestion_audit.models import AuditLog
 from gestion_notifications.models import Notification
@@ -75,10 +75,6 @@ def home(request):
     non_lues = dernieeres_notification.filter(lu=False)
     lues = dernieeres_notification.filter(lu=True)
 
-    # ===============================
-    # AUDITS 
-    # ===============================
-    derniers_audits = AuditLog.objects.order_by('-date_action')[:3]
     # ===============================
     # COMMANDES DES PRODUITS
     # ===============================
@@ -233,7 +229,6 @@ def home(request):
     # CONTEXTE
     # ===============================
     context = {
-        'profil': Entreprise.objects.first(),
         'mois_selectionne': mois,
         'annee_selectionnee': annee,
         'comparaison_mensuelle': [total_mois_precedent, total_mois_actuel],
@@ -254,7 +249,6 @@ def home(request):
         'lues': lues,
         
         'total_depenses' : total_depenses,
-        'derniers_audits': derniers_audits,
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_stock': total_stock,

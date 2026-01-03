@@ -1025,44 +1025,9 @@ def supprimer_categorie(request):
                 )
                 return redirect('produits:listes_categorie')
 
-            # Préparer l'ancienne valeur pour audit/email
-            ancienne_valeur = {
-                "id": categorie.id,
-                "nom_categorie": categorie.desgcategorie,
-                "description": categorie.description if categorie.description else ""
-            }
-
             # Supprimer la catégorie
             categorie.delete()
-
-            # Enregistrer audit
-            enregistrer_audit(
-                utilisateur=request.user,
-                action="Suppression catégorie",
-                table="CategorieProduit",
-                ancienne_valeur=ancienne_valeur,
-                nouvelle_valeur=None
-            )
-
-            # Envoyer notification par email à l'admin
-            try:
-                sujet = "🗑 Suppression de catégorie"
-                contenu = (
-                    f"L'utilisateur {request.user.get_full_name()} "
-                    f"a supprimé la catégorie :\n\n"
-                    f"ID : {ancienne_valeur['id']}\n"
-                    f"Nom : {ancienne_valeur['nom_categorie']}\n"
-                    f"Description : {ancienne_valeur['description']}"
-                )
-                EmailMessage(
-                    sujet,
-                    contenu,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL],
-                ).send(fail_silently=False)
-            except Exception as e:
-                messages.warning(request, f"Catégorie supprimée mais email non envoyé : {e}")
-
+            
             messages.success(request, "Catégorie supprimée avec succès !")
 
         except CategorieProduit.DoesNotExist:
@@ -1118,48 +1083,9 @@ def supprimer_produits(request):
             )
             return redirect('produits:listes_produits')
 
-        # ----- Ancienne valeur pour audit -----
-        ancienne_valeur = {
-            "id": produit.id,
-            "refprod": produit.refprod,
-            "desgprod": produit.desgprod,
-            "pu": float(produit.pu),
-            "categorie": str(produit.categorie) if produit.categorie else None,
-        }
-
         # ----- Suppression -----
         produit.delete()
-
-        # ----- Audit -----
-        enregistrer_audit(
-            utilisateur=request.user,
-            action="Suppression produit",
-            table="Produits",
-            ancienne_valeur=ancienne_valeur,
-            nouvelle_valeur=None
-        )
-
-        # ----- Email à l'admin -----
-        try:
-            sujet = f"Produit supprimé : {ancienne_valeur['desgprod']}"
-            contenu = (
-                f"Utilisateur : {request.user.get_full_name()} a supprimé un produit.\n\n"
-                f"Détails du produit supprimé :\n"
-                f"- ID : {ancienne_valeur['id']}\n"
-                f"- Référence : {ancienne_valeur['refprod']}\n"
-                f"- Désignation : {ancienne_valeur['desgprod']}\n"
-                f"- Prix : {ancienne_valeur['pu']}\n"
-                f"- Catégorie : {ancienne_valeur['categorie']}\n"
-            )
-            EmailMessage(
-                sujet,
-                contenu,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.ADMIN_EMAIL]
-            ).send(fail_silently=False)
-        except Exception as e:
-            messages.warning(request, f"Produit supprimé mais email non envoyé : {str(e)}")
-
+        
         messages.success(request, "Produit supprimé avec succès !")
     except Produits.DoesNotExist:
         messages.error(request, "Produit introuvable.")
@@ -1284,60 +1210,8 @@ def supprimer_commandes(request):
             )
             return redirect('produits:listes_des_commandes')
 
-        # ----- Préparer ancienne valeur pour audit -----
-        ancienne_valeur = {
-            "Num Commande": commande.numcmd,
-            "Produit": commande.produits.desgprod if commande.produits else "",
-            "Qté commandée": commande.qtecmd,
-            "Fournisseur": commande.nom_complet_fournisseur,
-            "Utilisateur connecté": request.user.get_full_name(),
-        }
-
         # ----- Suppression -----
         commande.delete()
-
-        # ----- Enregistrement de l'audit -----
-        enregistrer_audit(
-            utilisateur=request.user,
-            action="Suppression commande",
-            table="Commandes",
-            ancienne_valeur=ancienne_valeur,
-            nouvelle_valeur=None
-        )
-
-        # ----- Notification interne -----
-        Notification.objects.create(
-            destinataire=request.user,
-            destinataire_email = settings.ADMIN_EMAIL,
-            titre="🗑 Suppression de commande",
-            message=f"La commande {ancienne_valeur['Num Commande']} a été supprimée."
-        )
-
-        # ----- Email admin -----
-        try:
-            sujet = "🗑 Suppression d'une commande"
-            contenu = f"""
-            Une commande a été supprimée.
-
-            Numéro commande : {ancienne_valeur['Num Commande']}
-            Produit : {ancienne_valeur['Produit']}
-            Qté commandée : {ancienne_valeur['Qté commandée']}
-            Fournisseur : {ancienne_valeur['Fournisseur']}
-            Utilisateur : {request.user.get_full_name()}
-            Date : {timezone.now().strftime('%d/%m/%Y %H:%M')}
-            """
-            EmailMessage(
-                sujet,
-                contenu,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.ADMIN_EMAIL]
-            ).send(fail_silently=False)
-        except Exception as e:
-            logger.error(f"Erreur email suppression commande : {str(e)}")
-            messages.warning(
-                request,
-                "Commande supprimée mais l'email d'information n'a pas pu être envoyé."
-            )
 
         messages.success(request, "Commande supprimée avec succès ✔")
 
@@ -1376,26 +1250,8 @@ def supprimer_livraisons(request):
                 stock_produit.qtestock = stock_produit.qtestock - quantite  # <-- correction
                 stock_produit.save(update_fields=['qtestock'])
 
-            # 3️⃣ Ancienne valeur (audit)
-            ancienne_valeur = {
-                "id_livraison": livraison.id,
-                "numlivrer": numlivrer,
-                "produit": produit.desgprod,
-                "quantite_livree": quantite,
-                "date": str(livraison.datelivrer),
-            }
-
             # 4️⃣ Supprimer la livraison
             livraison.delete()
-
-            # 5️⃣ Enregistrement audit
-            enregistrer_audit(
-                utilisateur=request.user,
-                action="Suppression livraison produit",
-                table="LivraisonsProduits",
-                ancienne_valeur=ancienne_valeur,
-                nouvelle_valeur=None
-            )
 
         # 6️⃣ Notification interne
         Notification.objects.create(

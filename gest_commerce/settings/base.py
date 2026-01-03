@@ -4,7 +4,6 @@ from django.contrib.messages import constants as messages
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 #BASE_DIR = Path(__file__).resolve().parent.parent
-print ("BASE_DIR :  ", BASE_DIR)
 
 INSTALLED_APPS = [
     # Django
@@ -112,9 +111,10 @@ AXES_COOLOFF_TIME = 1  # heures
 
 # Internationalisation
 LANGUAGE_CODE = 'fr-fr'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
+TIME_ZONE = 'UTC' # Aucune dépendance à la localisation physique du serveur.
+USE_I18N = True # Gestion des langues : Aucun impact négatif sur les dates.
+USE_TZ = True # Conversion automatique possible vers d'autres fuseaux.
+
 
 # Static & Media
 STATIC_URL = '/static/'

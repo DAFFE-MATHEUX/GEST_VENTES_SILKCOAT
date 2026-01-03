@@ -249,39 +249,6 @@
 
 {% if request.user.type_utilisateur != 'Gerante' %}
 
-    <div class="row">
-        <div class="col-md-12">
-            <div class="box box-info">
-                <div class="box-header with-border"><h3 class="box-title">3 Derniers Audits</h3></div>
-                <div class="box-body table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>#</th><th>Utilisateur</th><th>Action</th><th>Table concernée</th><th>Ancienne valeur</th><th>Nouvelle valeur</th><th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for a in derniers_audits %}
-                            <tr>
-                                <td>{{ forloop.counter }}</td>
-                                <td>{% if a.utilisateur %}{{ a.utilisateur.username }}{% else %}Utilisateur supprimé{% endif %}</td>
-                                <td>{{ a.action }}</td>
-                                <td>{{ a.table_modifiee }}</td>
-                                <td><pre>{{ a.ancienne_valeur|default:"-" }}</pre></td>
-                                <td><pre>{{ a.nouvelle_valeur|default:"-" }}</pre></td>
-                                <td>{{ a.date_action|date:"d/m/Y H:i" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="8" class="text-center">Aucune action enregistrée pour le moment.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
     {% comment %} Dernières Notifications {% endcomment %}
     <div class="row">
         <div class="col-md-12">
