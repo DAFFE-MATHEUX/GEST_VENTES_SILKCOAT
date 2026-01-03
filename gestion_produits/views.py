@@ -600,6 +600,25 @@ def historique_commandes_livraisons(request):
 #================================================================================================
 # Fonction pour éffectuer une nouvelle commande
 #================================================================================================
+def generer_code_commandes():
+    prefix = "CMD"
+    date_str = timezone.now().strftime('%Y%m%d')
+
+    last_vente = VenteProduit.objects.order_by('-id').first()
+
+    if last_vente:
+        try:
+            dernier_numero = int(last_vente.code.split('-')[-1])
+        except (IndexError, ValueError):
+            dernier_numero = 0
+    else:
+        dernier_numero = 0
+
+    nouveau_numero = dernier_numero + 1
+
+    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
+
+
 @csrf_protect
 @login_required
 
@@ -626,7 +645,6 @@ def nouvelle_commande(request):
 
         lignes = []
         total_general = 0
-        numcmd = f"CMD{timezone.now().strftime('%Y%m%d%H%M%S')}"
 
         try:
             for i in range(len(ids)):
@@ -647,7 +665,7 @@ def nouvelle_commande(request):
 
                 # Créer la commande
                 Commandes.objects.create(
-                    numcmd=numcmd,
+                    numcmd= generer_code_commandes(),
                     qtecmd=qte,
                     produits=prod,
                     nom_complet_fournisseur=nom_complet_fournisseur,
@@ -666,16 +684,16 @@ def nouvelle_commande(request):
             try:
                 sujet = f"Nouvelle commande enregistrée - Fournisseur {nom_complet_fournisseur}"
                 contenu = f"""
-Nouvelle commande effectuée.
+                Nouvelle commande effectuée.
 
-Fournisseur : {nom_complet_fournisseur}
-Téléphone : {telephone_fournisseur}
-Adresse : {adresse_fournisseur}
+                Fournisseur : {nom_complet_fournisseur}
+                Téléphone : {telephone_fournisseur}
+                Adresse : {adresse_fournisseur}
 
-Total estimé : {total_general:,} GNF
+                Total estimé : {total_general:,} GNF
 
-Détails :
-"""
+                Détails :
+                """
                 for p, q in lignes:
                     contenu += f"- {p.desgprod} | Qté : {q} | PU : {p.pu} | Sous-total : {p.pu * q}\n"
 
@@ -687,10 +705,10 @@ Détails :
                 ).send(fail_silently=False)
 
             except Exception as e:
-                logger.warning(f"Email non envoyé pour la commande {numcmd}: {str(e)}")
+                logger.warning(f"Email non envoyé pour la commande {generer_code_commandes()}: {str(e)}")
                 messages.warning(request, f"Commande enregistrée mais email non envoyé : {str(e)}")
 
-            messages.success(request, f"Commande {numcmd} enregistrée avec succès !")
+            messages.success(request, f"Commande {generer_code_commandes()} enregistrée avec succès !")
             return redirect("produits:listes_des_commandes")
 
         except Exception as e:
@@ -704,6 +722,23 @@ Détails :
 #================================================================================================
 # Fonction pour éffectuer une receptin de livraisons des commandes
 #================================================================================================
+def generer_code_livraisons():
+    prefix = "LIV"
+    date_str = timezone.now().strftime('%Y%m%d')
+
+    last_vente = VenteProduit.objects.order_by('-id').first()
+
+    if last_vente:
+        try:
+            dernier_numero = int(last_vente.code.split('-')[-1])
+        except (IndexError, ValueError):
+            dernier_numero = 0
+    else:
+        dernier_numero = 0
+
+    nouveau_numero = dernier_numero + 1
+
+    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
 
 @login_required
 @transaction.atomic
@@ -741,7 +776,6 @@ def reception_livraison(request):
             messages.error(request, "Erreur : données invalides.")
             return redirect("produits:reception_livraison")
 
-        numlivrer = f"LIV{timezone.now().strftime('%Y%m%d%H%M%S')}"
         livraisons_effectuees = []
 
         for i, cmd_id in enumerate(commande_ids):
@@ -773,7 +807,7 @@ def reception_livraison(request):
             # 🔹 Enregistrement livraison
             if qte_livree > 0:
                 LivraisonsProduits.objects.create(
-                    numlivrer=numlivrer,
+                    numlivrer = generer_code_livraisons(),
                     commande=cmd,
                     produits=cmd.produits,
                     qtelivrer=qte_livree,
@@ -2914,12 +2948,9 @@ def export_ventes_excel_complet(request):
     - Une feuille par catégorie
     - Une feuille Résumé Général
     - Une feuille Produits Individuels
-    - Bénéfice masqué si utilisateur Gerante
+    - Bénéfice masqué si utilisateur est Gerante
     """
-    # 🔐 Vérifier si l'utilisateur peut voir le bénéfice
     afficher_benefice = request.user.type_utilisateur != 'Gerante'
-
-    # 📦 Récupérer toutes les lignes de vente
     lignes = LigneVente.objects.select_related('produit', 'produit__categorie').all()
 
     # 🔹 Grouper par catégorie
@@ -2930,38 +2961,37 @@ def export_ventes_excel_complet(request):
             categories[cat] = []
         categories[cat].append(lv)
 
-    # 🔹 Créer le classeur Excel
     wb = openpyxl.Workbook()
-    wb.remove(wb.active)  # Supprimer la feuille par défaut
+    wb.remove(wb.active)
 
     total_global = 0
     total_quantite_global = 0
+    total_quantite_retournee_global = 0
     total_benefice_global = 0
 
-    # ====================== FEUILLE PAR CATEGORIE ======================
+    # ================= FEUILLE PAR CATEGORIE =================
     for cat_name, lignes_cat in categories.items():
-        ws = wb.create_sheet(title=cat_name[:31])  # Limite 31 caractères
-        # En-têtes
+        ws = wb.create_sheet(title=cat_name[:31])
         headers = ["Produit", "Quantité Vendue", "Quantite Retournée", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
         if afficher_benefice:
             headers.append("Bénéfice")
         headers.append("Total Vente par Produit")
 
+        # En-têtes
         for col_num, header in enumerate(headers, 1):
             cell = ws[f"{get_column_letter(col_num)}1"]
             cell.value = header
             cell.font = Font(bold=True, color="FFFFFF")
             cell.alignment = Alignment(horizontal="center")
             cell.fill = PatternFill("solid", fgColor="4F81BD")
-            cell.border = Border(
-                left=Side(style="thin"), right=Side(style="thin"),
-                top=Side(style="thin"), bottom=Side(style="thin")
-            )
+            cell.border = Border(left=Side(style="thin"), right=Side(style="thin"),
+                                 top=Side(style="thin"), bottom=Side(style="thin"))
 
-        # Remplir les lignes
+        # Remplissage lignes
         ligne_excel = 2
         total_categorie = 0
         total_quantite_categorie = 0
+        total_quantite_retournee_categorie = 0
         total_benefice_categorie = 0
 
         for lv in lignes_cat:
@@ -2972,7 +3002,7 @@ def export_ventes_excel_complet(request):
             ws[f"E{ligne_excel}"] = lv.montant_reduction
             ws[f"F{ligne_excel}"] = lv.sous_total
 
-            for col in ['C','D','E', 'F']:
+            for col in ['C','D','E','F']:
                 ws[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
             col_benefice = None
@@ -2987,6 +3017,7 @@ def export_ventes_excel_complet(request):
 
             total_categorie += lv.sous_total
             total_quantite_categorie += lv.quantite
+            total_quantite_retournee_categorie += lv.quantite_retournee
             if afficher_benefice:
                 total_benefice_categorie += lv.benefice
 
@@ -2997,24 +3028,27 @@ def export_ventes_excel_complet(request):
         ws[f"A{ligne_excel}"].font = Font(bold=True)
         ws[f"A{ligne_excel}"].alignment = Alignment(horizontal="right")
         ws[f"B{ligne_excel}"] = total_quantite_categorie
+        ws[f"C{ligne_excel}"] = total_quantite_retournee_categorie
         ws[f"{col_total}{ligne_excel}"] = total_categorie
         ws[f"{col_total}{ligne_excel}"].font = Font(bold=True, color="FF0000")
         if afficher_benefice:
             ws[f"{col_benefice}{ligne_excel}"] = total_benefice_categorie
             ws[f"{col_benefice}{ligne_excel}"].font = Font(bold=True, color="008000")
 
-        # Ajuster largeur des colonnes
+        # Ajuster largeur colonnes
         for col in range(1, len(headers)+1):
             ws.column_dimensions[get_column_letter(col)].width = 20
 
+        # Totaux globaux
         total_global += total_categorie
         total_quantite_global += total_quantite_categorie
+        total_quantite_retournee_global += total_quantite_retournee_categorie
         total_benefice_global += total_benefice_categorie if afficher_benefice else 0
 
-    # ====================== FEUILLE PRODUITS INDIVIDUELS ======================
-    
+    # ================= FEUILLE PRODUITS INDIVIDUELS =================
     ws_prod = wb.create_sheet(title="Produits Individuels")
-    headers_prod = ["Produit", "Catégorie", "Quantité Vendue", "Quantite Retournée", "Prix Unitaire", "Montant Réduction", "Sous-Total"]
+    headers_prod = ["Produit", "Catégorie", "Quantité Vendue", "Quantite Retournée", "Prix Unitaire",
+                    "Montant Réduction", "Sous-Total"]
     if afficher_benefice:
         headers_prod.append("Bénéfice")
     headers_prod.append("Total Vente par Produit")
@@ -3035,7 +3069,8 @@ def export_ventes_excel_complet(request):
         ws_prod[f"E{ligne_excel}"] = lv.prix
         ws_prod[f"F{ligne_excel}"] = lv.montant_reduction
         ws_prod[f"G{ligne_excel}"] = lv.sous_total
-        for col in ['D','E','F', 'G']:
+
+        for col in ['D','E','F','G']:
             ws_prod[f"{col}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
 
         col_benefice = None
@@ -3047,14 +3082,12 @@ def export_ventes_excel_complet(request):
         col_total = 'I' if afficher_benefice else 'H'
         ws_prod[f"{col_total}{ligne_excel}"] = lv.sous_total
         ws_prod[f"{col_total}{ligne_excel}"].number_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
-
         ligne_excel += 1
 
-    # Ajuster largeur colonnes
     for col in range(1, len(headers_prod)+1):
         ws_prod.column_dimensions[get_column_letter(col)].width = 20
 
-    # ====================== FEUILLE RESUME GENERAL ======================
+    # ================= FEUILLE RESUME GENERAL =================
     ws_summary = wb.create_sheet(title="Résumé Général")
     summary_headers = ["Catégorie", "Quantité Totale", "Quantite Retournée", "Total Vente"]
     if afficher_benefice:
@@ -3071,12 +3104,12 @@ def export_ventes_excel_complet(request):
     for cat_name, lignes_cat in categories.items():
         total_cat = sum(lv.sous_total for lv in lignes_cat)
         total_quant_cat = sum(lv.quantite for lv in lignes_cat)
-        total_quant_cat_retourner = sum(lv.quantite_retournee for lv in lignes_cat)
+        total_quant_cat_retournee = sum(lv.quantite_retournee for lv in lignes_cat)
         total_benef_cat = sum(lv.benefice for lv in lignes_cat) if afficher_benefice else 0
 
         ws_summary[f"A{ligne_excel}"] = cat_name
         ws_summary[f"B{ligne_excel}"] = total_quant_cat
-        ws_summary[f"C{ligne_excel}"] = total_quant_cat_retourner
+        ws_summary[f"C{ligne_excel}"] = total_quant_cat_retournee
         ws_summary[f"D{ligne_excel}"] = total_cat
         if afficher_benefice:
             ws_summary[f"E{ligne_excel}"] = total_benef_cat
@@ -3087,15 +3120,14 @@ def export_ventes_excel_complet(request):
     ws_summary[f"A{ligne_excel}"].font = Font(bold=True)
     ws_summary[f"A{ligne_excel}"].alignment = Alignment(horizontal="right")
     ws_summary[f"B{ligne_excel}"] = total_quantite_global
-    ws_summary[f"C{ligne_excel}"] = total_global
+    ws_summary[f"C{ligne_excel}"] = total_quantite_retournee_global
+    ws_summary[f"D{ligne_excel}"] = total_global
     if afficher_benefice:
-        ws_summary[f"D{ligne_excel}"] = total_benefice_global
+        ws_summary[f"E{ligne_excel}"] = total_benefice_global
 
-    # Ajuster largeur colonnes
     for col in range(1, len(summary_headers)+1):
         ws_summary.column_dimensions[get_column_letter(col)].width = 20
 
-    # ====================== EXPORT ======================
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
