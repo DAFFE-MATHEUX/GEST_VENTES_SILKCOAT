@@ -32,17 +32,17 @@
             </div>
         </div>
 
-    {% if messages %}
-        {% for mgs in messages %}
-            <div class="alert 
-                {% if mgs.tags == 'success' %} alert-success 
-                {% elif mgs.tags == 'error' %} alert-danger 
-                {% else %} alert-info 
-                {% endif %}">
-                {{ mgs }}
-            </div>
-        {% endfor %}
-    {% endif %}
+        {% if messages %}
+            {% for mgs in messages %}
+                <div class="alert 
+                    {% if mgs.tags == 'success' %} alert-success 
+                    {% elif mgs.tags == 'error' %} alert-danger 
+                    {% else %} alert-info 
+                    {% endif %}">
+                    {{ mgs }}
+                </div>
+            {% endfor %}
+        {% endif %}
 
         <div class="row">
             <div class="col-md-12">
@@ -56,7 +56,8 @@
                                 <input type="text" class="form-control" placeholder="Rechercher un user..." name="rechercher_informations" id="rechercher_informations">
                             </div>
                         </div>
-<br>
+                        <br>
+
                         <div class="table-responsive mt-3">
                             <table class="table table-striped table-bordered table-hover" id="dataTables-example">
                                 <thead>
@@ -100,6 +101,7 @@
                                         <!-- Colonne Approbation -->
                                         <td>
                                             {% if not elem.is_approved %}
+                                                <!-- Bouton Approuver -->
                                                 <form method="POST" action="{% url 'gestionUtilisateur:liste_utilisateur' %}" style="display:inline;">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="user_id" value="{{ elem.id }}">
@@ -108,6 +110,7 @@
                                                         <i class="fa fa-check"></i>
                                                     </button>
                                                 </form>
+                                                <!-- Bouton Refuser / Désapprouver -->
                                                 <form method="POST" action="{% url 'gestionUtilisateur:liste_utilisateur' %}" style="display:inline;">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="user_id" value="{{ elem.id }}">
@@ -117,11 +120,20 @@
                                                     </button>
                                                 </form>
                                             {% else %}
-                                                <span class="text-success">Approuvé</span>
+                                                <!-- Bouton Désapprouver pour les utilisateurs déjà approuvés -->
+                                                <form method="POST" action="{% url 'gestionUtilisateur:liste_utilisateur' %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="user_id" value="{{ elem.id }}">
+                                                    <input type="hidden" name="action" value="refuse">
+                                                    <button type="submit" class="btn btn-danger btn-sm" title="Désapprouver">
+                                                        <i class="fa fa-times-circle"></i> Désapprouver
+                                                    </button>
+                                                </form>
+                                                <span class="text-success ml-1">Approuvé</span>
                                             {% endif %}
                                         </td>
 
-                                        <!-- Actions -->
+                                        <!-- Actions Suppression -->
                                         <td>
                                             <button type="button" class="btn btn-danger btn-sm btn-sup-paiement" data-toggle="modal" data-target="#supprimer" data-id="{{ elem.id }}"  title="Supprimer">
                                                 <i class="fa fa-trash"></i>

@@ -1,20 +1,39 @@
 from .base import *
 from .info import *
 
-# ----------------------------------------
-# Dev settings
-# ----------------------------------------
+# ==================================================
+# MODE DÉVELOPPEMENT
+# ==================================================
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# Désactiver HTTPS et cookies sécurisés pour dev
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+]
+
+# ==================================================
+# CLÉ SECRÈTE DEV (DIFFÉRENTE DE PROD)
+# ==================================================
+SECRET_KEY = "dev-secret-key-unsafe-but-ok-for-dev"
+
+# ==================================================
+# HTTPS & COOKIES (DÉSACTIVÉS EN DEV)
+# ==================================================
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
-# ----------------------------------------
-# Base de données dev
-# ----------------------------------------
+SESSION_COOKIE_HTTPONLY = False
+CSRF_COOKIE_HTTPONLY = False
+
+# ==================================================
+# DÉSACTIVER LES BLOQUAGES DE SÉCURITÉ EN DEV
+# ==================================================
+AXES_ENABLED = False
+
+# ==================================================
+# BASE DE DONNÉES DEV
+# ==================================================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -27,4 +46,26 @@ DATABASES = {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
         }
     }
+}
+
+# ==================================================
+# EMAIL (CONSOLE EN DEV)
+# ==================================================
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# ==================================================
+# LOGS (AFFICHAGE CONSOLE)
+# ==================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
 }

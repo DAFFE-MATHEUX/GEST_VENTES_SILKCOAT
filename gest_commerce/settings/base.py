@@ -2,11 +2,24 @@ from pathlib import Path
 from .info import *
 from django.contrib.messages import constants as messages
 
+# ==================================================
+# BASE COMMUNE
+# ==================================================
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-#BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ==================================================
+# PARAMÈTRES PAR DÉFAUT (SURCHARGÉS EN DEV / PROD)
+# ==================================================
+DEBUG = False
+ALLOWED_HOSTS = []
+
+SECRET_KEY = None  # défini dans dev.py ou prod.py
+
+# ==================================================
+# APPLICATIONS
+# ==================================================
 INSTALLED_APPS = [
-    # Django
+    # Django core
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -23,47 +36,54 @@ INSTALLED_APPS = [
     'gestion_rapports',
     'simple_history',
 
-    # Allauth
+    # Auth
     'django.contrib.sites',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
-
-    # Social auth
     'social_django',
 
-    # API & outils
+    # API
     'rest_framework',
     'import_export',
 
-    # Sécurité brute force
+    # Sécurité
     'axes',
 ]
 
 SITE_ID = 1
 
+# ==================================================
+# MIDDLEWARE
+# ==================================================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
-    
     'simple_history.middleware.HistoryRequestMiddleware',
 ]
 
+# ==================================================
+# URL / WSGI
+# ==================================================
 ROOT_URLCONF = 'gest_commerce.urls'
+WSGI_APPLICATION = 'gest_commerce.wsgi.application'
 
+# ==================================================
+# TEMPLATES
+# ==================================================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR/'templates'],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -79,102 +99,64 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'gest_commerce.wsgi.application'
-
-# Auth & password
+# ==================================================
+# AUTH
+# ==================================================
 AUTH_USER_MODEL = 'gestion_utilisateur.Utilisateur'
 
 AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
     'social_core.backends.google.GoogleOAuth2',
     'social_core.backends.facebook.FacebookOAuth2',
-    
-    'axes.backends.AxesStandaloneBackend',
-]
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 8,  # Longueur minimale
-        },
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-    {
-        'NAME': 'gestion_utilisateur.validators.StrongPasswordValidator',
-    },
 ]
 
 LOGIN_URL = 'gestionUtilisateur:connexion_utilisateur'
 LOGOUT_REDIRECT_URL = 'gestionUtilisateur:tableau_bord'
 LOGOUT_URL = '/'
 
-# AXES (anti brute force)
-AXES_FAILURE_LIMIT = 5
-AXES_LOCK_OUT_AT_FAILURE = True
-AXES_COOLOFF_TIME = 1  # heures
+# ==================================================
+# MOTS DE PASSE
+# ==================================================
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME': 'gestion_utilisateur.validators.StrongPasswordValidator'},
+]
 
-# Internationalisation
+# ==================================================
+# INTERNATIONALISATION
+# ==================================================
 LANGUAGE_CODE = 'fr-fr'
-TIME_ZONE = 'UTC' # Aucune dépendance à la localisation physique du serveur.
-USE_I18N = True # Gestion des langues : Aucun impact négatif sur les dates.
-USE_TZ = True # Conversion automatique possible vers d'autres fuseaux.
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
 
-
-# Static & Media
+# ==================================================
+# STATIC & MEDIA
+# ==================================================
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
-# Logs sécurité
-LOGGING = {
-    'version': 1,
-    'handlers': {
-        'security_file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'security.log',
-        },
-    },
-    'loggers': {
-        'django.security': {
-            'handlers': ['security_file'],
-            'level': 'WARNING',
-            'propagate': True,
-        },
-    },
-}
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-DEBUG = True
-
-# Sécurité générale
-SECRET_KEY = SECRET_KEY
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# ==================================================
+# HEADERS DE BASE
+# ==================================================
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# Email
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = EMAIL_HOST
-EMAIL_PORT = EMAIL_PORT
-EMAIL_HOST_USER = EMAIL_HOST_USER
-EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
-EMAIL_USE_TLS = EMAIL_USE_TLS
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-ADMIN_EMAIL = EMAIL_HOST_USER
+# ==================================================
+# DIVERS
+# ==================================================
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MESSAGE_TAGS = {
+    messages.DEBUG: 'debug',
+    messages.INFO: 'info',
+    messages.SUCCESS: 'success',
+    messages.WARNING: 'warning',
+    messages.ERROR: 'danger',
+}

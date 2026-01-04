@@ -283,8 +283,33 @@ def home(request):
 # ===============================================
 # Inscription utilisateur avec approbation admin
 # ===============================================
+import re
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.conf import settings
+from .models import Utilisateur
+from gestion_notifications.models import Notification
+
+# Fonction de validation d'image
+from django.core.exceptions import ValidationError
+
+def validate_image(file):
+    max_size_mb = 2  # Taille max 2 Mo
+    valid_extensions = ['jpg', 'jpeg', 'png', 'gif']
+    
+    # Vérifier la taille
+    if file.size > max_size_mb * 1024 * 1024:
+        raise ValidationError(f"La taille de l'image ne doit pas dépasser {max_size_mb} Mo.")
+    
+    # Vérifier l'extension
+    ext = file.name.split('.')[-1].lower()
+    if ext not in valid_extensions:
+        raise ValidationError("Formats autorisés : jpg, jpeg, png, gif")
+
+# Vue d'inscription utilisateur
 def inscriptionutilisateur(request):
     choix_utilisateur = Utilisateur.ROLE_CHOICES
+
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -295,9 +320,11 @@ def inscriptionutilisateur(request):
         type_utilisateur = request.POST.get('type_utilisateur')
         photo_utilisateur = request.FILES.get('photo_utilisateur')
 
-        # Vérifications
-        if not all([username, email, first_name, last_name, password1, password2, type_utilisateur, photo_utilisateur]):
-            messages.error(request, "Tous les champs sont obligatoires !")
+        # ---------------------------
+        # 1️⃣ Vérification des champs
+        # ---------------------------
+        if not all([username, email, first_name, last_name, password1, password2, type_utilisateur]):
+            messages.error(request, "Tous les champs (sauf la photo) sont obligatoires !")
             return redirect('gestionUtilisateur:inscription_utilisateur')
 
         if password1 != password2:
@@ -316,6 +343,37 @@ def inscriptionutilisateur(request):
             messages.error(request, "Cet email est déjà enregistré !")
             return redirect('gestionUtilisateur:inscription_utilisateur')
 
+        # ---------------------------
+        # 2️⃣ Validation des noms et emails
+        # ---------------------------
+        name_pattern = r'^[A-Za-z\s\-]+$'  # lettres, espaces et tirets uniquement
+        email_pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+
+        if not re.match(name_pattern, first_name):
+            messages.error(request, "Prénom invalide (lettres, espaces et tirets uniquement).")
+            return redirect('gestionUtilisateur:inscription_utilisateur')
+
+        if not re.match(name_pattern, last_name):
+            messages.error(request, "Nom de famille invalide (lettres, espaces et tirets uniquement).")
+            return redirect('gestionUtilisateur:inscription_utilisateur')
+
+        if not re.match(email_pattern, email):
+            messages.error(request, "Adresse email invalide !")
+            return redirect('gestionUtilisateur:inscription_utilisateur')
+
+        # ---------------------------
+        # 3️⃣ Validation de la photo
+        # ---------------------------
+        if photo_utilisateur:
+            try:
+                validate_image(photo_utilisateur)
+            except ValidationError as e:
+                messages.error(request, str(e))
+                return redirect('gestionUtilisateur:inscription_utilisateur')
+
+        # ---------------------------
+        # 4️⃣ Création de l'utilisateur
+        # ---------------------------
         try:
             user = Utilisateur.objects.create_user(
                 username=username,
@@ -325,16 +383,18 @@ def inscriptionutilisateur(request):
                 last_name=last_name,
                 type_utilisateur=type_utilisateur,
                 photo_utilisateur=photo_utilisateur,
-                is_approved=False  # Nouveau : l'utilisateur doit être approuvé par l'admin
+                is_approved=False  # L'utilisateur doit être approuvé par l'admin
             )
 
             messages.success(request, "Utilisateur ajouté avec succès. En attente d'approbation par l'administrateur.")
 
-            # --- Envoi notification à tous les admins ---
+            # ---------------------------
+            # 5️⃣ Notification aux admins
+            # ---------------------------
             admins = Utilisateur.objects.filter(type_utilisateur='Admin', is_active=True)
             for admin in admins:
                 Notification.objects.create(
-                    destinataire_email = settings.ADMIN_EMAIL,
+                    destinataire_email=admin.email,
                     titre="Nouvel utilisateur à approuver",
                     message=f"L'utilisateur {user.username} vient de s'inscrire et nécessite votre approbation.",
                     destinataire=admin
@@ -406,22 +466,24 @@ def page_bienvenue(request):
 # Liste utilisateurs
 # ===============================================
 
+# Pattern pour valider noms/prénoms
+NAME_PATTERN = r'^[A-Za-z\s\-]+$'
+EMAIL_PATTERN = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def liste_utilisateur(request):
     """
-    Vue pour afficher la liste des utilisateurs, gérer l'approbation et la désapprobation par un admin,
-    et envoyer une notification à l'utilisateur concerné.
+    Vue pour afficher la liste des utilisateurs et gérer l'approbation/refus.
+    Les utilisateurs avec noms/emails invalides ne peuvent pas être approuvés.
     """
 
-    # 🔹 Récupération de tous les utilisateurs, triés par nom
     listeuser_qs = Utilisateur.objects.all().order_by('last_name')
     
-    # 🔹 Pagination : 7 utilisateurs par page
+    # Pagination : 7 utilisateurs par page
     pageuser = Paginator(listeuser_qs, 7)
     numpage = request.GET.get("page")
     listeuser = pageuser.get_page(numpage)
 
-    # 🔹 Gestion de l'approbation / désapprobation
     if request.method == "POST":
         user_id = request.POST.get("user_id")
         action = request.POST.get("action")  # 'approve' ou 'refuse'
@@ -430,26 +492,33 @@ def liste_utilisateur(request):
             try:
                 user_obj = Utilisateur.objects.get(id=user_id)
 
-                if action == "approve":
-                    # ✅ Approuver l'utilisateur
-                    user_obj.is_approved = True
-                    user_obj.is_active = True  # Optionnel : rendre actif
-                    user_obj.save()
+                # 🔹 Vérification automatique de la validité
+                valid_first_name = re.match(NAME_PATTERN, user_obj.first_name)
+                valid_last_name = re.match(NAME_PATTERN, user_obj.last_name)
+                valid_email = re.match(EMAIL_PATTERN, user_obj.email)
 
-                    # 🔔 Créer une notification pour l'utilisateur
-                    Notification.objects.create(
-                        destinataire=user_obj,
-                        message="✅ Votre compte a été approuvé par l'administrateur."
-                    )
-                    messages.success(request, f"Utilisateur {user_obj.username} approuvé avec succès.")
+                if action == "approve":
+                    if not (valid_first_name and valid_last_name and valid_email):
+                        messages.error(
+                            request, 
+                            f"Impossible d'approuver {user_obj.username} : informations invalides."
+                        )
+                    else:
+                        user_obj.is_approved = True
+                        user_obj.is_active = True
+                        user_obj.save()
+
+                        Notification.objects.create(
+                            destinataire=user_obj,
+                            message="✅ Votre compte a été approuvé par l'administrateur."
+                        )
+                        messages.success(request, f"Utilisateur {user_obj.username} approuvé avec succès.")
 
                 elif action == "refuse":
-                    # ❌ Désapprouver / bloquer l'utilisateur
                     user_obj.is_approved = False
-                    user_obj.is_active = False  # Optionnel : désactiver l'accès
+                    user_obj.is_active = False
                     user_obj.save()
 
-                    # 🔔 Notification pour informer l'utilisateur
                     Notification.objects.create(
                         destinataire=user_obj,
                         message="❌ Votre compte n'a pas été approuvé par l'administrateur."
@@ -459,13 +528,10 @@ def liste_utilisateur(request):
             except Utilisateur.DoesNotExist:
                 messages.error(request, "Utilisateur introuvable.")
 
-            # Redirection pour éviter le double POST
             return redirect('gestionUtilisateur:liste_utilisateur')
 
-    # 🔹 Contexte pour le template
     context = {
         'listeuser': listeuser,
-        'total_utilisateur': listeuser_qs.count()
     }
 
     return render(request, 'gestion_utilisateur/liste_utilisateur.html', context)

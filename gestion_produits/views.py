@@ -38,11 +38,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.http import HttpResponse
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side, numbers
-#================================================================================================
-# Signal pour mettre à jour les totaux de la vente après modification des lignes
-@receiver([post_save, post_delete], sender=LigneVente)
-def mise_a_jour_totaux_vente(sender, instance, **kwargs):
-    instance.vente.calculer_totaux()
+
 
 #================================================================================================
 # Fonction pour ajouter une catégorie de produit

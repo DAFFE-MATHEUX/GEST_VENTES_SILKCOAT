@@ -9,12 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
     <style>
-        * {
-            margin: 0; padding: 0;
-            box-sizing: border-box;
-            font-family: "Segoe UI", Arial, sans-serif;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", Arial, sans-serif; }
         body {
             min-height: 100vh;
             display: flex;
@@ -23,7 +18,6 @@
             background: linear-gradient(135deg, #0d47a1, #00acc1);
             padding: 25px;
         }
-
         .form-container {
             width: 460px;
             padding: 30px;
@@ -33,106 +27,23 @@
             animation: fadeIn 0.7s ease-in-out;
             text-align: center;
         }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(35px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h2 {
-            font-size: 26px;
-            font-weight: bold;
-            color: #01579b;
-            margin-bottom: 18px;
-        }
-
-        .input-box {
-            display: flex;
-            align-items: center;
-            background: #e1f5fe;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 12px;
-            border: 1px solid transparent;
-            transition: 0.3s;
-        }
-
-        .input-box:hover {
-            border-color: #0288d1;
-        }
-
-        .input-box i {
-            font-size: 1.2em;
-            color: #0277bd;
-            margin-right: 10px;
-        }
-
-        .input-box input,
-        .input-box select {
-            width: 100%;
-            background: transparent;
-            border: none;
-            outline: none;
-            font-size: 0.95em;
-            color: #01579b;
-        }
-
-        button {
-            width: 100%;
-            height: 42px;
-            background: #0288d1;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            margin-top: 10px;
-            transition: 0.3s;
-            box-shadow: 0px 4px 10px rgba(2,136,209,0.4);
-        }
-
-        button:hover {
-            background: #01579b;
-            transform: translateY(-2px);
-        }
-
-        .btn-link {
-            margin-top: 12px;
-            display: block;
-            font-size: 0.9em;
-            color: #01579b;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .btn-link:hover {
-            text-decoration: underline;
-        }
-
-        .toggle-password {
-            cursor: pointer;
-            margin-left: 10px;
-            color: #0277bd;
-        }
-
-        /* Style spécial pour le bouton retour */
-        .btn-return {
-            margin-top: 12px;
-            font-size: 0.9em;
-            font-weight: bold;
-            color: #004d40;
-            display: block;
-        }
-        .btn-return:hover {
-            text-decoration: underline;
-        }
-
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(35px); } to { opacity: 1; transform: translateY(0); } }
+        h2 { font-size: 26px; font-weight: bold; color: #01579b; margin-bottom: 18px; }
+        .input-box { display: flex; align-items: center; background: #e1f5fe; border-radius: 8px; padding: 10px; margin-bottom: 12px; border: 1px solid transparent; transition: 0.3s; }
+        .input-box:hover { border-color: #0288d1; }
+        .input-box i { font-size: 1.2em; color: #0277bd; margin-right: 10px; }
+        .input-box input, .input-box select { width: 100%; background: transparent; border: none; outline: none; font-size: 0.95em; color: #01579b; }
+        button { width: 100%; height: 42px; background: #0288d1; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold; margin-top: 10px; transition: 0.3s; box-shadow: 0px 4px 10px rgba(2,136,209,0.4); }
+        button:hover { background: #01579b; transform: translateY(-2px); }
+        .btn-link { margin-top: 12px; display: block; font-size: 0.9em; color: #01579b; text-decoration: none; font-weight: bold; }
+        .btn-link:hover { text-decoration: underline; }
+        .toggle-password { cursor: pointer; margin-left: 10px; color: #0277bd; }
+        .btn-return { margin-top: 12px; font-size: 0.9em; font-weight: bold; color: #004d40; display: block; }
+        .btn-return:hover { text-decoration: underline; }
     </style>
 </head>
 
 <body>
-
     <div class="form-container">
         <h2><i class="fa fa-user-plus"></i> Inscription</h2>
 
@@ -172,17 +83,17 @@
             <div class="input-box">
                 <i class="fa fa-lock"></i>
                 <input type="password" id="password" name="password" placeholder="Mot de passe" required
-                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}"
-                  title="8 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial"
+                    pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}"
+                    title="8 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial"
                 >
                 <i class="fa fa-eye toggle-password" onclick="togglePw('password', this)"></i>
             </div>
 
             <div class="input-box">
                 <i class="fa fa-lock"></i>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirmer le mot de passe" required 
-                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}"
-                  title="8 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial"
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirmer le mot de passe" required
+                    pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}"
+                    title="8 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial"
                 >
                 <i class="fa fa-eye toggle-password" onclick="togglePw('confirm_password', this)"></i>
             </div>
@@ -199,7 +110,7 @@
 
             <div class="input-box">
                 <i class="fa fa-image"></i>
-                <input type="file" name="photo_utilisateur">
+                <input type="file" name="photo_utilisateur" accept="image/png, image/jpeg, image/jpg, image/gif" onchange="validateFile(this)">
             </div>
 
             <button type="submit"><i class="fa fa-check-circle"></i> S'inscrire</button>
@@ -212,13 +123,14 @@
     </div>
 
 <script>
+    // Masquer les messages après 5s
     setTimeout(() => {
         document.querySelectorAll('.alert').forEach(el => el.style.display = 'none');
     }, 5000);
 
+    // Toggle mot de passe
     function togglePw(id, icon) {
         let field = document.getElementById(id);
-
         if (field.type === "password") {
             field.type = "text";
             icon.classList.remove("fa-eye");
@@ -227,6 +139,18 @@
             field.type = "password";
             icon.classList.remove("fa-eye-slash");
             icon.classList.add("fa-eye");
+        }
+    }
+
+    // Validation taille max image (2 Mo)
+    function validateFile(input) {
+        const file = input.files[0];
+        if (file) {
+            const maxSize = 2 * 1024 * 1024; // 2 Mo
+            if (file.size > maxSize) {
+                alert("La taille de l'image ne doit pas dépasser 2 Mo !");
+                input.value = "";
+            }
         }
     }
 </script>
