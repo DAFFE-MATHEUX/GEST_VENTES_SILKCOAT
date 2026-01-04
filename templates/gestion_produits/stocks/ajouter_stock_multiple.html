@@ -1,104 +1,159 @@
 {% extends 'admin.html' %}
 {% block contents %}
 
+<style>
+    .table-responsive { overflow-x: auto; width: 100%; }
+    .table td, .table th { white-space: nowrap; max-width: 200px; }
+</style>
+
 <h2>Ajouter du Stock à Plusieurs Produits</h2>
 
 {% if messages %}
     {% for mgs in messages %}
-        <div class="alert 
-            {% if mgs.tags == 'success' %} alert-success
-            {% elif mgs.tags == 'error' %} alert-danger
-            {% else %} alert-info
-            {% endif %}">
-            {{ mgs }}
-        </div>
+        <div class="alert alert-{{ mgs.tags }}">{{ mgs }}</div>
     {% endfor %}
 {% endif %}
 
-<form method="post">
-    {% csrf_token %}
+<form method="post" id="form-stock">
+{% csrf_token %}
 
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Catégorie</th>
-                <th>Produit</th>
-                <th>Qte Disponible</th>
-                <th>Quantité à ajouter</th>
-                <th>Seuil d’alerte</th>
-            </tr>
-        </thead>
+<div class="table-responsive">
+<table class="table table-striped table-bordered table-hover">
+<thead class="thead-dark">
+<tr>
+    <th>#</th>
+    <th>Catégorie</th>
+    <th>Produit</th>
+    <th>Stock actuel</th>
+    <th>Qté à ajouter</th>
+    <th>Seuil</th>
+</tr>
+</thead>
 
-        <tbody>
-            {% for p in produits %}
-            <tr>
-                <td>
-                    <strong>{{ forloop.counter }}</strong>
-                </td>
-                <td>
-                     <strong>{{ p.categorie.desgcategorie }}</strong>
-                </td>
-                <td>
-                    <strong>{{ p.refprod }}</strong> – {{ p.desgprod }}
-                    <input type="hidden" name="produit[]" value="{{ p.id }}">
-                </td>
-                <td>
-                    <strong>{{ p.stocks.qtestock }}</strong>
-                </td>
+<tbody>
+{% for p in produits %}
+<tr class="stock-row">
+    <td>{{ forloop.counter }}</td>
+    <td>{{ p.categorie.desgcategorie }}</td>
+    <td>
+        <strong class="prod-nom">{{ p.desgprod }}</strong>
+        <input type="hidden" name="produit[]" value="{{ p.id }}">
+    </td>
+    <td class="stock-actuel">{{ p.stocks.qtestock }}</td>
+    <td>
+        <input type="text" name="qtestock[]" class="form-control qte input-number" value="0">
+    </td>
+    <td>
+        <input type="text" name="seuil[]" class="form-control seuil input-number" value="0">
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
 
-                <td>
-                    <input type="text"
-                           name="qtestock[]"
-                           class="form-control input-number"
-                           value="0"
-                           required>
-                </td>
+<button type="button" id="btn-confirm"
+        class="btn btn-primary mt-3"
+        data-toggle="modal"
+        data-target="#modalConfirmation"
+        disabled>
+    💾 Enregistrer les stocks
+</button>
 
-                <td>
-                    <input type="text"
-                           name="seuil[]"
-                           class="form-control input-number"
-                           value="0"
-                           required>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="3" class="text-center">Totaux : </td>
-                <td>{{ total_quantite }}</td>
-                <td colspan="2" class="text-center">-</td>
-             </tr>
-        </tfoot>
-    </table>
+<!-- ================= MODAL ================= -->
+<div class="modal fade" id="modalConfirmation">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
 
-    <button type="submit" class="btn btn-primary mt-3">
-        💾 Enregistrer les stocks
+<div class="modal-header bg-primary text-white">
+    <h4>Confirmation de l’ajout de stock</h4>
+</div>
+
+<div class="modal-body">
+
+<table class="table table-bordered">
+<thead class="thead-dark">
+<tr>
+    <th>#</th>
+    <th>Produit</th>
+    <th>Stock actuel</th>
+    <th>Ajout</th>
+    <th>Nouveau stock</th>
+    <th>Seuil</th>
+</tr>
+</thead>
+<tbody id="recap-body"></tbody>
+</table>
+
+<h5 class="text-right">
+    Total produits modifiés : <strong id="total-produits">0</strong>
+</h5>
+
+</div>
+
+<div class="modal-footer">
+    <button class="btn btn-secondary" data-dismiss="modal">
+        Modifier
     </button>
+    <button type="submit" class="btn btn-success">
+        Confirmer
+    </button>
+</div>
+
+</div>
+</div>
+</div>
+
 </form>
 
+<!-- ================= JAVASCRIPT ================= -->
 <script>
-// Bloquer les caractères non numériques pour tous les champs avec class input-number
-document.addEventListener('DOMContentLoaded', function() {
-    const inputs = document.querySelectorAll('.input-number');
-    inputs.forEach(input => {
-        input.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
-        });
-    });
+document.addEventListener("input", e => {
+    if (e.target.classList.contains("input-number")) {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    }
+    verifier();
 });
 
-// Disparition des messages après 4 secondes
-setTimeout(function() {
-    let messages = document.querySelectorAll('.alert');
-    messages.forEach(function(el) {
-        el.style.transition = "opacity 0.5s";
-        el.style.opacity = "0";
-        setTimeout(() => el.remove(), 500);
+function verifier(){
+    let actif = false;
+    document.querySelectorAll(".qte").forEach(q => {
+        if (parseInt(q.value) > 0) actif = true;
     });
-}, 4000);
+    document.getElementById("btn-confirm").disabled = !actif;
+}
+
+document.getElementById("btn-confirm").addEventListener("click", function(){
+    const body = document.getElementById("recap-body");
+    body.innerHTML = "";
+    let i = 1;
+    let total = 0;
+
+    document.querySelectorAll(".stock-row").forEach(row => {
+        const qte = parseInt(row.querySelector(".qte").value) || 0;
+        if (qte <= 0) return;
+
+        const prod = row.querySelector(".prod-nom").textContent;
+        const stockActuel = parseInt(row.querySelector(".stock-actuel").textContent);
+        const seuil = row.querySelector(".seuil").value || 0;
+
+        body.innerHTML += `
+            <tr>
+                <td>${i++}</td>
+                <td>${prod}</td>
+                <td>${stockActuel}</td>
+                <td class="text-success">+ ${qte}</td>
+                <td><strong>${stockActuel + qte}</strong></td>
+                <td>${seuil}</td>
+            </tr>
+        `;
+        total++;
+    });
+
+    document.getElementById("total-produits").textContent = total;
+});
+
+verifier();
 </script>
 
 {% endblock %}
