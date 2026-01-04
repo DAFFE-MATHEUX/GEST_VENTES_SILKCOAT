@@ -110,6 +110,8 @@ def generer_rapport_admin(request):
         total_quantite_restante = 0
         total_quantite_retourner = 0
         total_montant_reduction = 0
+        total_quantite_stock = 0
+        total_produit = 0
         total_par_categorie = []
         total_par_produit = []
         entreprise = Entreprise.objects.first()
@@ -174,7 +176,30 @@ def generer_rapport_admin(request):
 
             # Bénéfice net
             benefice_net = benefice_global - depenses_total
-
+        # ================= STOCKS DES PRODUITS =================
+        elif type_rapport == "STOCKS" :
+            data_qs = (
+                StockProduit.objects
+                .select_related('produit', 'produit__categorie')
+                .filter(date_maj__range=[date_debut, date_fin])
+                .order_by('produit__desgprod')
+            ).annotate(
+                nombre_produits=Count('id', distinct=True),
+            )
+            total_quantite_stock = data_qs.aggregate(total=Sum('qtestock'))['total'] or 0
+            total_produit = data_qs.count()
+            # ================= TOTAL PAR CATÉGORIE =================
+            total_par_categorie = (
+                data_qs
+                .values('produit__categorie__desgcategorie',
+                )
+                .annotate(
+                    nombre_produits=Count('id', distinct=True),
+                    quantite_restante=Sum('qtestock'),
+                    valeur_stock=Sum(F('qtestock') * F('produit__pu'))
+                )
+                .order_by('produit__categorie__desgcategorie')
+            )
         # ================= Gestion des COMMANDES =================
         elif type_rapport == "COMMANDES":
             data_qs = Commandes.objects.select_related(
@@ -254,6 +279,8 @@ def generer_rapport_admin(request):
             'total_quantite_restante': total_quantite_restante,
             'total_quantite_retourner' :total_quantite_retourner,
             'total_montant_reduction' : total_montant_reduction,
+            'total_quantite_stock' : total_quantite_stock,
+            'total_produit' : total_produit,
         }
 
         html = get_template('gestion_rapports/rapport_admin_pdf.html').render(context)
@@ -319,8 +346,10 @@ def generer_rapport(request):
         total_quantite_restante = 0
         total_quantite_retourner = 0
         total_montant_reduction = 0
+        total_produit = 0
         total_par_categorie = []
         total_par_produit = []
+        total_quantite_stock = 0
         entreprise = Entreprise.objects.first()
 
         # ================= VENTES =================
@@ -375,7 +404,30 @@ def generer_rapport(request):
                 total_benefice += ligne.benefice
 
             data_qs = list(ventes_dict.values())
-
+        # ================= STOCKS DES PRODUITS =================
+        elif type_rapport == "STOCKS" :
+            data_qs = (
+                StockProduit.objects
+                .select_related('produit', 'produit__categorie')
+                .filter(date_maj__range=[date_debut, date_fin])
+                .order_by('produit__desgprod')
+            ).annotate(
+                nombre_produits=Count('id', distinct=True),
+            )
+            total_quantite_stock = data_qs.aggregate(total=Sum('qtestock'))['total'] or 0
+            total_produit = data_qs.count()
+            # ================= TOTAL PAR CATÉGORIE =================
+            total_par_categorie = (
+                data_qs
+                .values('produit__categorie__desgcategorie',
+                )
+                .annotate(
+                    nombre_produits=Count('id', distinct=True),
+                    quantite_restante=Sum('qtestock'),
+                    valeur_stock=Sum(F('qtestock') * F('produit__pu'))
+                )
+                .order_by('produit__categorie__desgcategorie')
+            )
         # ================= COMMANDES =================
         elif type_rapport == "COMMANDES":
             data_qs = Commandes.objects.select_related(
@@ -465,6 +517,9 @@ def generer_rapport(request):
             'total_quantite_restante' : total_quantite_restante,
             'total_quantite_retourner' : total_quantite_retourner,
             'total_montant_reduction' : total_montant_reduction,
+            'total_par_categorie' : total_par_categorie,
+            'total_quantite_stock' : total_quantite_stock,
+            'total_produit' : total_produit,
         }
 
         html = get_template('gestion_rapports/rapport_pdf.html').render(context)

@@ -49,7 +49,7 @@ class StockProduit(models.Model):
     qtestock = models.IntegerField(default=0)
     seuil = models.IntegerField(default=0)
 
-    date_maj = models.DateTimeField(auto_now=True)
+    date_maj = models.DateField(auto_now=True)
     history = HistoricalRecords() # Pour l'historique dans la partie administration de Django
 
     class Meta:

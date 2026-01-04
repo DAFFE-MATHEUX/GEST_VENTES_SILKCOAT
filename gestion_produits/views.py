@@ -104,7 +104,6 @@ def ajouter_categorie(request):
         )
         return redirect('produits:ajouter_categorie')
 
-
 #================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
@@ -1451,7 +1450,7 @@ def listes_produits(request):
 
     return render(
         request,
-        "gestion_produits/lites_produits.html",
+        "gestion_produits/listes_produits.html",
         context
     )
 
@@ -1508,7 +1507,6 @@ def listes_produits_stock(request):
         "gestion_produits/stocks/lites_produits_stocks.html",
         context
     )
-
 
 #================================================================================================
 # Fonction pour afficher la liste de tout les livraisons
@@ -2248,9 +2246,8 @@ def nouveau_produit(request):
 # Fonction pour ajouter un nouveau produit
 #================================================================================================
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-
 def ajouter_stock_multiple(request):
-    produits = Produits.objects.all()
+    produits = Produits.objects.all().order_by('desgprod')
     total_quantite = StockProduit.objects.aggregate(
         total = Sum('qtestock'))['total'] or 0
 
@@ -2269,19 +2266,19 @@ def ajouter_stock_multiple(request):
                 seuil = int(seuil_list[i])
 
                 # Création ou mise à jour du stock unique
-                stock, created = StockProduit.objects.get_or_create(
-                    produit=produit,
-                    defaults={
-                        "qtestock": qte,
-                        "seuil": seuil
-                    }
-                )
-
-                if not created:
-                    stock.qtestock += qte
-                    stock.seuil = seuil
-                    stock.save()
-
+                if qte != 0 :
+                    stock, created = StockProduit.objects.get_or_create(
+                        produit=produit,
+                        defaults={
+                            "qtestock": qte,
+                            "seuil": seuil
+                        }
+                    )
+                    if not stock.seuil :
+                        if not created :
+                            stock.qtestock += qte
+                            stock.seuil = seuil
+                            stock.save()
                     success_count += 1
 
             except Produits.DoesNotExist:
@@ -2295,7 +2292,6 @@ def ajouter_stock_multiple(request):
                     request,
                     f"Quantité ou seuil invalide pour le produit sélectionné {str(ve)}."
                 )
-
             except Exception as e:
                 messages.error(
                     request,
@@ -2307,7 +2303,7 @@ def ajouter_stock_multiple(request):
             f"{success_count} produit(s) enregistré(s) / mis à jour avec succès."
         )
 
-        return redirect("produits:ajouter_stock_multiple")
+        return redirect("produits:listes_produits_stock")
 
     return render(
         request,
@@ -2509,7 +2505,6 @@ def choix_par_dates_commandes_impression(request):
 # Fonction pour imprimer la listes des Commandes
 #================================================================================================
 @login_required
-
 def listes_commandes_impression(request):
 
     date_debut = request.POST.get('date_debut')
@@ -3324,6 +3319,7 @@ def confirmation_exportation_commande(request):
     
     return render(request, 'gestion_produits/exportation/confirmation_exportation_commandes.html')
 
+@login_required
 def export_commandes_excel(request):
     # 1. Récupérer les commandes avec les produits et catégories
     commandes = Commandes.objects.select_related(
@@ -3388,7 +3384,7 @@ def confirmation_exportation_livraison(request):
     
     return render(request, 'gestion_produits/exportation/confirmation_exportation_livraisons.html')
 
-
+@login_required
 def export_livraisons_excel(request):
     # Récupérer toutes les livraisons avec les produits
     livraisons = LivraisonsProduits.objects.select_related('produits').all()
