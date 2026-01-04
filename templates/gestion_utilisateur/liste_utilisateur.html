@@ -50,22 +50,13 @@
                     <div class="panel-heading">GESTION DES UTILISATEURS DE L'APPLICATION</div>
                     <div class="panel-body">
 
-                        <!-- Total à gauche -->
-                        <div class="col-md-6 col-sm-12">
-                            <small class="text-muted" style="font-size: 20px; font-weight: bold;">
-                                <i class="fa fa-users text-primary me-1"></i>
-                                Total :
-                                <strong>{{ total_utilisateur }}</strong>
-                            </small>
-                        </div>
-
                         <!-- Recherche à droite -->
-                        <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
-                            <div class="input-group" style="max-width: 400px; margin-left: auto;">
+                        <div class="col-md-6 col-sm-12 mt-2 mt-md-0 text-left">
+                            <div class="input-group" style="max-width: 600px;">
                                 <input type="text" class="form-control" placeholder="Rechercher un user..." name="rechercher_informations" id="rechercher_informations">
                             </div>
                         </div>
-
+<br>
                         <div class="table-responsive mt-3">
                             <table class="table table-striped table-bordered table-hover" id="dataTables-example">
                                 <thead>
@@ -82,7 +73,7 @@
                                         <th>Date Inscription</th>
                                         <th>Photo</th>
                                         <th>Approbation</th>
-                                        <th>Actions</th>
+                                        <th>Suppression</th>
                                     </tr>
                                 </thead>
                                 <tbody id="my_table">
@@ -132,10 +123,6 @@
 
                                         <!-- Actions -->
                                         <td>
-                                            <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#modalVoirUtilisateur">
-                                                <i class="fa fa-eye"></i>
-                                            </button>
-                                            <a class="btn btn-info" href="#" title="Modifier"><i class="fa fa-edit"></i></a>
                                             <button type="button" class="btn btn-danger btn-sm btn-sup-paiement" data-toggle="modal" data-target="#supprimer" data-id="{{ elem.id }}"  title="Supprimer">
                                                 <i class="fa fa-trash"></i>
                                             </button>

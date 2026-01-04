@@ -26,6 +26,8 @@
                 </a>
             </li>
 
+            {% comment %} Gestion des Catégories et Produits {% endcomment %}
+
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-users"></i>
@@ -34,10 +36,15 @@
                 </a>
                 <ul class="treeview-menu">
                     <li><a href="{% url 'produits:listes_categorie' %}"><i class="fa fa-user-plus"></i> Gestion des Catégories</a></li>
+                     {% if request.user.type_utilisateur != 'Gerante' %}
+                    <li><a href="{% url 'produits:nouveau_produit' %}"><i class="fa fa-list"></i>Nouveau Produit</a></li>
+                    {% endif %}
+
                     <li><a href="{% url 'produits:listes_produits' %}"><i class="fa fa-list"></i>Listes des Produits</a></li>
                 </ul>
             </li>
 
+            {% comment %} Gestion des Produits en Stocks {% endcomment %}
         <li class="treeview">
                 <a href="#">
                     <i class="fa fa-users"></i>
@@ -49,6 +56,7 @@
                 </ul>
             </li>
 
+            {% comment %} Gestion des Ventes {% endcomment %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-building"></i>
@@ -60,6 +68,8 @@
                     <li><a href="{% url 'produits:historique_ventes_par_date' %}"><i class="fa fa-list"></i> Historique des Ventes</a></li>
                 </ul>
             </li>
+
+            {% comment %} Gestion des Commandes et Livraisons {% endcomment %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-building"></i>
@@ -73,6 +83,24 @@
                 </ul>
             </li>
 
+{% comment %} Impressions des Données {% endcomment %}
+
+            <li class="treeview">
+                <a href="#">
+                    <i class="fa fa-building"></i>
+                    <span>Impressions des Données</span>
+                    <i class="fa fa-angle-left pull-right"></i>
+                </a>
+                <ul class="treeview-menu">
+                    <li><a href="{% url 'produits:listes_categorie_produits_impression' %}"><i class="fa fa-list"></i> Imprimer les Catégories</a></li>
+                    <li><a href="{% url 'produits:listes_produits_impression' %}"><i class="fa fa-list"></i> Imprimer les Produits</a></li>
+                    <li><a href="{% url 'produits:listes_stocks_impression' %}"><i class="fa fa-list"></i>Imprimer les Stocks</a></li>
+                    <li><a href="{% url 'produits:choix_par_dates_ventes_impression' %}"><i class="fa fa-list"></i>Imprimer les Ventes</a></li>
+                    <li><a href="{% url 'produits:choix_par_dates_commandes_impression' %}"><i class="fa fa-list"></i>Imprimer les Commandes</a></li>
+                    <li><a href="{% url 'produits:choix_par_dates_livraisons_impression' %}"><i class="fa fa-list"></i>Imprimer les Livraisons</a></li>
+                </ul>
+            </li>
+{% comment %} Géneration des Rapports {% endcomment %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-file-alt"></i>
@@ -92,6 +120,7 @@
                 </ul>
                 {% endif %}
             </li>
+            {% comment %} Gestion des Utilisateurs de l'application {% endcomment %}
 {% if request.user.type_utilisateur != 'Gerante' %} 
             <li class="treeview">
                 <a href="#">
@@ -120,7 +149,7 @@
                   
                 </ul>
             </li>
-{% if not request.user.type_utilisateur == 'Gerante' %}
+{% if request.user.type_utilisateur != 'Gerante' %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-file-alt"></i>
@@ -132,6 +161,7 @@
                 </ul>
             </li>
 {% endif %}
+{% comment %} Exportation des Données vers Excel {% endcomment %}
             <li class="treeview">
                 <a href="#">
                     <i class="fa fa-file-alt"></i>

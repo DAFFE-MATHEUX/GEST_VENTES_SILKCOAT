@@ -12,7 +12,7 @@
     <div class="container-fluid">
 
         <!-- TITRE -->
-        <h2 class="my-3">GESTION DE TOUTES LES VENTES</h2>
+        <h2 class="my-3">GESTION DES VENTES</h2>
 
         <!-- MESSAGES -->
         {% for mgs in messages %}
@@ -22,12 +22,7 @@
         <!-- ACTIONS -->
         <div class="row mb-3">
             <div class="col-md-6">
-                <a href="{% url 'produits:choix_par_dates_ventes_impression' %}" class="btn btn-primary">
-                    <i class="fa fa-print"></i> Imprimer la liste en PDF
-                </a>
-            </div>
-            <div class="col-md-6 text-right">
-                <a href="{% url 'produits:vendre_produit' %}" class="btn btn-danger">
+                <a href="{% url 'produits:vendre_produit' %}" class="btn btn-primary">
                     <i class="fa fa-plus"></i> Nouvelle Vente
                 </a>
             </div>
@@ -43,6 +38,7 @@
                 <label>Date Fin</label>
                 <input type="date" class="form-control" name="date_fin" value="{{ date_fin }}" required>
             </div>
+            <br>
             <div class="col-md-6 d-flex align-items-end">
                 <button class="btn btn-primary me-2">🔍 Filtrer</button>
                 <a href="{% url 'produits:listes_des_ventes' %}" class="btn btn-secondary">Annuler</a>
@@ -97,7 +93,8 @@
         <th>Date</th>
         <th>Photo</th>
         <th>Imprimer</th>
-        <th>Actions</th>
+        <th>Retour Vente</th>
+        <th>Suppression</th>
         </tr>
         </thead>
         <tbody id="my_table">
@@ -171,9 +168,11 @@
 
         </div>
 
-        <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
 
-<table class="table table-bordered table-striped">
+
+<div class="table-responsive">
+            <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
+    <table class="table table-striped table-bordered table-hover">
     <thead>
         <tr>
             <th>#</th>
@@ -205,8 +204,13 @@
     </tfoot>
 </table>
 
-        <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
-        <table class="table table-bordered table-striped">
+</div>
+
+<br>
+
+    <div class="table-responsive">
+                <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+                <table class="table table-striped table-bordered table-hover">
         <thead>
         <tr>
             <th>#</th>
@@ -235,6 +239,8 @@
                             </tr>
                         </tfoot>
         </table>
+
+    </div>
 
         <nav>
 <ul class="pagination justify-content-center">
@@ -312,7 +318,8 @@
         <th>Date</th>
         <th>Photo</th>
         <th>Imprimer</th>
-        <th colspan="2">Actions</th>
+        <th>Retour Vente</th>
+        <th>Suppression</th>
         </tr>
         </thead>
         <tbody id="my_table">
@@ -388,9 +395,10 @@
 
         </div>
 
-                    <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
+        <div class="table-responsive">
+    <h4 class="text-center mt-4">TOTAL DES VENTES PAR PRODUIT</h4>
 
-<table class="table table-bordered table-striped">
+<table class="table table-striped table-bordered table-hover">
     <thead>
         <tr>
             <th>#</th>
@@ -422,8 +430,13 @@
     </tfoot>
 </table>
 
-        <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
-        <table class="table table-bordered table-striped">
+        </div>
+<br>
+
+
+        <div class="table-responsive">
+            <h4 class="text-center mt-4">TOTAL DES VENTES PAR CATÉGORIE</h4>
+                    <table class="table table-striped table-bordered table-hover">
         <thead>
         <tr>
             <th>#</th>
@@ -452,6 +465,8 @@
                             </tr>
                         </tfoot>
         </table>
+
+        </div>
 
         
         <!-- ================= PAGINATION ================= -->
