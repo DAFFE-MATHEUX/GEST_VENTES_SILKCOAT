@@ -94,6 +94,15 @@
       </tr>
       {% endfor %}
     </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3"><strong>Totaux</strong></td>
+        <td id="tfoot-stock"></td>
+        <td id="tfoot-quantite"></td>
+        <td id="tfoot-reduction"></td>
+        <td id="tfoot-net"></td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 
@@ -152,16 +161,16 @@
               </tr>
             </thead>
             <tbody id="recap-body"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3"><strong>Totaux</strong></td>
+                <td id="modal-total-quantite"></td>
+                <td id="modal-total-net"></td>
+                <td id="modal-total-reduction"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
-
-        <!-- TOTAL MODAL -->
-        <h5 class="text-right">
-          Total brut : <span id="modal-total-brut">0</span> GNF<br>
-          Réduction totale : <span id="modal-total-reduction">0</span> GNF<br>
-          Total quantité : <span id="modal-total-quantite">0</span><br><br>
-          <strong>Total net à payer : <span id="modal-total-net">0</span> GNF</strong>
-        </h5>
 
       </div>
 
@@ -189,12 +198,17 @@ document.addEventListener("input", e => {
 });
 
 /* ============================
-   Récupération des éléments DOM utilisés plusieurs fois
+   Sélecteurs DOM principaux
 ============================ */
 const totalBrutEl = document.getElementById('total-brut');
 const totalReductionEl = document.getElementById('total-reduction');
 const totalNetEl = document.getElementById('total-net');
 const totalQuantiteEl = document.getElementById('total-quantite');
+
+const tfootNet = document.getElementById('tfoot-net');
+const tfootQuantite = document.getElementById('tfoot-quantite');
+const tfootReduction = document.getElementById('tfoot-reduction');
+
 const btnValider = document.getElementById('btn-valider');
 
 const clientNomInput = document.getElementById('client_nom');
@@ -212,10 +226,7 @@ const modalTotalNetEl = document.getElementById('modal-total-net');
 const modalTotalQuantiteEl = document.getElementById('modal-total-quantite');
 
 /* ============================
-   Recalcul global
-   🔹 Réduction appliquée sur PU
-   🔹 Sous-total = qte * (PU - réduction)
-   🔹 Réduction totale = somme des réductions unitaires
+   Recalcul global des totaux
 ============================ */
 function recalc() {
   let totalBrut = 0;
@@ -231,47 +242,46 @@ function recalc() {
     const pu = parseInt(row.querySelector(".pu").dataset.pu) || 0;
     const stock = parseInt(row.querySelector(".stock").dataset.stock) || 0;
 
-    // Sécurité : la quantité ne peut pas dépasser le stock
+    // Limite quantité au stock disponible
     if (qte > stock) {
       qte = stock;
       row.querySelector(".qte").value = stock;
     }
 
-    // Sécurité : la réduction ne peut pas dépasser le PU
+    // Limite réduction au PU
     if (reduction > pu) {
       reduction = pu;
       row.querySelector(".reduction").value = pu;
     }
 
-    // Calcul du prix net unitaire et du sous-total
     const prixNetUnitaire = pu - reduction;
     const sousTotal = qte * prixNetUnitaire;
 
-    // Affichage sous-total
     row.querySelector(".sous-total").textContent = sousTotal.toLocaleString();
 
-    // Cumul des totaux
     totalBrut += qte * pu;
-    totalReduction += reduction; // 🔥 somme des réductions unitaires
+    totalReduction += reduction; // 🔥 Réduction totale par quantité
     totalQuantite += qte;
     totalNet += sousTotal;
   });
 
-  // Mise à jour des totaux globaux
+  // Mise à jour du tableau et des totaux principaux
   totalBrutEl.textContent = totalBrut.toLocaleString();
   totalReductionEl.textContent = totalReduction.toLocaleString();
   totalNetEl.textContent = totalNet.toLocaleString();
   totalQuantiteEl.textContent = totalQuantite;
 
-  // Activer/désactiver le bouton valider
+  tfootNet.textContent = totalNet.toLocaleString();
+  tfootReduction.textContent = totalReduction.toLocaleString();
+  tfootQuantite.textContent = totalQuantite;
+
   btnValider.disabled = totalNet <= 0;
 }
 
 /* ============================
    Écouteurs sur quantité et réduction
 ============================ */
-document.querySelectorAll(".qte, .reduction")
-  .forEach(el => el.addEventListener("input", recalc));
+document.querySelectorAll(".qte, .reduction").forEach(el => el.addEventListener("input", recalc));
 
 /* ============================
    Recherche produit
@@ -284,7 +294,7 @@ document.getElementById("search").addEventListener("input", function () {
 });
 
 /* ============================
-   Modal récapitulatif
+   Remplissage modal récapitulatif
 ============================ */
 btnValider.addEventListener("click", function () {
 
@@ -292,8 +302,7 @@ btnValider.addEventListener("click", function () {
   recapClientTel.textContent = clientTelInput.value;
   recapClientAdresse.textContent = clientAdresseInput.value;
 
-  const body = recapBody;
-  body.innerHTML = "";
+  recapBody.innerHTML = "";
 
   let totalBrut = 0;
   let totalReduction = 0;
@@ -312,19 +321,17 @@ btnValider.addEventListener("click", function () {
     const prixNetUnitaire = pu - reduction;
     const sousTotal = qte * prixNetUnitaire;
 
-    // Ajouter ligne au modal
-    body.innerHTML += `
+    recapBody.innerHTML += `
       <tr>
         <td>${compteur++}</td>
         <td>${produit}</td>
         <td>${pu.toLocaleString()} GNF</td>
         <td>${qte}</td>
         <td>${sousTotal.toLocaleString()} GNF</td>
-        <td>${reduction.toLocaleString()} GNF</td>
+        <td>${(reduction).toLocaleString()} GNF</td>
       </tr>
     `;
 
-    // Cumuls pour le modal
     totalBrut += qte * pu;
     totalReduction += reduction;
     totalQuantite += qte;
@@ -334,10 +341,10 @@ btnValider.addEventListener("click", function () {
   modalTotalBrutEl.textContent = totalBrut.toLocaleString();
   modalTotalReductionEl.textContent = totalReduction.toLocaleString();
   modalTotalNetEl.textContent = totalNet.toLocaleString();
-  modalTotalQuantiteEl.textContent = totalQuantite;
+  modalTotalQuantiteEl.textContent = totalQuantite.toLocaleString();
 });
 
-// Initialisation
+// Initialisation au chargement
 recalc();
 
 </script>
