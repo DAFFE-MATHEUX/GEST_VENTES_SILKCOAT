@@ -52,54 +52,50 @@
        placeholder="Rechercher produit ou catégorie">
 
 <!-- ================= TABLE PRODUITS ================= -->
- <div class="table-responsive">
-    <table class="table table-striped table-bordered table-hover">
-  <thead class="thead-dark">
-    <tr>
-      <th>#</th>
-      <th>Produit</th>
-      <th>Prix Unitaire</th>
-      <th>Stock Dispo</th>
-      <th>Quantité à achéter</th>
-      <th>Réduction. / prod</th>
-      <th>Sous-total par Produit</th>
-    </tr>
-  </thead>
+<div class="table-responsive">
+  <table class="table table-striped table-bordered table-hover">
+    <thead class="thead-dark">
+      <tr>
+        <th>#</th>
+        <th>Produit</th>
+        <th>Prix Unitaire</th>
+        <th>Stock Dispo</th>
+        <th>Quantité à achéter</th>
+        <th>Réduction / prod</th>
+        <th>Sous-total par Produit</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in produits %}
+      <tr class="produit-row">
+        <td>{{ forloop.counter }}</td>
+        <td>
+          <strong>{{ p.desgprod }}</strong><br>
+          <small>{{ p.categorie.desgcategorie }}</small>
+          <input type="hidden" name="produit_id[]" value="{{ p.id }}">
+        </td>
 
-  <tbody>
-    {% for p in produits %}
-    <tr class="produit-row">
-      <td>{{ forloop.counter }}</td>
-      <td>
-        <strong>{{ p.desgprod }}</strong><br>
-        <small>{{ p.categorie.desgcategorie }}</small>
-        <input type="hidden" name="produit_id[]" value="{{ p.id }}">
-      </td>
+        <td class="pu" data-pu="{{ p.pu }}">{{ p.pu }}</td>
+        <td class="stock" data-stock="{{ p.stocks.qtestock|default:0 }}">
+          {{ p.stocks.qtestock|default:0 }}
+        </td>
 
-      <td class="pu" data-pu="{{ p.pu }}">{{ p.pu }}</td>
-      <td class="stock" data-stock="{{ p.stocks.qtestock|default:0 }}">
-        {{ p.stocks.qtestock|default:0 }}
-      </td>
+        <td>
+          <input type="text" name="quantite[]"
+                 class="form-control qte only-numbers" value="0">
+        </td>
 
-      <td>
-        <input type="text" name="quantite[]"
-               class="form-control qte only-numbers" value="0">
-      </td>
+        <td>
+          <input type="text" name="reduction[]"
+                 class="form-control reduction only-numbers" value="0">
+        </td>
 
-      <td>
-        <input type="text" name="reduction[]"
-               class="form-control reduction only-numbers" value="0">
-      </td>
-
-      <td class="sous-total">0</td>
-
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
- </div>
-
+        <td class="sous-total">0</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <!-- ================= TOTAL ================= -->
 <div class="text-right mt-3">
@@ -143,29 +139,27 @@
         </div>
 
         <!-- PRODUITS -->
-         <div  class="table-responsive">
-                    <table class="table table-bordered">
-          <thead class="thead-dark">
-            <tr>
-              <th>#</th>
-              <th>Produit</th>
-              <th>PU</th>
-              <th>Qté</th>
-              <th>Sous-total</th>
-              <th>Réduction appliquée</th>
-            </tr>
-          </thead>
-          <tbody id="recap-body"></tbody>
-        </table>
-
-         </div>
-
+        <div class="table-responsive">
+          <table class="table table-bordered">
+            <thead class="thead-dark">
+              <tr>
+                <th>#</th>
+                <th>Produit</th>
+                <th>PU</th>
+                <th>Qté</th>
+                <th>Sous-total</th>
+                <th>Réduction appliquée</th>
+              </tr>
+            </thead>
+            <tbody id="recap-body"></tbody>
+          </table>
+        </div>
 
         <!-- TOTAL MODAL -->
         <h5 class="text-right">
           Total brut : <span id="modal-total-brut">0</span> GNF<br>
           Réduction totale : <span id="modal-total-reduction">0</span> GNF<br>
-          Total quantité : <span id="modal-total-quantite">0</span><br> <br>
+          Total quantité : <span id="modal-total-quantite">0</span><br><br>
           <strong>Total net à payer : <span id="modal-total-net">0</span> GNF</strong>
         </h5>
 
@@ -186,7 +180,7 @@
 <!-- ================= JAVASCRIPT ================= -->
 <script>
 /* ============================
-   Autoriser uniquement chiffres
+   Autoriser uniquement les chiffres
 ============================ */
 document.addEventListener("input", e => {
   if (e.target.classList.contains("only-numbers")) {
@@ -195,7 +189,33 @@ document.addEventListener("input", e => {
 });
 
 /* ============================
+   Récupération des éléments DOM utilisés plusieurs fois
+============================ */
+const totalBrutEl = document.getElementById('total-brut');
+const totalReductionEl = document.getElementById('total-reduction');
+const totalNetEl = document.getElementById('total-net');
+const totalQuantiteEl = document.getElementById('total-quantite');
+const btnValider = document.getElementById('btn-valider');
+
+const clientNomInput = document.getElementById('client_nom');
+const clientTelInput = document.getElementById('client_tel');
+const clientAdresseInput = document.getElementById('client_adresse');
+
+const recapClientNom = document.getElementById('recap-client-nom');
+const recapClientTel = document.getElementById('recap-client-tel');
+const recapClientAdresse = document.getElementById('recap-client-adresse');
+
+const recapBody = document.getElementById('recap-body');
+const modalTotalBrutEl = document.getElementById('modal-total-brut');
+const modalTotalReductionEl = document.getElementById('modal-total-reduction');
+const modalTotalNetEl = document.getElementById('modal-total-net');
+const modalTotalQuantiteEl = document.getElementById('modal-total-quantite');
+
+/* ============================
    Recalcul global
+   🔹 Réduction appliquée sur PU
+   🔹 Sous-total = qte * (PU - réduction)
+   🔹 Réduction totale = somme des réductions unitaires
 ============================ */
 function recalc() {
   let totalBrut = 0;
@@ -205,59 +225,56 @@ function recalc() {
 
   document.querySelectorAll(".produit-row").forEach(row => {
 
-    let qte   = parseInt(row.querySelector(".qte").value) || 0;
-    let reduc = parseInt(row.querySelector(".reduction").value) || 0;
+    let qte = parseInt(row.querySelector(".qte").value) || 0;
+    let reduction = parseInt(row.querySelector(".reduction").value) || 0;
 
-    const pu     = parseInt(row.querySelector(".pu").dataset.pu);
-    const stock  = parseInt(row.querySelector(".stock").dataset.stock);
+    const pu = parseInt(row.querySelector(".pu").dataset.pu) || 0;
+    const stock = parseInt(row.querySelector(".stock").dataset.stock) || 0;
 
-    // Limite quantité
+    // Sécurité : la quantité ne peut pas dépasser le stock
     if (qte > stock) {
       qte = stock;
       row.querySelector(".qte").value = stock;
     }
 
-    // Limite réduction au PU
-    if (reduc > pu) {
-      reduc = pu;
+    // Sécurité : la réduction ne peut pas dépasser le PU
+    if (reduction > pu) {
+      reduction = pu;
       row.querySelector(".reduction").value = pu;
     }
 
-    const sousTotal = qte * (pu - reduc);
-    const reducTotal = qte * reduc;
+    // Calcul du prix net unitaire et du sous-total
+    const prixNetUnitaire = pu - reduction;
+    const sousTotal = qte * prixNetUnitaire;
 
-    row.querySelector(".sous-total").textContent =
-      sousTotal.toLocaleString();
+    // Affichage sous-total
+    row.querySelector(".sous-total").textContent = sousTotal.toLocaleString();
 
+    // Cumul des totaux
     totalBrut += qte * pu;
-    totalReduction += reducTotal;
+    totalReduction += reduction; // 🔥 somme des réductions unitaires
     totalQuantite += qte;
     totalNet += sousTotal;
   });
 
-  document.getElementById("total-brut").textContent =
-    totalBrut.toLocaleString();
+  // Mise à jour des totaux globaux
+  totalBrutEl.textContent = totalBrut.toLocaleString();
+  totalReductionEl.textContent = totalReduction.toLocaleString();
+  totalNetEl.textContent = totalNet.toLocaleString();
+  totalQuantiteEl.textContent = totalQuantite;
 
-  document.getElementById("total-reduction").textContent =
-    totalReduction.toLocaleString();
-
-  document.getElementById("total-net").textContent =
-    totalNet.toLocaleString();
-
-  document.getElementById("total-quantite").textContent =
-    totalQuantite;
-
-  document.getElementById("btn-valider").disabled = totalNet <= 0;
+  // Activer/désactiver le bouton valider
+  btnValider.disabled = totalNet <= 0;
 }
 
 /* ============================
-   Écouteurs
+   Écouteurs sur quantité et réduction
 ============================ */
 document.querySelectorAll(".qte, .reduction")
   .forEach(el => el.addEventListener("input", recalc));
 
 /* ============================
-   Recherche
+   Recherche produit
 ============================ */
 document.getElementById("search").addEventListener("input", function () {
   const q = this.value.toLowerCase();
@@ -269,13 +286,13 @@ document.getElementById("search").addEventListener("input", function () {
 /* ============================
    Modal récapitulatif
 ============================ */
-document.getElementById("btn-valider").addEventListener("click", function () {
+btnValider.addEventListener("click", function () {
 
-  document.getElementById("recap-client-nom").textContent = client_nom.value;
-  document.getElementById("recap-client-tel").textContent = client_tel.value;
-  document.getElementById("recap-client-adresse").textContent = client_adresse.value;
+  recapClientNom.textContent = clientNomInput.value;
+  recapClientTel.textContent = clientTelInput.value;
+  recapClientAdresse.textContent = clientAdresseInput.value;
 
-  const body = document.getElementById("recap-body");
+  const body = recapBody;
   body.innerHTML = "";
 
   let totalBrut = 0;
@@ -285,51 +302,44 @@ document.getElementById("btn-valider").addEventListener("click", function () {
   let compteur = 1;
 
   document.querySelectorAll(".produit-row").forEach(row => {
-
     const qte = parseInt(row.querySelector(".qte").value) || 0;
     if (qte <= 0) return;
 
     const produit = row.querySelector("strong").textContent;
-    const pu = parseInt(row.querySelector(".pu").dataset.pu);
-    const reduc = parseInt(row.querySelector(".reduction").value) || 0;
+    const pu = parseInt(row.querySelector(".pu").dataset.pu) || 0;
+    const reduction = parseInt(row.querySelector(".reduction").value) || 0;
 
-    const sousTotal = qte * (pu - reduc);
-    const reducTotal = qte * reduc;
+    const prixNetUnitaire = pu - reduction;
+    const sousTotal = qte * prixNetUnitaire;
 
+    // Ajouter ligne au modal
     body.innerHTML += `
       <tr>
-        <td>${compteur}</td>
+        <td>${compteur++}</td>
         <td>${produit}</td>
         <td>${pu.toLocaleString()} GNF</td>
         <td>${qte}</td>
         <td>${sousTotal.toLocaleString()} GNF</td>
-        <td>${reducTotal.toLocaleString()} GNF</td>
+        <td>${reduction.toLocaleString()} GNF</td>
       </tr>
     `;
 
+    // Cumuls pour le modal
     totalBrut += qte * pu;
-    totalReduction += reducTotal;
+    totalReduction += reduction;
     totalQuantite += qte;
     totalNet += sousTotal;
-    compteur++;
   });
 
-  document.getElementById("modal-total-brut").textContent =
-    totalBrut.toLocaleString();
-
-  document.getElementById("modal-total-reduction").textContent =
-    totalReduction.toLocaleString();
-
-  document.getElementById("modal-total-net").textContent =
-    totalNet.toLocaleString();
-
-  document.getElementById("modal-total-quantite").textContent =
-    totalQuantite;
+  modalTotalBrutEl.textContent = totalBrut.toLocaleString();
+  modalTotalReductionEl.textContent = totalReduction.toLocaleString();
+  modalTotalNetEl.textContent = totalNet.toLocaleString();
+  modalTotalQuantiteEl.textContent = totalQuantite;
 });
 
 // Initialisation
 recalc();
-</script>
 
+</script>
 
 {% endblock %}
