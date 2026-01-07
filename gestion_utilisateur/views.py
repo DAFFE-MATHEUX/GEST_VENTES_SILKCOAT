@@ -91,6 +91,7 @@ def home(request):
     montant_total_ventes = dernieres_ventes.aggregate(total=Sum('total'))['total'] or 0
     montant_total_benefice = dernieres_ventes.aggregate(total=Sum('benefice_total'))['total'] or 0
     quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('total_quanite'))['total'] or 0
+    print(f"quantite_total_ventes : {quantite_total_ventes}")
     
     # ===============================
     # 📊 COMPARAISON PAR JOUR

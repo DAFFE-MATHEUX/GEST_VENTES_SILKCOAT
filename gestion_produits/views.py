@@ -610,24 +610,28 @@ def generer_code_commandes():
 
 def nouvelle_commande(request):
     """
-    Vue sécurisée pour créer une nouvelle commande.
-    Enregistre la commande et envoie un email à l'admin.
+    Création sécurisée d'une nouvelle commande fournisseur
+    + envoi email détaillé à l'admin
     """
+
     produits = Produits.objects.all()
     produits_data = [{"produit": p} for p in produits]
-    stock_total = 0
+
     stock_total = StockProduit.objects.aggregate(
-    total = Sum('qtestock')
+        total=Sum('qtestock')
     )['total'] or 0
 
     if request.method == "POST":
         ids = request.POST.getlist("produit_id[]")
         quantites = request.POST.getlist("quantite[]")
 
-        # Informations fournisseur
-        nom_complet_fournisseur = request.POST.get("nom_complet_fournisseur")
-        telephone_fournisseur = request.POST.get("telephone_fournisseur")
-        adresse_fournisseur = request.POST.get("adresse_fournisseur")
+        nom_complet_fournisseur = request.POST.get("nom_complet_fournisseur", "").strip()
+        telephone_fournisseur = request.POST.get("telephone_fournisseur", "").strip()
+        adresse_fournisseur = request.POST.get("adresse_fournisseur", "").strip()
+
+        if not nom_complet_fournisseur or not telephone_fournisseur or not adresse_fournisseur:
+            messages.error(request, "Veuillez renseigner toutes les informations du fournisseur.")
+            return redirect("produits:nouvelle_commande")
 
         if not ids or not quantites:
             messages.error(request, "Aucun produit sélectionné.")
@@ -635,83 +639,110 @@ def nouvelle_commande(request):
 
         lignes = []
         total_general = 0
-
+        numero_commande = generer_code_commandes()
 
         try:
-            for i in range(len(ids)):
+            with transaction.atomic():
+
+                for prod_id, qte_str in zip(ids, quantites):
+                    try:
+                        produit = Produits.objects.get(id=prod_id)
+                    except Produits.DoesNotExist:
+                        continue
+
+                    try:
+                        qte = int(qte_str or 0)
+                    except ValueError:
+                        continue
+
+                    if qte <= 0:
+                        continue
+
+                    # Enregistrement de la ligne de commande
+                    Commandes.objects.create(
+                        numcmd=numero_commande,
+                        qtecmd=qte,
+                        produits=produit,
+                        nom_complet_fournisseur=nom_complet_fournisseur,
+                        adresse_fournisseur=adresse_fournisseur,
+                        telephone_fournisseur=telephone_fournisseur,
+                    )
+
+                    sous_total = produit.pu * qte
+                    total_general += sous_total
+
+                    lignes.append({
+                        "produit": produit.desgprod,
+                        "qte": qte,
+                        "pu": produit.pu,
+                        "sous_total": sous_total
+                    })
+
+                if not lignes:
+                    messages.error(request, "Aucune ligne de commande valide.")
+                    return redirect("produits:nouvelle_commande")
+
+                # ================= EMAIL =================
                 try:
-                    prod = Produits.objects.get(id=ids[i])
-                except Produits.DoesNotExist:
-                    messages.error(request, "Produit introuvable.")
-                    continue  # passer au suivant
+                    email_body = (
+                        f"📦 NOUVELLE COMMANDE FOURNISSEUR\n\n"
+                        f"Numéro de commande : {numero_commande}\n\n"
+                        f"FOURNISSEUR\n"
+                        f"Nom : {nom_complet_fournisseur}\n"
+                        f"Téléphone : {telephone_fournisseur}\n"
+                        f"Adresse : {adresse_fournisseur}\n\n"
+                        f"---------------- DÉTAILS ----------------\n"
+                    )
 
-                try:
-                    qte = int(quantites[i])
-                except ValueError:
-                    messages.error(request, f"Quantité invalide pour {prod.desgprod}.")
-                    continue
+                    for l in lignes:
+                        email_body += (
+                            f"- Produit : {l['produit']}\n"
+                            f"  Quantité : {l['qte']}\n"
+                            f"  PU : {l['pu']} GNF\n"
+                            f"  Sous-total : {l['sous_total']} GNF\n\n"
+                        )
 
-                if qte <= 0:
-                    continue  # Ignorer
+                    email_body += (
+                        f"----------------------------------------\n"
+                        f"TOTAL GÉNÉRAL : {total_general} GNF\n"
+                    )
 
-                # Créer la commande
-                Commandes.objects.create(
-                    numcmd= generer_code_commandes(),
-                    qtecmd=qte,
-                    produits=prod,
-                    nom_complet_fournisseur=nom_complet_fournisseur,
-                    adresse_fournisseur=adresse_fournisseur,
-                    telephone_fournisseur=telephone_fournisseur,
-                )
+                    EmailMessage(
+                        subject=f"📦 Nouvelle commande {numero_commande}",
+                        body=email_body,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[settings.ADMIN_EMAIL],
+                    ).send(fail_silently=False)
 
-                lignes.append((prod, qte))
-                total_general += prod.pu * qte
+                except Exception as e:
+                    logger.warning(f"Email non envoyé pour la commande {numero_commande}: {e}")
+                    messages.warning(
+                        request,
+                        "Commande enregistrée mais l'email n'a pas été envoyé."
+                    )
 
-            if not lignes:
-                messages.error(request, "Aucune commande valide n'a été enregistrée.")
-                return redirect("produits:nouvelle_commande")
-
-            # 🔹 Envoi email sécurisé
-            try:
-                sujet = f"Nouvelle commande enregistrée - Fournisseur {nom_complet_fournisseur}"
-                contenu = f"""
-                Nouvelle commande effectuée.
-
-                Fournisseur : {nom_complet_fournisseur}
-                Téléphone : {telephone_fournisseur}
-                Adresse : {adresse_fournisseur}
-
-                Total estimé : {total_general:,} GNF
-
-                Détails :
-                """
-                for p, q in lignes:
-                    contenu += f"- {p.desgprod} | Qté : {q} | PU : {p.pu} | Sous-total : {p.pu * q}\n"
-
-                EmailMessage(
-                    sujet,
-                    contenu,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [settings.ADMIN_EMAIL],
-                ).send(fail_silently=False)
-
-            except Exception as e:
-                logger.warning(f"Email non envoyé pour la commande {generer_code_commandes()}: {str(e)}")
-                messages.warning(request, f"Commande enregistrée mais email non envoyé : {str(e)}")
-
-            messages.success(request, f"Commande {generer_code_commandes()} enregistrée avec succès !")
+            messages.success(
+                request,
+                f"✅ Commande {numero_commande} enregistrée avec succès."
+            )
             return redirect("produits:listes_des_commandes")
 
         except Exception as e:
-            logger.error(f"Erreur inattendue lors de la création de la commande: {str(e)}")
-            messages.error(request, "Erreur inattendue lors de l'enregistrement de la commande.")
+            logger.exception("Erreur lors de la création de la commande")
+            messages.error(
+                request,
+                "❌ Une erreur est survenue lors de l'enregistrement de la commande."
+            )
             return redirect("produits:nouvelle_commande")
 
-    context = {
-        'produits_data': produits_data,
-        'stock_total' : stock_total,
+    return render(
+        request,
+        "gestion_produits/commandes/nouvelle_commande.html",
+        {
+            "produits_data": produits_data,
+            "stock_total": stock_total,
         }
-    return render(request, "gestion_produits/commandes/nouvelle_commande.html", context)
+    )
 
 #================================================================================================
 # Fonction pour éffectuer une receptin de livraisons des commandes
