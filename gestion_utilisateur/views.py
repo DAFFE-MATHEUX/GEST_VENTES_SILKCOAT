@@ -87,12 +87,20 @@ def home(request):
     # ===============================
     # 5 DERNIÈRES VENTES
     # ===============================
+
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
-    montant_total_ventes = dernieres_ventes.aggregate(total=Sum('total'))['total'] or 0
-    montant_total_benefice = dernieres_ventes.aggregate(total=Sum('benefice_total'))['total'] or 0
-    quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('total_quanite'))['total'] or 0
-    print(f"quantite_total_ventes : {quantite_total_ventes}")
-    
+
+    # S'assurer que les totaux sont à jour
+    for vente in dernieres_ventes:
+        vente.calculer_totaux()
+        vente.quantite_vendue()
+
+    # Calcul des totaux globaux
+    totaux = dernieres_ventes.aggregate(
+        total_ventes=Sum('total'),
+        total_benefice=Sum('benefice_total'),
+        total_quantite=Sum('total_quanite')
+    )
     # ===============================
     # 📊 COMPARAISON PAR JOUR
     # ===============================
@@ -263,9 +271,10 @@ def home(request):
         'total_quantite_vendu': total_quantite_vendu,
         'total_benefice': total_benefice,
         
-        'montant_total_ventes': montant_total_ventes,
-        'montant_total_benefice': montant_total_benefice,
-        'quantite_total_ventes': quantite_total_ventes,
+        #'montant_total_ventes': montant_total_ventes,
+        #'montant_total_benefice': montant_total_benefice,
+        #'quantite_total_ventes': quantite_total_ventes,
+        'totaux': totaux,
         
         'hier' : hier,
         'aujourd_hui' : aujourd_hui,

@@ -172,9 +172,11 @@
                                 <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
                                 <td>{{ vente.total_quanite }}</td>
                                 <td>{{ vente.total|floatformat:0 }} GNF</td>
+
                                 {% if request.user.type_utilisateur != 'Gerante' %}
                                 <td>{{ vente.benefice_total }}</td>
                                 {% endif %}
+
                             </tr>
                         {% empty %}
                         <tr>
@@ -182,16 +184,17 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="5" class="text-center">Totaux : </td>
-                            <td>{{ quantite_total_ventes }}</td>
-                            <td>{{ montant_total_ventes|floatformat:0 }} GNF</td>
-                            {% if request.user.type_utilisateur != 'Gerante' %}
-                            <td>{{ montant_total_benefice|floatformat:0 }} GNF</td>
-                            {% endif %}
-                        </tr>
-                    </tfoot>
+                  <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-center">Totaux : </td>
+                        <td>{{ totaux.total_quantite|default:0 }}</td>
+                        <td>{{ totaux.total_ventes|default:0|floatformat:0 }} GNF</td>
+                        {% if request.user.type_utilisateur != 'Gerante' %}
+                        <td>{{ totaux.total_benefice|default:0|floatformat:0 }} GNF</td>
+                        {% endif %}
+                    </tr>
+                </tfoot>
+
                 </table>
             </div>
         </div>
