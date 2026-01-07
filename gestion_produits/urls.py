@@ -61,6 +61,11 @@ urlpatterns = [
     path('livraions/supprimer_livraisons/', supprimer_livraisons, name='supprimer_livraisons'),
     path('livraions/filtrer_listes_livraisons/', filtrer_listes_livraisons, name='filtrer_listes_livraisons'),
     path('supprimer_livraisons/', supprimer_livraisons, name='supprimer_livraisons'),
+    
+    #====================================================================================================================================================
+    # HISTORIQUES DES COMMANDES ET LIVRAISONS 
+    #====================================================================================================================================================
+
     path('historique_commandes_livraisons/', historique_commandes_livraisons, name='historique_commandes_livraisons'),
     
     #=================================================================================================================================================

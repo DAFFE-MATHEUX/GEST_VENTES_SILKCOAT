@@ -73,6 +73,7 @@ class VenteProduit(models.Model):
     date_vente = models.DateTimeField(auto_now_add=True)
 
     total = models.PositiveIntegerField(default=0)
+    total_quanite = models.PositiveIntegerField(default=0) # Qui permet de stocker les quantites quantité 
     benefice_total = models.IntegerField(default=0)
 
     nom_complet_client = models.CharField(max_length=70, null=True, blank=True)
@@ -93,6 +94,9 @@ class VenteProduit(models.Model):
         self.benefice_total = sum(l.benefice for l in self.lignes.all())
         self.save(update_fields=['total', 'benefice_total'])
 
+    def quantite_vendue(self):
+        self.total_quanite = sum(l.quantite for l in self.lignes.all())
+        self.save(update_fields=['total_quanite'])
 
 #==================================================================================
 # Table Ligne des Ventes
@@ -140,7 +144,7 @@ class LigneVente(models.Model):
             (self.pu_net - self.produit.prix_en_gros)
             * self.quantite_restante
         )
-
+    
     def save(self, *args, **kwargs):
         is_new = self.pk is None
 

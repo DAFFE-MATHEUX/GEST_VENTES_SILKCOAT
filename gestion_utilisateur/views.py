@@ -76,22 +76,22 @@ def home(request):
     lues = dernieeres_notification.filter(lu=True)
 
     # ===============================
-    # COMMANDES DES PRODUITS
+    # 3 DERNIERES COMMANDES DES PRODUITS
     # ===============================
     listes_commandes = Commandes.objects.order_by('-datecmd')[:3]
     # ===============================
-    # LIVRAISONS DES PRODUITS
+    # 3 DERNIERES LIVRAISONS DES PRODUITS
     # ===============================
     listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')[:3]
 
     # ===============================
-    # DERNIÈRES VENTES
+    # 5 DERNIÈRES VENTES
     # ===============================
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
     montant_total_ventes = dernieres_ventes.aggregate(total=Sum('total'))['total'] or 0
     montant_total_benefice = dernieres_ventes.aggregate(total=Sum('benefice_total'))['total'] or 0
-    quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('lignes__quantite'))['total'] or 0
-
+    quantite_total_ventes = dernieres_ventes.aggregate(total=Sum('total_quanite'))['total'] or 0
+    
     # ===============================
     # 📊 COMPARAISON PAR JOUR
     # ===============================

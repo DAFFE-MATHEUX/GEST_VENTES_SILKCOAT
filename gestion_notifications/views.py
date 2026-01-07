@@ -170,6 +170,36 @@ def filtrer_listes_notifications(request):
 
     return render(request, "gestion_notifications/listes_notifications_totale.html", context)
 
+# =================================================================================================
+# Supprimer une Nofification
+# =================================================================================================
+@login_required
+def supprimer_notification(request):
+    if request.method != "POST":
+        return redirect("notifications:listes_totales_notification")
+
+    try:
+        id_notification = request.POST.get("id_suppression")
+        notifications = get_object_or_404(Notification, pk=id_notification)
+
+        # 🔒 Sécurité : seul le créateur peut supprimer
+        if hasattr(notifications, "utilisateur") and notifications.destinataire_email:
+            if notifications.utilisateur.id != request.user.id:
+                messages.warning(
+                    request,
+                    "❌ Vous ne pouvez pas supprimer cette dépense : "
+                    f"elle a été enregistrée par {notifications.utilisateur.get_full_name()}."
+                )
+                return redirect("notifications:listes_totales_notification")
+
+        messages.success(request, "✅ Notification supprimée avec succès.")
+
+    except Notification.DoesNotExist as dne:
+        messages.error(request, f"❌ La Notification spécifiée n’existe pas {str(dne)}.")
+    except Exception as e:
+        messages.error(request, f"❌ Erreur inattendue : {str(e)}")
+
+    return redirect("notifications:listes_totales_notification")
 
 #================================================================================================
 # Fonction pour afficher le formulaire de choix de dates de saisie pour l'impression des Notifications

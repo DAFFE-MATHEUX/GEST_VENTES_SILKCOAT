@@ -44,7 +44,7 @@
       {% endfor %}
     </select>
   </div>
-
+<br>
   <div class="col-md-5 d-flex align-items-end">
     <button type="submit" class="btn btn-primary mr-2"><i class="fa fa-filter"></i> Filtrer</button>
     <a href="?aujourdhui=1" class="btn btn-success mr-2"><i class="fa fa-calendar"></i> Audit du jour</a>
@@ -60,17 +60,14 @@
 
            <div class="row align-items-center mb-3">
                 <!-- Total à gauche -->
-                <div class="col-md-6 col-sm-12">
-                    <small class="text-muted" style="font-size: 20px; font-weight: bold;">
-                        <i class="fa fa-users text-primary me-1"></i>
-                        Total Audit :
-                        <strong>{{ total_audit }}</strong>
+                <div class="col-md-6 col-sm-12 mt-2 mt-md-0 text-md-start">
+                    <small class="text-muted" style="font-size: 20px; font-weight: bold;">Total : <strong>{{ total_audit }}</strong>
                     </small>
                 </div>
 
                   <!-- Recherche à droite -->
                   <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
-                      <div class="input-group" style="max-width: 400px; margin-left: auto;">
+                      <div class="input-group" style="max-width: 350px;">
                           <input type="text" class="form-control" placeholder="Rechercher une information..." name="rechercher_informations" id="rechercher_informations">
 
                       </div>

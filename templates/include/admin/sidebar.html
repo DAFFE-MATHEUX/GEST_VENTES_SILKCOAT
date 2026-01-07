@@ -109,13 +109,11 @@
                 </a>
                 {% if request.user.type_utilisateur == 'Gerante' %} 
                 <ul class="treeview-menu">
-                    <li><a href="{% url 'rapports:liste_rapports' %}"><i class="fa fa-list"></i> Listes des Rapports</a></li>
                     <li><a href="{% url 'rapports:creer_rapport' %}"><i class="fa fa-list"></i> Générer des Rapports</a></li>
                 </ul>
 
                 {% else %}
                 <ul class="treeview-menu">
-                    <li><a href="{% url 'rapports:liste_rapports' %}"><i class="fa fa-list"></i> Listes des Rapports</a></li>
                     <li><a href="{% url 'rapports:creer_rapport_admin' %}"><i class="fa fa-list"></i> Générer des Rapports</a></li>
                 </ul>
                 {% endif %}

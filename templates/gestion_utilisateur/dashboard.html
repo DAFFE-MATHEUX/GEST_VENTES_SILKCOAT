@@ -155,8 +155,11 @@
                             <th>Vendu Par</th>
                             <th>Clients</th>
                             <th>Date</th>
+                            <th>Qte</th>
                             <th>Total</th>
+                            {% if request.user.type_utilisateur != 'Gerante' %}
                             <th>Bénéfice</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -167,20 +170,26 @@
                                 <td>{{ vente.utilisateur.get_full_name|default:"Administrateur" }}</td>
                                 <td> {{ vente.nom_complet_client }}</td>
                                 <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
+                                <td>{{ vente.total_quanite }}</td>
                                 <td>{{ vente.total|floatformat:0 }} GNF</td>
+                                {% if request.user.type_utilisateur != 'Gerante' %}
                                 <td>{{ vente.benefice_total }}</td>
+                                {% endif %}
                             </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center">Aucune vente récente</td>
+                            <td colspan="8" class="text-center">Aucune vente récente</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                     <tfoot>
                         <tr>
                             <td colspan="5" class="text-center">Totaux : </td>
+                            <td>{{ quantite_total_ventes }}</td>
                             <td>{{ montant_total_ventes|floatformat:0 }} GNF</td>
+                            {% if request.user.type_utilisateur != 'Gerante' %}
                             <td>{{ montant_total_benefice|floatformat:0 }} GNF</td>
+                            {% endif %}
                         </tr>
                     </tfoot>
                 </table>

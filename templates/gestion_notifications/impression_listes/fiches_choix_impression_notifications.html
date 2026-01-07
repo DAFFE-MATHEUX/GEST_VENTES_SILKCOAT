@@ -29,14 +29,20 @@
     <form method="POST" action="{% url 'notifications:listes_notifications_impression' %}">
         {% csrf_token %}
 
-        <div class="form-group">
-            <label for="annee_scolaire">Date de Début :</label>
-            <input type="date" required class="form-control" name="date_debut">
-        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+            <div class="form-group">
+                <label for="annee_scolaire">Date de Début :</label>
+                <input type="date" required class="form-control" name="date_debut">
+            </div>
 
-        <div class="form-group">
-            <label for="annee_scolaire">Date de Fin :</label>
-            <input type="date" required class="form-control" name="date_fin">
+            <div class="form-group">
+                <label for="annee_scolaire">Date de Fin :</label>
+                <input type="date" required class="form-control" name="date_fin">
+            </div>
+
+            </div>
+
         </div>
 
         <button type="submit" class="btn btn-primary mt-2"> <i class="fa fa-eye"></i> Afficher les résultats</button>

@@ -349,7 +349,7 @@ def recu_depense_global_interval(request):
     context = {
         "depenses": depenses,
         "total_depenses": total_depenses,
-        "nom_entreprise": nom_entreprise,
+        "info_entreprise": nom_entreprise,
         "today": today,
         "qr_code_base64": qr_code_base64,
         "date_debut": date_debut_obj,
@@ -480,7 +480,6 @@ def modifier_depense(request):
 # Supprimer une dépense
 # =================================================================================================
 @login_required
-
 def supprimer_depense(request):
     if request.method != "POST":
         return redirect("liste_depense")

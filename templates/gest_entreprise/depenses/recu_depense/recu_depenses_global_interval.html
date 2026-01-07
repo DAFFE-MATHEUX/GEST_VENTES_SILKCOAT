@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Facture Dépenses - {{ nom_entreprise.nom_entrepriese }}</title>
+    <title>Facture Dépenses - {{ info_entreprise.nom_entrepriese }}</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
     <style>
         body {
@@ -62,19 +62,19 @@
     <!-- ENTÊTE -->
     <div class="header-top">
         <div class="header-left">
-            <strong>{{ nom_entreprise.nom_entrepriese|upper }}</strong><br>
-            <strong>Adresse :</strong> {{ nom_entreprise.adresse }}<br>
-            <strong>Contact :</strong> {{ nom_entreprise.contact1 }}{% if nom_entreprise.contact2 %} / {{ nom_entreprise.contact2 }}{% endif %}<br>
+            <strong>{{ info_entreprise.nom_entrepriese|upper }}</strong><br>
+            <strong>Adresse :</strong> {{ info_entreprise.adresse }}<br>
+            <strong>Contact :</strong> {{ info_entreprise.contact1 }}{% if info_entreprise.contact2 %} / {{ info_entreprise.contact2 }}{% endif %}<br>
             {% if nom_entreprise.email %}
-            <strong>Email :</strong> {{ nom_entreprise.email }}
+            <strong>Email :</strong> {{ info_entreprise.email }}
             {% endif %}
         </div>
 
         <div class="header-center">
-            {% if nom_entreprise.logo %}
-                <img src="{{ nom_entreprise.logo.url }}" class="logo"><br>
+            {% if info_entreprise.logo %}
+                <img src="{{ info_entreprise.logo.url }}" class="logo"><br>
             {% endif %}
-            <h2>{{ nom_entreprise.nom_entrepriese|upper }}</h2>
+            <h2>{{ info_entreprise.nom_entrepriese|upper }}</h2>
         </div>
 
         <div class="header-right">
@@ -96,7 +96,7 @@
                 <th>#</th>
                 <th>Désignation</th>
                 <th>Montant (GNF)</th>
-                <th>Provenance</th>
+                <th>Destiné à</th>
                 <th>Utilisateur</th>
                 <th>Date</th>
             </tr>
@@ -108,7 +108,7 @@
                 <td>{{ d.designation }}</td>
                 <td>{{ d.montant|floatformat:"0" }}</td>
                 <td>{{ d.destine_a }}</td>
-                <td>{{ d.utilisateur }}</td>
+                <td>{{ d.utilisateur|default:'Admin' }}</td>
                 <td>{{ d.date_operation|date:"d/m/Y" }}</td>
             </tr>
             {% empty %}
@@ -117,8 +117,9 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td colspan="5" style="text-align:right;">Total Dépenses :</td>
-                <td colspan="5">{{ total_depenses|floatformat:"0" }} GNF</td>
+                <td colspan="2" style="text-align:center;">Total Dépenses :</td>
+                <td>{{ total_depenses|floatformat:"0" }}</td>
+                <td colspan="3" class="text-center">-</td>
             </tr>
         </tfoot>
     </table>
@@ -132,7 +133,7 @@
     </div>
 
     <div class="footer">
-        <p>Cette facture est générée automatiquement — {{ nom_entrepriese.nom_entrepriese|upper }}</p>
+        <p>Cette facture est générée automatiquement — {{ info_entreprise.nom_entrepriese|upper }}</p>
     </div>
 
 </div>

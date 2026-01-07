@@ -20,6 +20,7 @@ urlpatterns = [
     path('marquer_tout_lu/', views.marquer_tout_lu, name='marquer_tout_lu'),
     path("listes_totales_notification/", views.listes_totales_notification, name="listes_totales_notification"),
     path("filtrer_listes_notifications/", views.filtrer_listes_notifications, name="filtrer_listes_notifications"),
+    path("supprimer_notification/", views.supprimer_notification, name="supprimer_notification"),
     path("liste_notifications_global/<str:utilisateur>/", views.liste_notifications_global, name="liste_notifications_global"),
     
     #==========================================================================

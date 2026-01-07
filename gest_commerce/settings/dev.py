@@ -4,7 +4,9 @@ from .info import *
 # ----------------------------------------
 # Dev settings
 # ----------------------------------------
-DEBUG = False # Pour masquer les erreur sur le navigateur
+# DEBUG = False # Pour masquer les erreur sur le navigateur
+DEBUG = True # Pour afficher les erreur sur le navigateur
+
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Désactiver HTTPS et cookies sécurisés pour dev

@@ -85,7 +85,7 @@
                 <div class="col-md-6 col-sm-12">
                     <small class="text-muted" style="font-size: 20px; font-weight: bold;">
                         <i class="fa fa-users text-primary me-1"></i>
-                        Total Notifications :
+                        Total :
                         <strong>{{ total_notification }}</strong>
                     </small>
                 </div>
@@ -93,7 +93,7 @@
                   <!-- Recherche à droite -->
                   <div class="col-md-6 col-sm-12 text-md-end mt-2 mt-md-0">
                       <div class="input-group" style="max-width: 400px; margin-left: auto;">
-                          <input type="text" class="form-control" placeholder="Rechercher une année..." name="rechercher_informations" id="rechercher_informations">
+                          <input type="text" class="form-control" placeholder="rechercher une notification..." name="rechercher_informations" id="rechercher_informations">
 
                       </div>
                   </div>
@@ -108,6 +108,7 @@
                 <th>Titre</th>
                 <th>Messages</th>
                 <th>Date de Notification</th>
+                <th>Suppression</th>
               </tr>
             </thead>
             <tbody id="my_table">
@@ -117,8 +118,14 @@
                 <td>{{ element.destinataire_email }}</td>
                 <td>{{ element.titre }}</td>
                 <td>{{ element.message }}</td>
-                <td>{{ element.date|date:'Y-m-d' }}</td>
-
+                <td>{{ element.date|date:'Y-m-d H:i' }}</td>
+                <td>
+                   <!-- Supprimer -->
+                  <button type="button" class="btn btn-danger btn-sm btn-sup" data-toggle="modal" data-target="#supprimer_notification"
+                    data-id="{{element.id}}">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -175,7 +182,7 @@
                 <div class="col-md-6 col-sm-12">
                     <small class="text-muted" style="font-size: 20px; font-weight: bold;">
                         <i class="fa fa-users text-primary me-1"></i>
-                        Total Notifications :
+                        Total :
                         <strong>{{ total_notification }}</strong>
                     </small>
                 </div>
@@ -199,6 +206,7 @@
                 <th>Titre</th>
                 <th>Messages</th>
                 <th>Date de Saisie</th>
+                <th>Suppression</th>
               </tr>
             </thead>
             <tbody id="my_table">
@@ -209,8 +217,14 @@
                 <td>{{ element.destinataire_email }}</td>
                 <td>{{ element.titre }}</td>
                 <td>{{ element.message }}</td>
-                <td>{{ element.date|date:'Y-m-d' }}</td>
-
+                <td>{{ element.date|date:'Y-m-d H:i' }}</td>
+                <td>
+                   <!-- Supprimer -->
+              <button type="button" class="btn btn-danger btn-sm btn-sup" data-toggle="modal" data-target="#supprimer_notification"
+                data-id="{{ element.id }}">
+                <i class="fa fa-trash"></i>
+              </button>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -261,18 +275,16 @@
   </div> <!-- fin #page-inner -->
 
   <!-- Modal Suppression -->
-  <div class="modal fade" id="supprimer" tabindex="-1" role="dialog">
+  <!-- Modal Supprimer Dépense -->
+  <div class="modal fade" id="supprimer_notification" tabindex="-1" role="dialog">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-danger">
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-          <h4 class="modal-title">SUPPRESSION D'UNE NOTIFICATION</h4>
-        </div>
-        <form method="POST" action="">
+        <div class="modal-header bg-danger"><h4 class="modal-title">SUPPRIMER LA NOTIFICATION</h4></div>
+        <form method="post" action="{% url 'notifications:supprimer_notification' %}">
           {% csrf_token %}
           <div class="modal-body">
-            <input type="hidden" name="id_supprimer" id="id_supprimer">
-            <p>Êtes-vous sûr de vouloir supprimer définitivement cette ligne ?</p>
+            <input type="hidden" name="id_suppression" id="id_supprimer">
+            <p>Êtes-vous sûr de vouloir supprimer cette ligne ?</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
@@ -289,10 +301,10 @@
 
   // --- MODAL SUPPRIMER ---
 
-  document.querySelectorAll('.btn-produit-sup').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      document.getElementById('id_supprimer').value = btn.getAttribute('data-id') || '';
-    });
+  document.querySelectorAll('.btn-sup').forEach(function(btn) {
+      btn.addEventListener('click', function () {
+          document.getElementById('id_supprimer').value = btn.getAttribute('data-id');
+      });
   });
   // ==============================Recherche Informations dans la table  =====================================
 

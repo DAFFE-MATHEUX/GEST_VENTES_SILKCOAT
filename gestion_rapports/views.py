@@ -26,6 +26,11 @@ from django.utils.text import slugify
 from django.core.files.base import ContentFile
 from weasyprint import HTML
 from io import BytesIO
+
+from django.template.loader import get_template
+from django.utils.text import slugify
+from datetime import datetime as dt
+from decimal import Decimal
 # ========================================================================
 from django.contrib.auth.decorators import login_required
 
@@ -64,10 +69,6 @@ def creer_rapport_admin(request):
 # Fonction pour générer les rapports de l'administrateur
 #==================================================================================
 
-from django.template.loader import get_template
-from django.utils.text import slugify
-from datetime import datetime as dt
-from decimal import Decimal
 
 @login_required(login_url='gestionUtilisateur:connexion_utilisateur')
 def generer_rapport_admin(request):
@@ -89,6 +90,13 @@ def generer_rapport_admin(request):
         date_debut = dt.strptime(periode_debut, "%Y-%m-%d") if periode_debut else None
         date_fin = dt.strptime(periode_fin, "%Y-%m-%d") if periode_fin else None
 
+        # Suppression des données avant l'enregistrement
+        rapport_suppression = Rapport.objects.filter(
+            type=type_rapport,
+            genere_par = request.user
+        )
+        rapport_suppression.delete()
+        # Enregistrement des données dans la table
         rapport = Rapport.objects.create(
             titre=titre.upper(),
             periode_debut=date_debut,
@@ -171,11 +179,6 @@ def generer_rapport_admin(request):
 
             data_qs = list(ventes_dict.values())
 
-            # ================= Dépenses =================
-            depenses_total = Depenses.objects.all().aggregate(total=Sum('montant'))['total'] or Decimal(0)
-
-            # Bénéfice net
-            benefice_net = benefice_global - depenses_total
         # ================= STOCKS DES PRODUITS =================
         elif type_rapport == "STOCKS" :
             data_qs = (
@@ -416,6 +419,7 @@ def generer_rapport(request):
             )
             total_quantite_stock = data_qs.aggregate(total=Sum('qtestock'))['total'] or 0
             total_produit = data_qs.count()
+            
             # ================= TOTAL PAR CATÉGORIE =================
             total_par_categorie = (
                 data_qs

@@ -73,6 +73,18 @@
             🖨️ Imprimer
         </button>
     </div>
+<br>
+    <!-- Recherche -->
+<div class="row mb-3 no-print">
+    <div class="col-md-6 col-sm-12 mt-2">
+        <div class="input-group" style="max-width: 400px;">
+             <input type="text" class="form-control"
+               placeholder="Rechercher une information..."
+               id="rechercher_informations"
+               style="max-width:300px; float:right;">
+        </div>
+    </div>
+</div>
 
     <h2 class="text-center">📜 Historique des Commandes et Livraisons</h2>
     <hr>
@@ -85,20 +97,18 @@
                     <th>#</th>
                     <th>N° Commande</th>
                     <th>Produit</th>
-                    <th>Catégorie</th>
-                    <th>Qté commandée</th>
-                    <th>Total livrée</th>
-                    <th>Qté restante</th>
+                    <th>Qté cmd</th>
+                    <th>T livrée</th>
+                    <th>Q restante</th>
                     <th>Détails livraisons</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="my_table">
                 {% for item in historique %}
                 <tr {% if item.qte_restante == 0 %}class="table-success"{% endif %}>
                     <td>{{ forloop.counter }}</td>
                     <td>{{ item.commande.numcmd }}</td>
                     <td>{{ item.commande.produits.desgprod }}</td>
-                    <td>{{ item.commande.produits.categorie.desgcategorie }}</td>
                     <td class="text-center">{{ item.commande.qtecmd }}</td>
                     <td class="text-center">{{ item.total_livree }}</td>
                     <td class="text-center">
@@ -126,7 +136,7 @@
             </tbody>
             <tfoot class="table-secondary">
                 <tr>
-                    <th colspan="4" class="text-end">Totaux</th>
+                    <th colspan="4" class="text-center">Totaux</th>
                     <th class="text-center">{{ total_commandes }}</th>
                     <th class="text-center">{{ total_livrees }}</th>
                     <th class="text-center">{{ total_restantes }}</th>
@@ -142,5 +152,16 @@
     {% endif %}
 
 </div>
+
+<!-- SCRIPT RECHERCHE -->
+<script>
+            document.getElementById("rechercher_informations").addEventListener("keyup", function () {
+            let value = this.value.toLowerCase();
+            document.querySelectorAll("#my_table tr").forEach(row=>{
+                row.style.display = row.textContent.toLowerCase().includes(value) ? "" : "none";
+            });
+    
+    });
+</script>
 
 {% endblock %}

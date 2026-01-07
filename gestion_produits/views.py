@@ -122,11 +122,12 @@ def generer_code_vente():
 
     return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
 
+
 @login_required
 @csrf_protect
 def vendre_produit(request):
     try:
-        produits = Produits.objects.all().order_by('desgprod')
+        produits = Produits.objects.all().order_by("desgprod")
 
         if request.method == "POST":
 
@@ -146,11 +147,8 @@ def vendre_produit(request):
                 return redirect("produits:vendre_produit")
 
             total_general = 0
-            total_qte = 0
-            total_reduction = 0
             lignes = []
             produits_sans_stock = []
-            details_lignes = []
 
             with transaction.atomic():
 
@@ -165,12 +163,15 @@ def vendre_produit(request):
                     adresseclt_client=adresse
                 )
 
-                # 2️⃣ Vérification des produits
+                # 2️⃣ Validation des produits
                 for prod_id, qte_str, red_str in zip(ids, quantites, reductions):
 
+                    if not prod_id:
+                        continue
+
                     try:
-                        produit = Produits.objects.get(id=prod_id)
-                    except Produits.DoesNotExist:
+                        produit = Produits.objects.get(id=int(prod_id))
+                    except (Produits.DoesNotExist, ValueError):
                         continue
 
                     try:
@@ -218,8 +219,13 @@ def vendre_produit(request):
                     vente.delete()
                     return redirect("produits:vendre_produit")
 
-                # 3️⃣ Création des lignes + mise à jour stock
+                # 3️⃣ Création lignes + stock + détails email
+                details_lignes = []
+                total_qte = 0
+                total_reduction = 0
+
                 for ligne in lignes:
+
                     LigneVente.objects.create(
                         vente=vente,
                         produit=ligne["produit"],
@@ -232,7 +238,7 @@ def vendre_produit(request):
                     stock.qtestock -= ligne["quantite"]
                     stock.save(update_fields=["qtestock"])
 
-                    # 🔔 ALERTE SEUIL STOCK
+                    # 🔔 Alerte stock
                     if stock.qtestock <= stock.seuil:
                         Notification.objects.create(
                             destinataire=None,
@@ -241,82 +247,68 @@ def vendre_produit(request):
                             message=(
                                 f"Le produit '{ligne['produit'].desgprod}' "
                                 f"est presque en rupture.\n"
-                                f"Stock restant : {stock.qtestock} unité(s)."
+                                f"Stock restant : {stock.qtestock}"
                             )
                         )
-                        try:
-                            EmailMessage(
-                                subject="⚠️ Alerte stock Critique",
-                                body=(
-                                    f"Produit : {ligne['produit'].desgprod}\n"
-                                    f"Stock restant : {stock.qtestock}\n"
-                                    f"Seuil défini : {stock.seuil}\n\n"
-                                    f"Veuillez réapprovisionner."
-                                ),
-                                from_email=settings.DEFAULT_FROM_EMAIL,
-                                to=[settings.ADMIN_EMAIL]
-                            ).send(fail_silently=True)
-                        except Exception:
-                            logger.warning("Email alerte stock non envoyé")
 
-                # 4️⃣ Mise à jour des totaux
+                    benefice_ligne = (
+                        (ligne["pu"] - ligne["produit"].prix_en_gros - ligne["reduction"])
+                        * ligne["quantite"]
+                    )
+
+                    sous_total = (ligne["pu"] - ligne["reduction"]) * ligne["quantite"]
+
+                    details_lignes.append(
+                        f"Catégorie : {ligne['produit'].categorie.desgcategorie}\n"
+                        f"Produit : {ligne['produit'].desgprod}\n"
+                        f"Quantité : {ligne['quantite']}\n"
+                        f"PU : {ligne['pu']}\n"
+                        f"Réduction unitaire : {ligne['reduction']}\n"
+                        f"Sous-total : {sous_total}\n"
+                        f"Bénéfice ligne : {benefice_ligne}\n"
+                        f"---------------------------------\n"
+                    )
+
+                    total_qte += ligne["quantite"]
+                    total_reduction += ligne["reduction"] * ligne["quantite"]
+
+                # 4️⃣ Mise à jour totaux
                 vente.total = total_general
                 vente.calculer_totaux()
                 vente.save(update_fields=["total", "benefice_total"])
-                
-                benefice_ligne = (
-                (ligne["pu"] - ligne["produit"].prix_en_gros - ligne["reduction"])
-                * ligne["quantite"]
-                )
 
-                details_lignes.append(
-                    f"- Produit : {ligne['produit'].desgprod}\n"
-                    f"  Qté : {ligne['quantite']}\n"
-                    f"  PU : {ligne['pu']}\n"
-                    f"  Réduction unitaire : {ligne['reduction']}\n"
-                    f"  Sous-total : {(ligne['pu'] - ligne['reduction']) * ligne['quantite']}\n"
-                    f"  Bénéfice ligne : {benefice_ligne}\n"
-                )
-
-                total_qte += ligne["quantite"]
-                total_reduction += ligne["reduction"] * ligne["quantite"]
-
-
-                # 5️⃣ Notification vente
+                # 5️⃣ Notification + email
                 Notification.objects.create(
                     destinataire=None,
-                    destinataire_email = settings.ADMIN_EMAIL,
+                    destinataire_email=settings.ADMIN_EMAIL,
                     titre=f"Nouvelle vente {vente.code}",
                     message=(
-                        f"Vente enregistrée pour {nom_complet} "
-                        f"Montant : {vente.total} GNF"
+                        f"Vente réalisée par {request.user.get_full_name()} "
+                        f"pour {nom_complet} | Montant : {vente.total} GNF"
                     )
                 )
-                try:
-                    email_body = (
+
+                email_body = (
                     f"Nouvelle vente : {vente.code}\n\n"
                     f"Client : {vente.nom_complet_client}\n"
                     f"Téléphone : {vente.telclt_client}\n"
                     f"Adresse : {vente.adresseclt_client}\n\n"
-                    f"DÉTAILS DE LA VENTE\n"
-                    f"-----------------------------------\n"
+                    f"-------- DÉTAILS DE LA VENTE --------\n"
                     f"{''.join(details_lignes)}\n"
-                    f"------------------------------------------\n"
+                    f"------------------------------------\n"
                     f"TOTAL QUANTITÉ : {total_qte}\n"
                     f"TOTAL RÉDUCTION : {total_reduction}\n"
                     f"TOTAL MONTANT : {vente.total}\n"
                     f"BÉNÉFICE GLOBAL : {vente.benefice_total}\n"
-                    )
+                    f"VENTE RÉALISÉE PAR : {request.user.get_full_name()}\n"
+                )
 
-                    EmailMessage(
-                        subject=f"Nouvelle vente : {vente.code}",
-                        body=email_body,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        to=[settings.ADMIN_EMAIL]
-                    ).send(fail_silently=False)
-
-                except Exception as e:
-                    logger.warning(f"Email vente non envoyé : {e}")
+                EmailMessage(
+                    subject=f"Nouvelle vente : {vente.code}",
+                    body=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[settings.ADMIN_EMAIL]
+                ).send(fail_silently=False)
 
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
@@ -333,11 +325,11 @@ def vendre_produit(request):
         )
 
     except IntegrityError as ie:
-        messages.error(request, f"Erreur d'intégrité des données {str(ie)}.")
+        messages.error(request, f"Erreur d'intégrité : {str(ie)}")
         return redirect("produits:vendre_produit")
 
     except DatabaseError as de:
-        messages.error(request, f"Erreur de base de données {str(de)}.")
+        messages.error(request, f"Erreur base de données : {str(de)}")
         return redirect("produits:vendre_produit")
 
     except Exception as e:
@@ -347,6 +339,7 @@ def vendre_produit(request):
 
 #==========================================================
 # Fonction pour le retour de vente
+#==========================================================
 @login_required
 @csrf_protect
 def enregistrer_retour(request, ligne_id):
@@ -470,9 +463,7 @@ def enregistrer_retour(request, ligne_id):
 
 @login_required
 @csrf_protect
-
 def historique_ventes(request):
-
     ventes = (
         VenteProduit.objects
         .select_related("utilisateur")
@@ -599,11 +590,11 @@ def generer_code_commandes():
     prefix = "CMD"
     date_str = timezone.now().strftime('%Y%m%d')
 
-    last_vente = VenteProduit.objects.order_by('-id').first()
+    last_commande = Commandes.objects.order_by('-id').first()
 
-    if last_vente:
+    if last_commande:
         try:
-            dernier_numero = int(last_vente.code.split('-')[-1])
+            dernier_numero = int(last_commande.numcmd.split('-')[-1])
         except (IndexError, ValueError):
             dernier_numero = 0
     else:
@@ -729,11 +720,11 @@ def generer_code_livraisons():
     prefix = "LIV"
     date_str = timezone.now().strftime('%Y%m%d')
 
-    last_vente = VenteProduit.objects.order_by('-id').first()
+    last_livraison = LivraisonsProduits.objects.order_by('-id').first()
 
-    if last_vente:
+    if last_livraison:
         try:
-            dernier_numero = int(last_vente.code.split('-')[-1])
+            dernier_numero = int(last_livraison.numlivrer.split('-')[-1])
         except (IndexError, ValueError):
             dernier_numero = 0
     else:

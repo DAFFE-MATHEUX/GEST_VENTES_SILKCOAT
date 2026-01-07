@@ -102,7 +102,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="3"><strong>Totaux</strong></td>
+        <td colspan="3" class="text-center"><strong>Totaux</strong></td>
         <td id="tfoot-stock"></td>
         <td id="tfoot-quantite"></td>
         <td id="tfoot-reduction"></td>
@@ -170,7 +170,7 @@
             <!-- ================= FOOTER AVEC TOTAUX ================= -->
             <tfoot class="modal-totals">
               <tr>
-                <td colspan="2"><strong>Totaux</strong></td>
+                <td colspan="2" class="text-center"><strong>Totaux</strong></td>
                 <td id="modal-total-brut">0 GNF</td>
                 <td id="modal-total-quantite">0</td>
                 <td id="modal-total-net">0 GNF</td>
@@ -246,7 +246,7 @@ function recalc() {
     row.querySelector(".sous-total").textContent = sousTotal.toLocaleString() + " GNF";
 
     totalBrut += qte * pu;
-    totalReduction += qte * reduction;
+    totalReduction +=  reduction;
     totalQuantite += qte;
     totalNet += sousTotal;
   });
@@ -304,7 +304,7 @@ btnValider.addEventListener("click", function() {
     `;
 
     totalBrut += qte * pu;
-    totalReduction += qte * reduction;
+    totalReduction += reduction;
     totalQuantite += qte;
     totalNet += sousTotal;
   });
