@@ -270,14 +270,13 @@
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
-                                <th>#</th><th>Destinataire</th><th>Email</th><th>Titre</th><th>Message</th><th>Date</th>
+                                <th>#</th><th>Destinataire</th><th>Titre</th><th>Message</th><th>Date</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for items in dernieeres_notification %}
                             <tr>
                                 <td>{{ forloop.counter }}</td>
-                                <td>{{ items.destinataire }}</td>
                                 <td>{{ items.destinataire_email }}</td>
                                 <td>{{ items.titre }}</td>
                                 <td>{{ items.message }}</td>

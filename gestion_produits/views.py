@@ -270,7 +270,7 @@ def vendre_produit(request):
                     )
 
                     total_qte += ligne["quantite"]
-                    total_reduction += ligne["reduction"] * ligne["quantite"]
+                    total_reduction += ligne["reduction"]
 
                 # 4️⃣ Mise à jour totaux
                 vente.total = total_general
@@ -283,7 +283,7 @@ def vendre_produit(request):
                     destinataire_email=settings.ADMIN_EMAIL,
                     titre=f"Nouvelle vente {vente.code}",
                     message=(
-                        f"Vente réalisée par {request.user.get_full_name()} "
+                        f"Vente réalisée par {request.user.get_full_name() or "Admin"} "
                         f"pour {nom_complet} | Montant : {vente.total} GNF"
                     )
                 )
@@ -300,7 +300,7 @@ def vendre_produit(request):
                     f"TOTAL RÉDUCTION : {total_reduction}\n"
                     f"TOTAL MONTANT : {vente.total}\n"
                     f"BÉNÉFICE GLOBAL : {vente.benefice_total}\n"
-                    f"VENTE RÉALISÉE PAR : {request.user.get_full_name()}\n"
+                    f"VENTE RÉALISÉE PAR : {request.user.get_full_name() or 'Admin'}\n"
                 )
 
                 EmailMessage(
@@ -706,7 +706,16 @@ def nouvelle_commande(request):
                         f"----------------------------------------\n"
                         f"TOTAL GÉNÉRAL : {total_general} GNF\n"
                     )
-
+                    # 🔹 Notification Django
+                    Notification.objects.create(
+                        destinataire=request.user,  # facultatif, ou None si notification globale
+                        destinataire_email=settings.ADMIN_EMAIL,
+                        titre=f"Nouvelle Commande {numero_commande}",
+                        message=(
+                            f"Commande réalisée par {request.user.get_full_name() or 'Admin'} "
+                            f"avec le fournisseur {nom_complet_fournisseur} | Quantite : {l['qte']} GNF"
+                        )
+                    )
                     EmailMessage(
                         subject=f"📦 Nouvelle commande {numero_commande}",
                         body=email_body,
@@ -887,7 +896,20 @@ def reception_livraison(request):
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[settings.ADMIN_EMAIL]
             ).send(fail_silently=True)
-
+        # Notification
+        try:
+            Notification.objects.create(
+                destinataire=None,  # ou request.user si tu veux lier la notif à l'utilisateur
+                destinataire_email=settings.ADMIN_EMAIL,
+                titre=f"Nouvelle Livraison {l['commande']}",
+                message=(
+                    f"Livraison enregistrée par {request.user.get_full_name() or 'Admin'} | "
+                    f"Commande {l['commande']} | Produit : {l['produit']} | "
+                    f"Livrée : {l['qte_livree']} | Annulée : {l['qte_annuler']}"
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Notification non créée pour livraison {l['commande']}: {e}")
         messages.success(request, "Livraison enregistrée avec succès.")
         return redirect("produits:listes_des_livraisons")
 

@@ -71,7 +71,7 @@ def home(request):
     # ===============================
     # NOTIFICATIONS
     # ===============================
-    dernieeres_notification = Notification.objects.filter(destinataire=utilisateur).order_by('-date')
+    dernieeres_notification = Notification.objects.all().order_by('-date')
     non_lues = dernieeres_notification.filter(lu=False)
     lues = dernieeres_notification.filter(lu=True)
 
@@ -270,10 +270,7 @@ def home(request):
         'now': aujourd_hui,
         'total_quantite_vendu': total_quantite_vendu,
         'total_benefice': total_benefice,
-        
-        #'montant_total_ventes': montant_total_ventes,
-        #'montant_total_benefice': montant_total_benefice,
-        #'quantite_total_ventes': quantite_total_ventes,
+
         'totaux': totaux,
         
         'hier' : hier,
