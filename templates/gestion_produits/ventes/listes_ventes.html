@@ -465,38 +465,53 @@
 
         
                               <!-- PAGINATION -->
-  <div class="row mt-4">
 
-    <div class="col-md-8 offset-md-2">
+ <div class="row mt-4">
+  <div class="col-md-8 offset-md-2">
+    <nav aria-label="Page navigation">
+      <ul class="pagination justify-content-center">
 
-      <nav aria-label="Page navigation">
-        <ul class="pagination justify-content-center">
-          {% if listes_ventes_filtre.has_previous %}
-            <li class="page-item">
-              <a class="page-link" href="?page=1">&laquo; Première</a>
-            </li>
-            <li class="page-item">
-              <a class="page-link" href="?page={{ listes_ventes_filtre.previous_page_number }}">Précédent</a>
-            </li>
-          {% endif %}
-
-          <li class="page-item active">
-            <span class="page-link">Page {{ listes_ventes_filtre.number }} / {{ listes_ventes_filtre.paginator.num_pages }}</span>
+        {% if listes_ventes_filtre.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1&{{ query_params }}">
+              &laquo; Première
+            </a>
           </li>
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ listes_ventes_filtre.previous_page_number }}&{{ query_params }}">
+              Précédent
+            </a>
+          </li>
+        {% endif %}
 
-          {% if listes_ventes_filtre.has_next %}
-            <li class="page-item">
-              <a class="page-link" href="?page={{ listes_ventes_filtre.next_page_number }}">Suivant</a>
-            </li>
-            <li class="page-item">
-              <a class="page-link" href="?page={{ listes_ventes_filtre.paginator.num_pages }}">Dernière &raquo;</a>
-            </li>
-          {% endif %}
+        <li class="page-item active">
+          <span class="page-link">
+            Page {{ listes_ventes_filtre.number }}
+            / {{ listes_ventes_filtre.paginator.num_pages }}
+          </span>
+        </li>
 
-        </ul>
-      </nav>
-    </div>
-  </div> <!-- fin Pagination-->
+        {% if listes_ventes_filtre.has_next %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ listes_ventes_filtre.next_page_number }}&{{ query_params }}">
+              Suivant
+            </a>
+          </li>
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ listes_ventes_filtre.paginator.num_pages }}&{{ query_params }}">
+              Dernière &raquo;
+            </a>
+          </li>
+        {% endif %}
+
+      </ul>
+    </nav>
+  </div>
+</div>  <!-- ================= Fin de pagination ================= -->
+
 
 
         {% endif %}

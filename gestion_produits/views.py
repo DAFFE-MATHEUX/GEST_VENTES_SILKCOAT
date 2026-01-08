@@ -2034,54 +2034,42 @@ def filtrer_listes_commandes(request):
 def filtrer_listes_ventes(request):
     """
     Filtre les ventes selon la date
-    et affiche les statistiques + pagination
+    + statistiques
+    + pagination AVEC conservation des paramètres GET
     """
 
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
-    
-    benefice_global = 0
-    total_montant_ventes = 0
-    total_retourner = 0
-    listes_ventes_filtre = []
 
     try:
         # ================== QUERYSET DE BASE ==================
-        ventes_qs = LigneVente.objects.select_related(
-            'produit',
-            'vente',
-            'produit__categorie'
-        ).order_by("-vente__date_vente")
+        ventes_qs = (
+            LigneVente.objects
+            .select_related('produit', 'vente', 'produit__categorie')
+            .order_by("-vente__date_vente")
+        )
 
         # ================== FILTRE PAR DATE ==================
         if date_debut and date_fin:
             ventes_qs = ventes_qs.filter(
                 vente__date_vente__date__range=[date_debut, date_fin]
             )
-        for ligne in ventes_qs:
 
-            # Mise à jour des totaux
-            benefice_global += ligne.benefice
-            total_montant_ventes += ligne.sous_total
-            total_retourner += ligne.quantite_retournee
-
-            listes_ventes_filtre.append(ligne)
-        # ================== STATISTIQUES (AVANT PAGINATION) ==================
+        # ================== STATISTIQUES GLOBALES ==================
+        stats = ventes_qs.aggregate(
+            total_vendus=Sum('quantite'),
+            total_montant_ventes=Sum('sous_total'),
+            benefice_global=Sum('benefice'),
+            total_retourner=Sum('retours')
+        )
 
         total_ventes = ventes_qs.count()
+        total_vendus = stats['total_vendus'] or 0
+        total_montant_ventes = stats['total_montant_ventes'] or 0
+        benefice_global = stats['benefice_global'] or 0
+        total_retourner = stats['total_retourner'] or 0
 
-        total_vendus = ventes_qs.aggregate(
-            total=Sum('quantite')
-        )['total'] or 0
-
-        total_montant_ventes = ventes_qs.aggregate(
-            total=Sum('sous_total')
-        )['total'] or 0
-
-        benefice_global = ventes_qs.aggregate(
-            total=Sum('benefice')
-        )['total'] or 0
-
+        # ================== PAR CATÉGORIE ==================
         total_par_categorie = (
             ventes_qs
             .values('produit__categorie__desgcategorie')
@@ -2092,6 +2080,7 @@ def filtrer_listes_ventes(request):
             .order_by('produit__categorie__desgcategorie')
         )
 
+        # ================== PAR PRODUIT ==================
         total_par_produit = (
             ventes_qs
             .values('produit__desgprod')
@@ -2102,37 +2091,46 @@ def filtrer_listes_ventes(request):
             .order_by('produit__desgprod')
         )
 
-        # ================== PAGINATION (TOUT À LA FIN) ==================
+        # ================== PAGINATION ==================
         listes_ventes_filtre = pagination_liste_filtre(request, ventes_qs)
+
+        # ================== QUERY PARAMS POUR PAGINATION ==================
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
 
     except Exception as ex:
         messages.warning(
             request,
             f"Erreur lors du filtrage des ventes : {str(ex)}"
         )
+
         listes_ventes_filtre = []
         total_ventes = 0
-        total_montant_ventes = 0
-        benefice_global = 0
         total_vendus = 0
+        total_montant_ventes = 0
         benefice_global = 0
         total_retourner = 0
         total_par_categorie = []
         total_par_produit = []
+        query_params = ""
 
     # ================== CONTEXT ==================
     context = {
         "date_debut": date_debut,
         "date_fin": date_fin,
+
         "listes_ventes_filtre": listes_ventes_filtre,
         "total_ventes": total_ventes,
-        "benefice_global": benefice_global,
-        "total_par_categorie": total_par_categorie,
+        "total_vendus": total_vendus,
         "total_montant_ventes": total_montant_ventes,
+        "benefice_global": benefice_global,
+        "total_retourner": total_retourner,
+
+        "total_par_categorie": total_par_categorie,
         "total_par_produit": total_par_produit,
-        "total_vendus": total_vendus,
-        "total_vendus": total_vendus,
-        'total_retourner' : total_retourner,
+
+        # 🔑 CLÉ DE LA CORRECTION
+        "query_params": query_params.urlencode() if query_params else "",
     }
 
     return render(
