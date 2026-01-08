@@ -26,6 +26,8 @@ from openpyxl import Workbook
 
 from django.db import transaction
 from collections import defaultdict
+from django.db.models import Sum, Count, F
+from urllib.parse import urlencode
 
 from django.db import IntegrityError, DatabaseError
 from django.views.decorators.csrf import csrf_protect
@@ -1679,7 +1681,7 @@ def filtrer_listes_livraisons(request):
             'commande',
             'produits',
             'produits__categorie'
-        )
+        ).order_by('-id')
 
         # ================= FILTRE PAR DATE =================
         if date_debut and date_fin:
@@ -1687,24 +1689,27 @@ def filtrer_listes_livraisons(request):
                 datelivrer__range=[date_debut, date_fin]
             )
         elif date_debut:
-            livraisons_qs = livraisons_qs.filter(datelivrer=date_debut)
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer=date_debut
+            )
         elif date_fin:
-            livraisons_qs = livraisons_qs.filter(datelivrer=date_fin)
-
-        livraisons_qs = livraisons_qs.order_by('-id')
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer=date_fin
+            )
 
         # ================= QTE LIVRÉE PAR COMMANDE =================
         livraison_par_commande = (
             livraisons_qs
-            .values('commande')
+            .values('commande_id')
             .annotate(total_livree=Sum('qtelivrer'))
         )
 
         livraison_map = {
-            l['commande']: l['total_livree'] for l in livraison_par_commande
+            l['commande_id']: l['total_livree']
+            for l in livraison_par_commande
         }
 
-        # ================= LISTE + QTE RESTANTE =================
+        # ================= QTE RESTANTE =================
         total_quantite_restante = 0
         for l in livraisons_qs:
             total_livree = livraison_map.get(l.commande_id, 0)
@@ -1722,9 +1727,7 @@ def filtrer_listes_livraisons(request):
             total=Sum('qtelivrer')
         )['total'] or 0
 
-        total_quantite_restante = livraisons_qs.aggregate(
-            total=Sum(F('commande__qtecmd') - F('qtelivrer'))
-        )['total'] or 0
+        total_quantite_restante = total_qtecmd - total_quantite_livrer
 
         # ================= TOTAUX PAR CATÉGORIE =================
         total_par_categorie = (
@@ -1733,7 +1736,7 @@ def filtrer_listes_livraisons(request):
             .annotate(
                 nombre_livraisons=Count('id'),
                 total_qtecmd=Sum('commande__qtecmd'),
-                total_qtelivree=Sum('qtelivrer')
+                total_qtelivree=Sum('qtelivrer'),
             )
             .annotate(
                 total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
@@ -1752,7 +1755,7 @@ def filtrer_listes_livraisons(request):
             .annotate(
                 nombre_livraisons=Count('id'),
                 total_qtecmd=Sum('commande__qtecmd'),
-                total_qtelivree=Sum('qtelivrer')
+                total_qtelivree=Sum('qtelivrer'),
             )
             .annotate(
                 total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
@@ -1760,39 +1763,40 @@ def filtrer_listes_livraisons(request):
             .order_by('produits__desgprod')
         )
 
-        # ================= PAGINATION =================
-        listes_livraisons_filtre = pagination_liste(request, livraisons_qs)
+        # ================= PAGINATION (FIN) =================
+        listes_livraisons_filtre = pagination_liste_filtre(
+            request,
+            livraisons_qs
+        )
+                # ================= QUERY PARAMS (IMPORTANT) =================
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
+        query_params = urlencode(query_params)
 
     except Exception as ex:
         messages.warning(request, f"Erreur lors du filtrage : {ex}")
         listes_livraisons_filtre = []
-        total_livraison = 0
-        total_qtecmd = 0
-        total_quantite_livrer = 0
-        total_quantite_restante = 0
+        total_livraison = total_qtecmd = total_quantite_livrer = total_quantite_restante = 0
         total_par_categorie = []
         total_par_produit = []
-
-    context = {
-        "date_debut": date_debut,
-        "date_fin": date_fin,
-        "listes_livraisons_filtre": listes_livraisons_filtre,
-
-        # Totaux globaux (tfoot)
-        "total_livraison": total_livraison,
-        "total_qtecmd": total_qtecmd,
-        "total_quantite_livrer": total_quantite_livrer,
-        "total_quantite_restante": total_quantite_restante,
-
-        # Récapitulatifs
-        "total_par_categorie": total_par_categorie,
-        "total_par_produit": total_par_produit,
-    }
+        query_params = ""
 
     return render(
         request,
         "gestion_produits/livraisons/listes_livraisons.html",
-        context
+        {
+            "date_debut": date_debut,
+            "date_fin": date_fin,
+            "listes_livraisons_filtre": listes_livraisons_filtre,
+            "total_livraison": total_livraison,
+            "total_qtecmd": total_qtecmd,
+            "total_quantite_livrer": total_quantite_livrer,
+            "total_quantite_restante": total_quantite_restante,
+            "total_par_categorie": total_par_categorie,
+            "total_par_produit": total_par_produit,
+            
+            'query_params' : query_params,
+        }
     )
 
 #================================================================================================
@@ -2003,9 +2007,14 @@ def filtrer_listes_commandes(request):
 
         # ================== PAGINATION ==================
         if 'pagination_liste' in globals():
-            listes_commandes_filtre = pagination_liste(request, commande_qs)
+            listes_commandes_filtre = pagination_liste_filtre(request, commande_qs)
         else:
             listes_commandes_filtre = commande_qs
+        
+                # ================= QUERY PARAMS (IMPORTANT) =================
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
+        query_params = urlencode(query_params)
 
     except Exception as ex:
         messages.warning(request, f"Erreur lors du filtrage des commandes : {str(ex)}")
@@ -2014,6 +2023,7 @@ def filtrer_listes_commandes(request):
         total_par_categorie = []
         total_par_produit = []
         total_quantite = 0
+        query_params = ""
 
     context = {
         "date_debut": date_debut,
@@ -2023,6 +2033,7 @@ def filtrer_listes_commandes(request):
         "total_par_categorie": total_par_categorie,
         "total_par_produit": total_par_produit,
         "total_quantite": total_quantite,
+        'query_params' : query_params,
     }
 
     return render(request, "gestion_produits/commandes/listes_commandes.html", context)
