@@ -248,23 +248,45 @@
     </div>
 
     <!-- PAGINATION -->
-    <div class="row mt-4">
-      <div class="col-md-8 offset-md-2">
-        <nav aria-label="Page navigation">
-          <ul class="pagination justify-content-center">
-            {% if listes_depenses_pagine.has_previous %}
-              <li class="page-item"><a class="page-link" href="?page=1">&laquo; Première</a></li>
-              <li class="page-item"><a class="page-link" href="?page={{ listes_depenses_pagine.previous_page_number }}">Précédent</a></li>
-            {% endif %}
-            <li class="page-item active"><span class="page-link">Page {{ listes_depenses_pagine.number }} / {{ listes_depenses_pagine.paginator.num_pages }}</span></li>
-            {% if listes_depenses_pagine.has_next %}
-              <li class="page-item"><a class="page-link" href="?page={{ listes_depenses_pagine.next_page_number }}">Suivant</a></li>
-              <li class="page-item"><a class="page-link" href="?page={{ listes_depenses_pagine.paginator.num_pages }}">Dernière &raquo;</a></li>
-            {% endif %}
-          </ul>
-        </nav>
-      </div>
-    </div>
+<nav aria-label="Page navigation">
+  <ul class="pagination justify-content-center">
+
+    {% if listes_depenses_pagine.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?{{ query_params }}&page=1">
+          &laquo; Première
+        </a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?{{ query_params }}&page={{ listes_depenses_pagine.previous_page_number }}">
+          Précédent
+        </a>
+      </li>
+    {% endif %}
+
+    <li class="page-item active">
+      <span class="page-link">
+        Page {{ listes_depenses_pagine.number }} /
+        {{ listes_depenses_pagine.paginator.num_pages }}
+      </span>
+    </li>
+
+    {% if listes_depenses_pagine.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?{{ query_params }}&page={{ listes_depenses_pagine.next_page_number }}">
+          Suivant
+        </a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?{{ query_params }}&page={{ listes_depenses_pagine.paginator.num_pages }}">
+          Dernière &raquo;
+        </a>
+      </li>
+    {% endif %}
+
+  </ul>
+</nav>
+
 
 {% endif %}
   </div> <!-- fin #page-inner -->

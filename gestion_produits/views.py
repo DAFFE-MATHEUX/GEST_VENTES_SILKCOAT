@@ -2011,7 +2011,7 @@ def filtrer_listes_commandes(request):
         else:
             listes_commandes_filtre = commande_qs
         
-                # ================= QUERY PARAMS (IMPORTANT) =================
+        # ================= QUERY PARAMS (IMPORTANT) =================
         query_params = request.GET.copy()
         query_params.pop('page', None)
         query_params = urlencode(query_params)

@@ -1,5 +1,4 @@
 from io import BytesIO
-from urllib import request
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q, F
@@ -16,12 +15,13 @@ from django.db import DatabaseError, IntegrityError
 import qrcode
 import base64
 from django.core.mail import send_mail, EmailMessage
-from .utils import pagination_liste
+from .utils import * 
 from django.conf import settings
 from django.db import transaction, IntegrityError, DatabaseError
 from django.core.mail import send_mail
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
+from urllib.parse import urlencode
 from django.shortcuts import get_object_or_404, render, redirect
 from openpyxl.utils import get_column_letter
 from django.db import transaction
@@ -158,8 +158,13 @@ def filtrer_listes_depenses(request):
             )
 
         # --- Pagination ---
-        listes_depenses_pagine = pagination_liste(request, listes_depenses)
+        listes_depenses_pagine = pagination_liste_filtre(request, listes_depenses)
 
+        # ================= QUERY PARAMS (IMPORTANT) =================
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
+        query_params = urlencode(query_params)
+        
         # --- Calculs statistiques ---
         total_depenses = listes_depenses.count()  # nombre total des dépenses filtrées
 
@@ -169,6 +174,7 @@ def filtrer_listes_depenses(request):
         total_depenses = 0
         date_debut = None
         date_fin = None
+        query_params = ""
 
     # --- Contexte pour le template ---
     context = {
@@ -176,6 +182,8 @@ def filtrer_listes_depenses(request):
         "date_fin": date_fin,
         "listes_depenses_pagine": listes_depenses_pagine,
         "total_depenses": total_depenses,
+                # 🔑 pagination
+        "query_params": query_params,
     }
 
     return render(request, "gest_entreprise/depenses/listes_depenses.html", context)
@@ -393,7 +401,6 @@ def modifier_depense(request):
         designation = request.POST.get("modif_designation", "").strip()
         destine = request.POST.get("modif_destine", "").strip()
         montant_brut = request.POST.get("modif_montant", "").strip()
-        print(f"montant_brut: {montant_brut}")
 
         # ❌ Validation champs
         if not designation or not destine or not montant_brut:
