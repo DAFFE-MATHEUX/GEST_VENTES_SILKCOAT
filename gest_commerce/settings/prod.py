@@ -1,12 +1,13 @@
 from .base import *
 from .info import *
-DEBUG = False
-ALLOWED_HOSTS = ['monsite.com', 'www.monsite.com']
+DEBUG = False # Pour masquer les erreurs sur le navigateur
+
+ALLOWED_HOSTS = ['itracopaint.com', 'www.monsite.com']
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'gest_commerce',
+        'NAME': 'gest_commerce_prod', # gest_commerce_silkcoatpaint
         'USER': 'gest_user',
         'PASSWORD': DB_PASSWORD,
         'HOST': 'localhost',  # ou IP serveur MySQL

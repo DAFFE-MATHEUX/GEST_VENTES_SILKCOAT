@@ -158,7 +158,9 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-DEBUG = True
+# DEBUG = False # Pour masquer les erreurs sur le navigateur
+
+# DEBUG = True # Pour afficher les erreurs sur le navigateur
 
 # Sécurité générale
 SECRET_KEY = SECRET_KEY

@@ -1811,9 +1811,11 @@ def listes_des_ventes(request):
             total=Sum('quantite')
         )['total'] or 0
         
+        
         total_ventes = lignes.count()
         total_montant_ventes = 0
         benefice_global = 0
+        total_retourner = 0
         listes_ventes = []
 
         for ligne in lignes:
@@ -1821,6 +1823,7 @@ def listes_des_ventes(request):
             # Mise à jour des totaux
             benefice_global += ligne.benefice
             total_montant_ventes += ligne.sous_total
+            total_retourner += ligne.quantite_retournee
 
             listes_ventes.append(ligne)
             
@@ -1846,7 +1849,7 @@ def listes_des_ventes(request):
                 .order_by('produit__desgprod')
             )
 
-        listes_ventes = pagination_lis(request, listes_ventes)
+        listes_ventes = pagination_liste(request, listes_ventes)
 
     except Exception as ex:
         messages.warning(request, f"Erreur de récupération des ventes : {str(ex)}")
@@ -1855,6 +1858,7 @@ def listes_des_ventes(request):
         total_montant_ventes = 0
         benefice_global = 0
         total_vendus = 0
+        total_retourner = 0
         total_par_categorie = []
         total_par_produit = []
 
@@ -1866,6 +1870,7 @@ def listes_des_ventes(request):
         'benefice_global': benefice_global,
         'total_par_categorie': total_par_categorie,
         'total_vendus' : total_vendus,
+        'total_retourner' : total_retourner,
         'total_par_produit' : total_par_produit,
     }
     return render(
@@ -1917,7 +1922,7 @@ def listes_des_commandes(request):
 
         # ------------------ PAGINATION ------------------
         if 'pagination_lis' in globals():
-            listes_commandes = pagination_lis(request, listes_commandes_qs)
+            listes_commandes = pagination_liste(request, listes_commandes_qs)
         else:
             listes_commandes = listes_commandes_qs
 
@@ -2034,6 +2039,11 @@ def filtrer_listes_ventes(request):
 
     date_debut = request.GET.get("date_debut")
     date_fin = request.GET.get("date_fin")
+    
+    benefice_global = 0
+    total_montant_ventes = 0
+    total_retourner = 0
+    listes_ventes_filtre = []
 
     try:
         # ================== QUERYSET DE BASE ==================
@@ -2048,7 +2058,14 @@ def filtrer_listes_ventes(request):
             ventes_qs = ventes_qs.filter(
                 vente__date_vente__date__range=[date_debut, date_fin]
             )
+        for ligne in ventes_qs:
 
+            # Mise à jour des totaux
+            benefice_global += ligne.benefice
+            total_montant_ventes += ligne.sous_total
+            total_retourner += ligne.quantite_retournee
+
+            listes_ventes_filtre.append(ligne)
         # ================== STATISTIQUES (AVANT PAGINATION) ==================
 
         total_ventes = ventes_qs.count()
@@ -2086,7 +2103,7 @@ def filtrer_listes_ventes(request):
         )
 
         # ================== PAGINATION (TOUT À LA FIN) ==================
-        listes_ventes_filtre = pagination_lis(request, ventes_qs)
+        listes_ventes_filtre = pagination_liste_filtre(request, ventes_qs)
 
     except Exception as ex:
         messages.warning(
@@ -2098,6 +2115,8 @@ def filtrer_listes_ventes(request):
         total_montant_ventes = 0
         benefice_global = 0
         total_vendus = 0
+        benefice_global = 0
+        total_retourner = 0
         total_par_categorie = []
         total_par_produit = []
 
@@ -2112,6 +2131,8 @@ def filtrer_listes_ventes(request):
         "total_montant_ventes": total_montant_ventes,
         "total_par_produit": total_par_produit,
         "total_vendus": total_vendus,
+        "total_vendus": total_vendus,
+        'total_retourner' : total_retourner,
     }
 
     return render(

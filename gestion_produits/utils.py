@@ -6,7 +6,7 @@ from django.contrib import messages
 
 def pagination_liste(request, listes):
     default_page = 1 # Spécifie la page par défaut
-    items_per_page = 14 # 5 elements dans chaque page
+    items_per_page = 14 # 14 elements dans chaque page
     la_page = request.GET.get('pages') # Permet de recuperer la page 
     pagination = Paginator(listes, items_per_page)
     try:
@@ -18,6 +18,23 @@ def pagination_liste(request, listes):
         items_page = pagination.page(default_page) #Lorsque la page demmadé est vide renvoyé la 1ère page
         messages.error(request, "Les informations demmandé est vide")
     return items_page
+
+# Fonction pour la pagination des filtres
+def pagination_liste_filtre(request, listes):
+    default_page = 1 # Spécifie la page par défaut
+    items_per_page = 14 # 14 elements dans chaque page
+    la_page = request.GET.get('page') # Permet de recuperer la page 
+    pagination = Paginator(listes, items_per_page)
+    try:
+        items_page = pagination.page(la_page) # items_page est un dictionnaire de liste
+    except PageNotAnInteger: #Lorque la page n'est pas un entier ou un nombre
+        items_page = pagination.page(default_page)
+    except EmptyPage :
+        # items_page = pagination.page(pagination.num_pages) #Lorsque la page demmadé est vide renvoyé la même page
+        items_page = pagination.page(default_page) #Lorsque la page demmadé est vide renvoyé la 1ère page
+        messages.error(request, "Les informations demmandé est vide")
+    return items_page
+
 #==================================================================================
 #=============2eme Méthode de la pagination en Django==========================
 def pagination_lis(request, liste):
