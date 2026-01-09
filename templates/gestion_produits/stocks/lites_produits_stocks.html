@@ -95,7 +95,7 @@
                                         <th>Date Stock</th>
                                         <th>Photo</th>
                                     {% if not request.user.type_utilisateur == 'Gerante' %}
-                                        <th>Action</th>
+                                        <th>Suppression</th>
                                     {% endif %}                                   
                                  </tr>
                                 </thead>
@@ -226,11 +226,11 @@
 <form method="POST" action="{% url 'produits:supprimer_produits' %}">
 {% csrf_token %}
 <div class="modal-header bg-danger">
-    <h4>SUPPRESSION</h4>
+    <h4>SUPPRESSION D'UN STOCK</h4>
 </div>
 <div class="modal-body">
     <input type="hidden" name="id_supprimer" id="id_supprimer">
-    Confirmer la suppression ?
+    Confirmer la suppression de cette ligne ?
 </div>
 <div class="modal-footer">
     <button class="btn btn-default" data-dismiss="modal">Annuler</button>

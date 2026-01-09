@@ -91,13 +91,14 @@
                     <span>Impressions des Données</span>
                     <i class="fa fa-angle-left pull-right"></i>
                 </a>
-                <ul class="treeview-menu">
+                <ul class="treeview-menu"> 
                     <li><a href="{% url 'produits:listes_categorie_produits_impression' %}"><i class="fa fa-list"></i> Imprimer les Catégories</a></li>
                     <li><a href="{% url 'produits:listes_produits_impression' %}"><i class="fa fa-list"></i> Imprimer les Produits</a></li>
                     <li><a href="{% url 'produits:listes_stocks_impression' %}"><i class="fa fa-list"></i>Imprimer les Stocks</a></li>
                     <li><a href="{% url 'produits:choix_par_dates_ventes_impression' %}"><i class="fa fa-list"></i>Imprimer les Ventes</a></li>
                     <li><a href="{% url 'produits:choix_par_dates_commandes_impression' %}"><i class="fa fa-list"></i>Imprimer les Commandes</a></li>
                     <li><a href="{% url 'produits:choix_par_dates_livraisons_impression' %}"><i class="fa fa-list"></i>Imprimer les Livraisons</a></li>
+                    <li><a href="{% url 'choix_listes_impression_depenses' %}"><i class="fa fa-list"></i>Imprimer les Dépenses</a></li>
                 </ul>
             </li>
 {% comment %} Géneration des Rapports {% endcomment %}

@@ -2,6 +2,7 @@ from django.urls import path
 from .views import *
 urlpatterns = [
     
+    #=================================================================================================
     path('liste_entreprise/', liste_entreprise, name='liste_entreprise'),
     path('nouvelle_saisie/', nouvelle_saisie, name='nouvelle_saisie'),
     path('modifier_entreprise/', modifier_entreprise, name='modifier_entreprise'),
@@ -17,6 +18,8 @@ urlpatterns = [
     path("supprimer_depense/", supprimer_depense, name="supprimer_depense"),
     path("filtrer_listes_depenses/", filtrer_listes_depenses, name="filtrer_listes_depenses"),
 
+    #=================================================================================================
+    # Gestion des Réçu des dépenses
     #=================================================================================================
     path('recu_depense/<int:depense_id>/', recu_depense, name="recu_depense"),
     path('recu_depense_global_interval/', recu_depense_global_interval, name="recu_depense_global_interval"),

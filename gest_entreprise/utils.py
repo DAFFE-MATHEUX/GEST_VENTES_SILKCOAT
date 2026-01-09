@@ -25,7 +25,7 @@ def pagination_liste(request, listes):
 
 def pagination_liste_filtre(request, listes):
     default_page = 1 # Spécifie la page par défaut
-    items_per_page = 1 # 5 elements dans chaque page
+    items_per_page = 10 # 10 elements dans chaque page
     la_page = request.GET.get('page') # Permet de recuperer la page 
     pagination = Paginator(listes, items_per_page)
     try:
