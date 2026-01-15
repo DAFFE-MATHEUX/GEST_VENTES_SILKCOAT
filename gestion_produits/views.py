@@ -476,7 +476,7 @@ def historique_ventes(request):
     ventes_par_date = defaultdict(list)
 
     for vente in ventes:
-        ventes_par_date[vente.date_vente.date()].append(vente)
+        ventes_par_date[vente.date_vente].append(vente)
 
     historique = []
 
