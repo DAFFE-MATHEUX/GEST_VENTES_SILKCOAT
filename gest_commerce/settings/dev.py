@@ -1,32 +1,83 @@
+# gest_commerce/settings/dev.py
+
 from .base import *
-from .info import *
+import environ
 
 # ----------------------------------------
-# Dev settings
+# Initialisation django-environ
 # ----------------------------------------
-# DEBUG = False # Pour masquer les erreur sur le navigateur
-DEBUG = True # Pour afficher les erreur sur le navigateur
+env = environ.Env()
+environ.Env.read_env()  # Charge le fichier .env
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+# ----------------------------------------
+# DEV SETTINGS
+# ----------------------------------------
+DEBUG = env.bool('DEBUG', default=True)
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
-# Désactiver HTTPS et cookies sécurisés pour dev
+# ----------------------------------------
+# SÉCURITÉ (DEV)
+# ----------------------------------------
+# Dev = HTTP simple, pas de SSL
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # ----------------------------------------
-# Base de données dev
+# BASE DE DONNÉES (DEV)
 # ----------------------------------------
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'gest_commerce_dev',
-        'USER': 'gest_user',
-        'PASSWORD': DB_PASSWORD,
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
-        }
-    }
+DATABASES['default'] = {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': env('DB_NAME', default='gest_commerce_dev'),
+    'USER': env('DB_USER', default='gest_user'),
+    'PASSWORD': env('DB_PASSWORD', default='matheux'),
+    'HOST': env('DB_HOST', default='localhost'),
+    'PORT': env('DB_PORT', default='3306'),
+    'OPTIONS': {
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    },
 }
+
+# ----------------------------------------
+# EMAIL (DEV)
+# ----------------------------------------
+# Affichage console pour dev
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'admin@localhost'
+ADMIN_EMAIL = 'admin@localhost'
+
+# ----------------------------------------
+# LOGGING (DEV)
+# ----------------------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+}
+
+# ----------------------------------------
+# MIDDLEWARE
+# ----------------------------------------
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    
+    # Middleware requis par allauth
+    'allauth.account.middleware.AccountMiddleware',
+    
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+
+
+SITE_ID = 1
