@@ -70,7 +70,8 @@ class StockProduit(models.Model):
 #==================================================================================
 class VenteProduit(models.Model):
     code = models.CharField(max_length=45, unique=True)
-    date_vente = models.DateTimeField(auto_now_add=True)
+    #date_vente = models.DateTimeField(auto_now_add=True)
+    date_vente = models.DateField(auto_now_add=True)
 
     total = models.PositiveIntegerField(default=0)
     total_quanite = models.PositiveIntegerField(default=0) # Qui permet de stocker les quantites quantité 

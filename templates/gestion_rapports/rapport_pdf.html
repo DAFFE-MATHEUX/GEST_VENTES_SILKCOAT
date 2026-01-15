@@ -162,7 +162,7 @@
                         {% endif %}
                     </td>
                     <td> {{ ligne.montant_reduction }}</td>
-                    <td>{{ vente_data.vente.date_vente|date:"d/m/Y H:i" }}</td>
+                    <td>{{ vente_data.vente.date_vente|date:"d/m/Y" }}</td>
                     <td>{{ ligne.sous_total|floatformat:0 }}</td>
                 </tr>
             {% endfor %}

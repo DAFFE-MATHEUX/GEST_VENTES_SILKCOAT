@@ -156,7 +156,7 @@ def vendre_produit(request):
 
                 # 1️⃣ Création de la vente
                 vente = VenteProduit.objects.create(
-                    code=generer_code_vente(),
+                    code = generer_code_vente(),
                     total=0,
                     benefice_total=0,
                     utilisateur=request.user,
@@ -2063,7 +2063,7 @@ def filtrer_listes_ventes(request):
         # ================== FILTRE PAR DATE ==================
         if date_debut and date_fin:
             ventes_qs = ventes_qs.filter(
-                vente__date_vente__date__range=[date_debut, date_fin]
+                date_saisie__range=[date_debut, date_fin]
             )
 
         # ================== STATISTIQUES GLOBALES ==================

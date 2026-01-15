@@ -48,9 +48,8 @@ def home(request):
     # ===============================
     # DATE ACTUELLE
     # ===============================
-    aujourd_hui = timezone.now().date()
     hier = aujourd_hui - timedelta(days=1)
-    
+
     # ===============================
     # MOIS PRÉCÉDENT
     # ===============================
@@ -62,11 +61,7 @@ def home(request):
         annee_prec = annee
 
     debut_mois_prec = date(annee_prec, mois_prec, 1)
-    fin_mois_prec = date(
-        annee_prec,
-        mois_prec,
-        calendar.monthrange(annee_prec, mois_prec)[1]
-    )
+    fin_mois_prec = date(annee_prec, mois_prec, calendar.monthrange(annee_prec, mois_prec)[1])
 
     # ===============================
     # NOTIFICATIONS
@@ -76,93 +71,57 @@ def home(request):
     lues = dernieeres_notification.filter(lu=True)
 
     # ===============================
-    # 3 DERNIERES COMMANDES DES PRODUITS
+    # DERNIÈRES COMMANDES / LIVRAISONS
     # ===============================
     listes_commandes = Commandes.objects.order_by('-datecmd')[:3]
-    # ===============================
-    # 3 DERNIERES LIVRAISONS DES PRODUITS
-    # ===============================
     listes_livraisons = LivraisonsProduits.objects.order_by('-datelivrer')[:3]
 
     # ===============================
-    # 5 DERNIÈRES VENTES
+    # DERNIÈRES VENTES
     # ===============================
-
     dernieres_ventes = VenteProduit.objects.order_by('-date_vente')[:5]
-
-    # S'assurer que les totaux sont à jour
     for vente in dernieres_ventes:
         vente.calculer_totaux()
         vente.quantite_vendue()
 
-    # Calcul des totaux globaux
-    totaux = dernieres_ventes.aggregate(
+    # Totaux globaux
+    totaux = VenteProduit.objects.aggregate(
         total_ventes=Sum('total'),
         total_benefice=Sum('benefice_total'),
         total_quantite=Sum('total_quanite')
     )
-    # ===============================
-    # 📊 COMPARAISON PAR JOUR
-    # ===============================
-    total_hier = (
-        VenteProduit.objects
-        .filter(date_vente__date=hier)
-        .aggregate(total=Sum('total'))['total'] or 0
-    )
 
-    total_aujourdhui = (
-        VenteProduit.objects
-        .filter(date_vente__date=aujourd_hui)
-        .aggregate(total=Sum('total'))['total'] or 0
-    )
+    # ===============================
+    # COMPARAISON PAR JOUR
+    # ===============================
+    total_hier = VenteProduit.objects.filter(date_vente=hier).aggregate(total=Sum('total'))['total'] or 0
+    total_aujourdhui = VenteProduit.objects.filter(date_vente=aujourd_hui).aggregate(total=Sum('total'))['total'] or 0
 
     labels_jour_comparaison = ["Hier", "Aujourd’hui"]
     data_jour_hier = [total_hier, 0]
     data_jour_aujourdhui = [0, total_aujourdhui]
-    
+
     # ===============================
-    # 📈 COMPARAISON PAR SEMAINE
+    # COMPARAISON PAR SEMAINE
     # ===============================
-    # Semaine actuelle
     debut_semaine = aujourd_hui - timedelta(days=aujourd_hui.weekday())
     fin_semaine = debut_semaine + timedelta(days=6)
-
-    # Semaine précédente
     debut_semaine_prec = debut_semaine - timedelta(days=7)
     fin_semaine_prec = debut_semaine - timedelta(days=1)
 
-    total_semaine_actuelle = (
-        VenteProduit.objects
-        .filter(date_vente__date__range=[debut_semaine, fin_semaine])
-        .aggregate(total=Sum('total'))['total'] or 0
-    )
-
-    total_semaine_precedente = (
-        VenteProduit.objects
-        .filter(date_vente__date__range=[debut_semaine_prec, fin_semaine_prec])
-        .aggregate(total=Sum('total'))['total'] or 0
-    )
+    total_semaine_actuelle = VenteProduit.objects.filter(date_vente__range=[debut_semaine, fin_semaine]).aggregate(total=Sum('total'))['total'] or 0
+    total_semaine_precedente = VenteProduit.objects.filter(date_vente__range=[debut_semaine_prec, fin_semaine_prec]).aggregate(total=Sum('total'))['total'] or 0
 
     labels_semaine = ["Semaine Précédente", "Semaine Actuelle"]
     data_semaine_precedente = [total_semaine_precedente, 0]
     data_semaine_actuelle = [0, total_semaine_actuelle]
-    
+
     # ===============================
     # COMPARAISON MENSUELLE
     # ===============================
-    total_mois_actuel = (
-        VenteProduit.objects
-        .filter(date_vente__date__range=[debut_mois, fin_mois])
-        .aggregate(total=Sum('total'))['total'] or 0
-    )
+    total_mois_actuel = VenteProduit.objects.filter(date_vente__range=[debut_mois, fin_mois]).aggregate(total=Sum('total'))['total'] or 0
+    total_mois_precedent = VenteProduit.objects.filter(date_vente__range=[debut_mois_prec, fin_mois_prec]).aggregate(total=Sum('total'))['total'] or 0
 
-    total_mois_precedent = (
-        VenteProduit.objects
-        .filter(date_vente__date__range=[debut_mois_prec, fin_mois_prec])
-        .aggregate(total=Sum('total'))['total'] or 0
-    )
-
-    # Variables pour le graphique comparaison mois
     labels_mois = ['Mois Précédent', 'Mois Actuel']
     data_mois_precedent = [total_mois_precedent]
     data_mois_actuel = [total_mois_actuel]
@@ -174,42 +133,30 @@ def home(request):
     ventes_journalieres = []
     for jour in range(1, dernier_jour + 1):
         date_jour = date(annee, mois, jour)
-        total_jour = (
-            VenteProduit.objects
-            .filter(date_vente__date=date_jour)
-            .aggregate(total=Sum('total'))['total'] or 0
-        )
+        total_jour = VenteProduit.objects.filter(date_vente=date_jour).aggregate(total=Sum('total'))['total'] or 0
         labels_jours.append(str(jour))
         ventes_journalieres.append(total_jour)
 
     # ===============================
-    # TOP PRODUITS VENDUS (MOIS)
+    # TOP PRODUITS VENDUS
     # ===============================
     produits_plus_vendus = (
         LigneVente.objects
-        .filter(vente__date_vente__date__range=[debut_mois, fin_mois])
-        .values(
-            'produit__desgprod',
-            'produit__categorie__desgcategorie'
-        )
+        .filter(vente__date_vente__range=[debut_mois, fin_mois])
+        .values('produit__desgprod', 'produit__categorie__desgcategorie')
         .annotate(qte_totale=Sum('quantite'))
         .order_by('-qte_totale')[:5]
     )
-
     labels_produits = [p['produit__desgprod'] for p in produits_plus_vendus]
     quantites_produits = [p['qte_totale'] for p in produits_plus_vendus]
 
     # ===============================
-    # TOP PRODUITS RENTABLES (MOIS)
+    # TOP PRODUITS RENTABLES
     # ===============================
     top_produits_rentables = (
         LigneVente.objects
-        .filter(vente__date_vente__date__range=[debut_mois, fin_mois])
-        .values(
-            'produit__refprod',
-            'produit__desgprod',
-            'produit__categorie__desgcategorie'
-        )
+        .filter(vente__date_vente__range=[debut_mois, fin_mois])
+        .values('produit__refprod', 'produit__desgprod', 'produit__categorie__desgcategorie')
         .annotate(
             benefice_total=Sum('benefice'),
             qte_vendue=Sum('quantite')
@@ -217,9 +164,9 @@ def home(request):
         .order_by('-benefice_total')[:5]
     )
 
-    total_quantite_vendu = sum(elem['qte_vendue'] for elem in top_produits_rentables)
+    total_quantite_vendu = sum(p['qte_vendue'] for p in top_produits_rentables)
     total_benefice = sum(p['benefice_total'] for p in top_produits_rentables)
-    
+
     labels_rentables = [p['produit__desgprod'] for p in top_produits_rentables]
     benefices = [p['benefice_total'] for p in top_produits_rentables]
 
@@ -231,7 +178,7 @@ def home(request):
     total_stock = StockProduit.objects.aggregate(total=Sum('qtestock'))['total'] or 0
     total_commandes = Commandes.objects.filter(datecmd__range=[debut_mois, fin_mois]).count()
     total_livraisons = LivraisonsProduits.objects.filter(datelivrer__range=[debut_mois, fin_mois]).count()
-    total_ventes = VenteProduit.objects.filter(date_vente__date__range=[debut_mois, fin_mois]).count()
+    total_ventes = VenteProduit.objects.filter(date_vente__range=[debut_mois, fin_mois]).aggregate(total=Sum('total'))['total'] or 0
     total_depenses = Depenses.objects.filter(date_operation__range=[debut_mois, fin_mois]).count()
 
     # ===============================
@@ -240,7 +187,6 @@ def home(request):
     context = {
         'mois_selectionne': mois,
         'annee_selectionnee': annee,
-        'comparaison_mensuelle': [total_mois_precedent, total_mois_actuel],
         'labels_jours': labels_jours,
         'ventes_journalieres': ventes_journalieres,
         'labels_produits': labels_produits,
@@ -252,12 +198,10 @@ def home(request):
         'dernieres_ventes': dernieres_ventes,
         'listes_commandes': listes_commandes,
         'listes_livraisons': listes_livraisons,
-        
         'dernieeres_notification': dernieeres_notification[:5],
         'non_lues': non_lues,
         'lues': lues,
-        
-        'total_depenses' : total_depenses,
+        'total_depenses': total_depenses,
         'total_produits': total_produits,
         'total_categories': total_categories,
         'total_stock': total_stock,
@@ -267,22 +211,17 @@ def home(request):
         'labels_mois': labels_mois,
         'data_mois_precedent': data_mois_precedent,
         'data_mois_actuel': data_mois_actuel,
-        'now': aujourd_hui,
+        'totaux': totaux,
+        'hier': hier,
+        'aujourd_hui': aujourd_hui,
+        'labels_semaine': labels_semaine,
+        'data_semaine_precedente': data_semaine_precedente,
+        'data_semaine_actuelle': data_semaine_actuelle,
+        'labels_jour_comparaison': labels_jour_comparaison,
+        'data_jour_hier': data_jour_hier,
+        'data_jour_aujourdhui': data_jour_aujourdhui,
         'total_quantite_vendu': total_quantite_vendu,
         'total_benefice': total_benefice,
-
-        'totaux': totaux,
-        
-        'hier' : hier,
-        'aujourd_hui' : aujourd_hui,
-        
-        'labels_semaine' : labels_semaine,
-        'data_semaine_precedente' : data_semaine_precedente,
-        'data_semaine_actuelle' : data_semaine_actuelle,
-        
-        'labels_jour_comparaison' : labels_jour_comparaison,
-        'data_jour_hier' : data_jour_hier,
-        'data_jour_aujourdhui' : data_jour_aujourdhui,
     }
 
     return render(request, 'gestion_utilisateur/dashboard.html', context)

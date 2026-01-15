@@ -137,7 +137,7 @@
             <span class="text-primary"><b>{{ cumul_benefice }}</b></span>
         </td>
         {% endif %}
-        <td>{{ elem.vente.date_vente|date:"d/m/Y H:i"  }}</td>
+        <td>{{ elem.vente.date_vente|date:"d/m/Y"  }}</td>
         <td>{% if elem.produit.photoprod %}<img src="{{ elem.produit.photoprod.url }}">{% else %}—{% endif %}</td>
         <td><a class="btn btn-primary btn-sm" href="{% url 'produits:recu_vente_global' elem.vente.code %}"><i class="fa fa-print"></i></a></td>
 

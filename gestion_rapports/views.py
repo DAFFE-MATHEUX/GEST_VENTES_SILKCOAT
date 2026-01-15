@@ -329,7 +329,14 @@ def generer_rapport(request):
 
         date_debut = dt.strptime(periode_debut, "%Y-%m-%d") if periode_debut else None
         date_fin = dt.strptime(periode_fin, "%Y-%m-%d") if periode_fin else None
-
+        
+        # Suppression des données avant l'enregistrement
+        rapport_suppression = Rapport.objects.filter(
+            type=type_rapport,
+            genere_par = request.user
+        )
+        rapport_suppression.delete()
+        # Enregistrement des données dans la table
         rapport = Rapport.objects.create(
             titre=titre.upper(),
             periode_debut=date_debut,

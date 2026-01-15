@@ -169,7 +169,7 @@
                                 <td>{{ vente.code }}</td>
                                 <td>{{ vente.utilisateur.get_full_name|default:"Administrateur" }}</td>
                                 <td> {{ vente.nom_complet_client }}</td>
-                                <td>{{ vente.date_vente|date:"d/m/Y H:i" }}</td>
+                                <td>{{ vente.date_vente|date:"d/m/Y" }}</td>
                                 <td>{{ vente.total_quanite }}</td>
                                 <td>{{ vente.total|floatformat:0 }} GNF</td>
 
