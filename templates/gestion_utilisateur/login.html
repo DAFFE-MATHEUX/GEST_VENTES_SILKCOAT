@@ -218,11 +218,21 @@
 
             <button type="submit"><i class="fa fa-sign-in-alt"></i> Se Connecter</button>
         </form>
-
+{% comment %}
         <div class="login">
             <p>Pas encore de compte ?
                 <a href="{% url 'gestionUtilisateur:inscription_utilisateur' %}">
                     <i class="fa fa-user-plus"></i> Inscription
+                </a>
+            </p>
+        </div>
+
+{% endcomment %}
+
+        <div class="login">
+            <p>
+                <a href="{% url 'gestionUtilisateur:page_bienvenue' %}">
+                    <i class="fa fa-arrow-left"></i> Accueil
                 </a>
             </p>
         </div>

@@ -77,6 +77,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 # ----------------------------------------

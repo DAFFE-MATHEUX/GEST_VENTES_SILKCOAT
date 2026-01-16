@@ -78,8 +78,9 @@
     <th>PU</th>
     {% if not request.user.type_utilisateur == 'Gerante' %}
     <th>PU Gros</th>
-    {% endif %}
     <th>Date</th>
+
+     {% endif %}
     <th>Photo</th>
     <th>Actions</th>
 </tr>
@@ -93,10 +94,11 @@
     <td>{{ elem.categorie }}</td>
     <td>{{ elem.desgprod }}</td>
     <td>{{ elem.pu|floatformat:0 }}</td>
-    {% if not request.user.type_utilisateur == 'Gerante' %}
+    {% if request.user.type_utilisateur != 'Gerante' %}
     <td>{{ elem.prix_en_gros|floatformat:0 }}</td>
-    {% endif %}
     <td>{{ elem.date_maj|date:"d/m/Y" }}</td>
+    {% endif %}
+
     <td>
         {% if elem.photoprod %}
             <img src="{{ elem.photoprod.url }}">
@@ -108,7 +110,7 @@
         <a class="btn btn-primary btn-sm" href="{% url 'produits:consulter_produit' elem.id %}">
             <i class="fa fa-eye"></i>
         </a>
-         {% if not request.user.type_utilisateur == 'Gerante' %}
+         {% if request.user.type_utilisateur != 'Gerante' %}
         <a class="btn btn-info btn-sm" href="{% url 'produits:editer_produit' elem.id %}">
             <i class="fa fa-edit"></i>
         </a>

@@ -103,6 +103,170 @@ def ajouter_categorie(request):
         return redirect('produits:ajouter_categorie')
 
 #================================================================================================
+# Fonction gérer les réferenes de produit
+#================================================================================================
+def generate_references(prefix, date_str, numero):
+    return f"{prefix}{date_str}{str(numero).zfill(4)}"
+
+#================================================================================================
+# Fonction pour ajouter un nouveau produit
+#================================================================================================
+@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
+def nouveau_produit(request):
+    prefix = "PROD"
+    date_str = datetime.now().strftime("%Y%m%d")
+
+    # Trouver le dernier produit du jour pour incrémentation
+    last_produit = Produits.objects.filter(
+        refprod__startswith=f"{prefix}{date_str}"
+    ).order_by('-refprod').first()
+
+    if last_produit:
+        dernier_numero = int(last_produit.refprod[-4:])
+    else:
+        dernier_numero = 0
+
+    # Première référence à afficher
+    ref_generee = generate_references(prefix, date_str, dernier_numero + 1)
+
+    # ------- TRAITEMENT DU FORMULAIRE -------
+    if request.method == 'POST':
+
+        refs = request.POST.getlist("refprod[]")
+        noms = request.POST.getlist("desgprod[]")
+        pus = request.POST.getlist("pu[]")
+        pu_engros = request.POST.getlist("pu_engros[]")
+        categories = request.POST.getlist("categorie[]")
+        photos = request.FILES.getlist("photoprod[]")
+
+        total = len(noms)
+        success_count = 0
+
+        # Vérification cohérence des listes
+        if not (len(refs) == len(noms) == len(pus) == len(pu_engros) == len(categories)):
+            messages.error(request, "Erreur : Données incomplètes dans le formulaire.")
+            return redirect("produits:nouveau_produit")
+
+        for i in range(total):
+            ref = refs[i]
+            desg = noms[i]
+            try:
+                pu = int(pus[i])
+                pu_engro_val = int(pu_engros[i])
+            except ValueError:
+                messages.error(request, f"Erreur : Le prix doit être un nombre pour le produit {desg}.")
+                return redirect("produits:nouveau_produit")
+
+            cat_id = categories[i]
+            photo = photos[i] if i < len(photos) else None
+
+            # Vérifier doublons
+            if Produits.objects.filter(refprod=ref).exists():
+                messages.error(request, f"La Référence {ref} existe déjà.")
+                return redirect('produits:nouveau_produit')
+            elif Produits.objects.filter(desgprod=desg).exists():
+                messages.error(request, f"Le nom du Produit {desg} existe déjà.")
+                return redirect('produits:nouveau_produit')
+
+            # Création du produit
+            try:
+                Produits.objects.create(
+                    refprod=ref,
+                    desgprod=desg,
+                    pu=pu,
+                    prix_en_gros=pu_engro_val,
+                    photoprod=photo,
+                    categorie_id=cat_id
+                )
+                success_count += 1
+            except Exception as e:
+                messages.error(request, f"Erreur lors de l’enregistrement de {ref} : {e}")
+
+        if success_count > 0:
+            messages.success(request, f"{success_count} produit(s) enregistré(s) avec succès.")
+            return redirect("produits:listes_produits")
+
+    # ------- CONTEXTE POUR LE TEMPLATE -------
+    context = {
+        "ref_generee": ref_generee,
+        "categorie_choices": CategorieProduit.objects.all(),
+    }
+
+    return render(request, "gestion_produits/nouveau_produit.html", context)
+
+#================================================================================================
+# Fonction pour ajouter un nouveau produit
+#================================================================================================
+@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
+def ajouter_stock_multiple(request):
+    produits = Produits.objects.all().order_by('desgprod')
+    total_quantite = StockProduit.objects.aggregate(
+        total = Sum('qtestock'))['total'] or 0
+
+    if request.method == "POST":
+        produit_ids = request.POST.getlist("produit[]")
+        qte_list = request.POST.getlist("qtestock[]")
+        seuil_list = request.POST.getlist("seuil[]")
+
+        success_count = 0
+
+        for i in range(len(produit_ids)):
+            try:
+                produit = Produits.objects.get(id=int(produit_ids[i]))
+
+                qte = int(qte_list[i])
+                seuil = int(seuil_list[i])
+
+                # Création ou mise à jour du stock unique
+                if qte != 0 :
+                    stock, created = StockProduit.objects.get_or_create(
+                        produit=produit,
+                        defaults={
+                            "qtestock": qte,
+                            "seuil": seuil
+                        }
+                    )
+                    if not stock.seuil :
+                        if not created :
+                            stock.qtestock += qte
+                            stock.seuil = seuil
+                            stock.save()
+                    success_count += 1
+
+            except Produits.DoesNotExist:
+                messages.error(
+                    request,
+                    f"Produit introuvable à la ligne {i + 1}."
+                )
+
+            except ValueError as ve:
+                messages.error(
+                    request,
+                    f"Quantité ou seuil invalide pour le produit sélectionné {str(ve)}."
+                )
+            except Exception as e:
+                messages.error(
+                    request,
+                    f"Erreur pour le produit {produit.refprod} : {str(e)}"
+                )
+
+        messages.success(
+            request,
+            f"{success_count} produit(s) enregistré(s) / mis à jour avec succès."
+        )
+
+        return redirect("produits:listes_produits_stock")
+
+    return render(
+        request,
+        "gestion_produits/stocks/ajouter_stock_multiple.html",
+        {
+            "produits": produits,
+            'total_quantite' : total_quantite,
+        }
+    )
+
+#================================================================================================
 # Fonction pour éffectuer une nouvelle vente
 #================================================================================================
 
@@ -338,6 +502,344 @@ def vendre_produit(request):
         logger.exception("Erreur vente produit")
         messages.error(request, f"Erreur inattendue : {str(e)}")
         return redirect("produits:vendre_produit")
+
+
+#================================================================================================
+# Fonction pour éffectuer une nouvelle commande
+#================================================================================================
+def generer_code_commandes():
+    prefix = "CMD"
+    date_str = timezone.now().strftime('%Y%m%d')
+
+    last_commande = Commandes.objects.order_by('-id').first()
+
+    if last_commande:
+        try:
+            dernier_numero = int(last_commande.numcmd.split('-')[-1])
+        except (IndexError, ValueError):
+            dernier_numero = 0
+    else:
+        dernier_numero = 0
+
+    nouveau_numero = dernier_numero + 1
+
+    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
+
+
+@csrf_protect
+@login_required
+
+def nouvelle_commande(request):
+    """
+    Création sécurisée d'une nouvelle commande fournisseur
+    + envoi email détaillé à l'admin
+    """
+
+    produits = Produits.objects.all()
+    produits_data = [{"produit": p} for p in produits]
+
+    stock_total = StockProduit.objects.aggregate(
+        total=Sum('qtestock')
+    )['total'] or 0
+
+    if request.method == "POST":
+        ids = request.POST.getlist("produit_id[]")
+        quantites = request.POST.getlist("quantite[]")
+
+        nom_complet_fournisseur = request.POST.get("nom_complet_fournisseur", "").strip()
+        telephone_fournisseur = request.POST.get("telephone_fournisseur", "").strip()
+        adresse_fournisseur = request.POST.get("adresse_fournisseur", "").strip()
+
+        if not nom_complet_fournisseur or not telephone_fournisseur or not adresse_fournisseur:
+            messages.error(request, "Veuillez renseigner toutes les informations du fournisseur.")
+            return redirect("produits:nouvelle_commande")
+
+        if not ids or not quantites:
+            messages.error(request, "Aucun produit sélectionné.")
+            return redirect("produits:nouvelle_commande")
+
+        lignes = []
+        total_general = 0
+        numero_commande = generer_code_commandes()
+
+        try:
+            with transaction.atomic():
+
+                for prod_id, qte_str in zip(ids, quantites):
+                    try:
+                        produit = Produits.objects.get(id=prod_id)
+                    except Produits.DoesNotExist:
+                        continue
+
+                    try:
+                        qte = int(qte_str or 0)
+                    except ValueError:
+                        continue
+
+                    if qte <= 0:
+                        continue
+
+                    # Enregistrement de la ligne de commande
+                    Commandes.objects.create(
+                        numcmd=numero_commande,
+                        qtecmd=qte,
+                        produits=produit,
+                        nom_complet_fournisseur=nom_complet_fournisseur,
+                        adresse_fournisseur=adresse_fournisseur,
+                        telephone_fournisseur=telephone_fournisseur,
+                    )
+
+                    sous_total = produit.pu * qte
+                    total_general += sous_total
+
+                    lignes.append({
+                        "produit": produit.desgprod,
+                        "qte": qte,
+                        "pu": produit.pu,
+                        "sous_total": sous_total
+                    })
+
+                if not lignes:
+                    messages.error(request, "Aucune ligne de commande valide.")
+                    return redirect("produits:nouvelle_commande")
+
+                # ================= EMAIL =================
+                try:
+                    email_body = (
+                        f"📦 NOUVELLE COMMANDE FOURNISSEUR\n\n"
+                        f"Numéro de commande : {numero_commande}\n\n"
+                        f"FOURNISSEUR\n"
+                        f"Nom : {nom_complet_fournisseur}\n"
+                        f"Téléphone : {telephone_fournisseur}\n"
+                        f"Adresse : {adresse_fournisseur}\n\n"
+                        f"---------------- DÉTAILS ----------------\n"
+                    )
+
+                    for l in lignes:
+                        email_body += (
+                            f"- Produit : {l['produit']}\n"
+                            f"  Quantité : {l['qte']}\n"
+                            f"  PU : {l['pu']} GNF\n"
+                            f"  Sous-total : {l['sous_total']} GNF\n\n"
+                        )
+
+                    email_body += (
+                        f"----------------------------------------\n"
+                        f"TOTAL GÉNÉRAL : {total_general} GNF\n"
+                    )
+                    # 🔹 Notification Django
+                    Notification.objects.create(
+                        destinataire=request.user,  # facultatif, ou None si notification globale
+                        destinataire_email=settings.ADMIN_EMAIL,
+                        titre=f"Nouvelle Commande {numero_commande}",
+                        message=(
+                            f"Commande réalisée par {request.user.get_full_name() or 'Admin'} "
+                            f"avec le fournisseur {nom_complet_fournisseur} | Quantite : {l['qte']} GNF"
+                        )
+                    )
+                    EmailMessage(
+                        subject=f"📦 Nouvelle commande {numero_commande}",
+                        body=email_body,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[settings.ADMIN_EMAIL],
+                    ).send(fail_silently=False)
+
+                except Exception as e:
+                    logger.warning(f"Email non envoyé pour la commande {numero_commande}: {e}")
+                    messages.warning(
+                        request,
+                        "Commande enregistrée mais l'email n'a pas été envoyé."
+                    )
+
+            messages.success(
+                request,
+                f"✅ Commande {numero_commande} enregistrée avec succès."
+            )
+            return redirect("produits:listes_des_commandes")
+
+        except Exception as e:
+            logger.exception("Erreur lors de la création de la commande")
+            messages.error(
+                request,
+                "❌ Une erreur est survenue lors de l'enregistrement de la commande."
+            )
+            return redirect("produits:nouvelle_commande")
+
+    return render(
+        request,
+        "gestion_produits/commandes/nouvelle_commande.html",
+        {
+            "produits_data": produits_data,
+            "stock_total": stock_total,
+        }
+    )
+
+
+#================================================================================================
+# Fonction pour éffectuer une receptin de livraisons des commandes
+#================================================================================================
+def generer_code_livraisons():
+    prefix = "LIV"
+    date_str = timezone.now().strftime('%Y%m%d')
+
+    last_livraison = LivraisonsProduits.objects.order_by('-id').first()
+
+    if last_livraison:
+        try:
+            dernier_numero = int(last_livraison.numlivrer.split('-')[-1])
+        except (IndexError, ValueError):
+            dernier_numero = 0
+    else:
+        dernier_numero = 0
+
+    nouveau_numero = dernier_numero + 1
+
+    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
+
+@login_required
+@transaction.atomic
+def reception_livraison(request):
+    """
+    Réception des commandes NON encore totalement livrées
+    Avec possibilité d'annuler une partie de la commande
+    """
+    commandes_data = []
+
+    # 🔹 Récupérer uniquement les commandes non totalement livrées
+    commandes = Commandes.objects.exclude(statuts="Livrée").order_by("-datecmd")
+
+    for cmd in commandes:
+        total_livree = (
+            LivraisonsProduits.objects
+            .filter(commande=cmd)
+            .aggregate(total=Sum("qtelivrer"))["total"] or 0
+        )
+        qte_restante = cmd.qtecmd - total_livree
+
+        if qte_restante > 0:
+            commandes_data.append({
+                "commande": cmd,
+                "total_livree": total_livree,
+                "qte_restante": qte_restante
+            })
+
+    # 🔹 Traitement POST
+    if request.method == "POST":
+        commande_ids = request.POST.getlist("commande_id[]")
+        qte_livree_list = request.POST.getlist("qte_livree[]")
+
+        if len(commande_ids) != len(qte_livree_list):
+            messages.error(request, "Erreur : données invalides.")
+            return redirect("produits:reception_livraison")
+
+        livraisons_effectuees = []
+
+        for i, cmd_id in enumerate(commande_ids):
+            try:
+                cmd = Commandes.objects.get(id=cmd_id)
+                qte_livree = int(qte_livree_list[i])
+                # 🔹 Récupérer la quantité à annuler depuis POST
+                qte_annuler = int(request.POST.get(f"qte_annuler_{cmd.id}", 0))
+            except (Commandes.DoesNotExist, ValueError):
+                continue
+
+            # 🔹 Calcul de la quantité restante
+            total_livree = (
+                LivraisonsProduits.objects
+                .filter(commande=cmd)
+                .aggregate(total=Sum("qtelivrer"))["total"] or 0
+            )
+            qte_restante = cmd.qtecmd - total_livree
+
+            # 🔹 Sécurité : ne pas dépasser le restant
+            if qte_livree < 0 or qte_livree > qte_restante:
+                qte_livree = min(max(qte_livree, 0), qte_restante)
+            if qte_annuler < 0 or qte_annuler > qte_restante:
+                qte_annuler = min(max(qte_annuler, 0), qte_restante)
+
+            if qte_livree == 0 and qte_annuler == 0:
+                continue  # rien à faire pour cette commande
+
+            # 🔹 Enregistrement livraison
+            if qte_livree > 0:
+                LivraisonsProduits.objects.create(
+                    numlivrer = generer_code_livraisons(),
+                    commande=cmd,
+                    produits=cmd.produits,
+                    qtelivrer=qte_livree,
+                    datelivrer=timezone.now().date(),
+                    statuts="Livrée"
+                )
+
+                # 🔹 Mise à jour stock
+                stock, created = StockProduit.objects.get_or_create(
+                    produit=cmd.produits,
+                    defaults={"qtestock": qte_livree}
+                )
+                if not created:
+                    stock.qtestock += qte_livree
+                    stock.save(update_fields=["qtestock"])
+
+            # 🔹 Mise à jour commande : retirer quantité annulée
+            cmd.qtecmd -= qte_annuler
+            total_livree += qte_livree
+            if total_livree >= cmd.qtecmd:
+                cmd.statuts = "Livrée"
+            elif total_livree > 0:
+                cmd.statuts = "Partiellement livrée"
+            else:
+                cmd.statuts = "Non Livrée"
+            cmd.save(update_fields=["qtecmd", "statuts"])
+
+            # 🔹 Historique pour notification
+            livraisons_effectuees.append({
+                "commande": cmd.numcmd,
+                "produit": cmd.produits.desgprod,
+                "qte_livree": qte_livree,
+                "qte_annuler": qte_annuler,
+                "fournisseur": cmd.nom_complet_fournisseur
+            })
+
+        # 🔹 Notification email
+        if livraisons_effectuees:
+            contenu = "📦 Nouvelle réception de livraison :\n\n"
+            for l in livraisons_effectuees:
+                contenu += (
+                    f"- Commande : {l['commande']} | "
+                    f"Produit : {l['produit']} | "
+                    f"Livrée : {l['qte_livree']} | "
+                    f"Annulée : {l['qte_annuler']} | "
+                    f"Fournisseur : {l['fournisseur']}\n"
+                )
+
+            EmailMessage(
+                subject="Nouvelle réception de livraison",
+                body=contenu,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[settings.ADMIN_EMAIL]
+            ).send(fail_silently=True)
+        # Notification
+        try:
+            Notification.objects.create(
+                destinataire=None,  # ou request.user si tu veux lier la notif à l'utilisateur
+                destinataire_email=settings.ADMIN_EMAIL,
+                titre=f"Nouvelle Livraison {l['commande']}",
+                message=(
+                    f"Livraison enregistrée par {request.user.get_full_name() or 'Admin'} | "
+                    f"Commande {l['commande']} | Produit : {l['produit']} | "
+                    f"Livrée : {l['qte_livree']} | Annulée : {l['qte_annuler']}"
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Notification non créée pour livraison {l['commande']}: {e}")
+        messages.success(request, "Livraison enregistrée avec succès.")
+        return redirect("produits:listes_des_livraisons")
+
+    return render(
+        request,
+        "gestion_produits/livraisons/reception_livraison.html",
+        {"commandes": commandes_data}
+    )
 
 #==========================================================
 # Fonction pour le retour de vente
@@ -585,342 +1087,6 @@ def historique_commandes_livraisons(request):
             'total_restantes': 0
         })
 
-#================================================================================================
-# Fonction pour éffectuer une nouvelle commande
-#================================================================================================
-def generer_code_commandes():
-    prefix = "CMD"
-    date_str = timezone.now().strftime('%Y%m%d')
-
-    last_commande = Commandes.objects.order_by('-id').first()
-
-    if last_commande:
-        try:
-            dernier_numero = int(last_commande.numcmd.split('-')[-1])
-        except (IndexError, ValueError):
-            dernier_numero = 0
-    else:
-        dernier_numero = 0
-
-    nouveau_numero = dernier_numero + 1
-
-    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
-
-
-@csrf_protect
-@login_required
-
-def nouvelle_commande(request):
-    """
-    Création sécurisée d'une nouvelle commande fournisseur
-    + envoi email détaillé à l'admin
-    """
-
-    produits = Produits.objects.all()
-    produits_data = [{"produit": p} for p in produits]
-
-    stock_total = StockProduit.objects.aggregate(
-        total=Sum('qtestock')
-    )['total'] or 0
-
-    if request.method == "POST":
-        ids = request.POST.getlist("produit_id[]")
-        quantites = request.POST.getlist("quantite[]")
-
-        nom_complet_fournisseur = request.POST.get("nom_complet_fournisseur", "").strip()
-        telephone_fournisseur = request.POST.get("telephone_fournisseur", "").strip()
-        adresse_fournisseur = request.POST.get("adresse_fournisseur", "").strip()
-
-        if not nom_complet_fournisseur or not telephone_fournisseur or not adresse_fournisseur:
-            messages.error(request, "Veuillez renseigner toutes les informations du fournisseur.")
-            return redirect("produits:nouvelle_commande")
-
-        if not ids or not quantites:
-            messages.error(request, "Aucun produit sélectionné.")
-            return redirect("produits:nouvelle_commande")
-
-        lignes = []
-        total_general = 0
-        numero_commande = generer_code_commandes()
-
-        try:
-            with transaction.atomic():
-
-                for prod_id, qte_str in zip(ids, quantites):
-                    try:
-                        produit = Produits.objects.get(id=prod_id)
-                    except Produits.DoesNotExist:
-                        continue
-
-                    try:
-                        qte = int(qte_str or 0)
-                    except ValueError:
-                        continue
-
-                    if qte <= 0:
-                        continue
-
-                    # Enregistrement de la ligne de commande
-                    Commandes.objects.create(
-                        numcmd=numero_commande,
-                        qtecmd=qte,
-                        produits=produit,
-                        nom_complet_fournisseur=nom_complet_fournisseur,
-                        adresse_fournisseur=adresse_fournisseur,
-                        telephone_fournisseur=telephone_fournisseur,
-                    )
-
-                    sous_total = produit.pu * qte
-                    total_general += sous_total
-
-                    lignes.append({
-                        "produit": produit.desgprod,
-                        "qte": qte,
-                        "pu": produit.pu,
-                        "sous_total": sous_total
-                    })
-
-                if not lignes:
-                    messages.error(request, "Aucune ligne de commande valide.")
-                    return redirect("produits:nouvelle_commande")
-
-                # ================= EMAIL =================
-                try:
-                    email_body = (
-                        f"📦 NOUVELLE COMMANDE FOURNISSEUR\n\n"
-                        f"Numéro de commande : {numero_commande}\n\n"
-                        f"FOURNISSEUR\n"
-                        f"Nom : {nom_complet_fournisseur}\n"
-                        f"Téléphone : {telephone_fournisseur}\n"
-                        f"Adresse : {adresse_fournisseur}\n\n"
-                        f"---------------- DÉTAILS ----------------\n"
-                    )
-
-                    for l in lignes:
-                        email_body += (
-                            f"- Produit : {l['produit']}\n"
-                            f"  Quantité : {l['qte']}\n"
-                            f"  PU : {l['pu']} GNF\n"
-                            f"  Sous-total : {l['sous_total']} GNF\n\n"
-                        )
-
-                    email_body += (
-                        f"----------------------------------------\n"
-                        f"TOTAL GÉNÉRAL : {total_general} GNF\n"
-                    )
-                    # 🔹 Notification Django
-                    Notification.objects.create(
-                        destinataire=request.user,  # facultatif, ou None si notification globale
-                        destinataire_email=settings.ADMIN_EMAIL,
-                        titre=f"Nouvelle Commande {numero_commande}",
-                        message=(
-                            f"Commande réalisée par {request.user.get_full_name() or 'Admin'} "
-                            f"avec le fournisseur {nom_complet_fournisseur} | Quantite : {l['qte']} GNF"
-                        )
-                    )
-                    EmailMessage(
-                        subject=f"📦 Nouvelle commande {numero_commande}",
-                        body=email_body,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        to=[settings.ADMIN_EMAIL],
-                    ).send(fail_silently=False)
-
-                except Exception as e:
-                    logger.warning(f"Email non envoyé pour la commande {numero_commande}: {e}")
-                    messages.warning(
-                        request,
-                        "Commande enregistrée mais l'email n'a pas été envoyé."
-                    )
-
-            messages.success(
-                request,
-                f"✅ Commande {numero_commande} enregistrée avec succès."
-            )
-            return redirect("produits:listes_des_commandes")
-
-        except Exception as e:
-            logger.exception("Erreur lors de la création de la commande")
-            messages.error(
-                request,
-                "❌ Une erreur est survenue lors de l'enregistrement de la commande."
-            )
-            return redirect("produits:nouvelle_commande")
-
-    return render(
-        request,
-        "gestion_produits/commandes/nouvelle_commande.html",
-        {
-            "produits_data": produits_data,
-            "stock_total": stock_total,
-        }
-    )
-
-#================================================================================================
-# Fonction pour éffectuer une receptin de livraisons des commandes
-#================================================================================================
-def generer_code_livraisons():
-    prefix = "LIV"
-    date_str = timezone.now().strftime('%Y%m%d')
-
-    last_livraison = LivraisonsProduits.objects.order_by('-id').first()
-
-    if last_livraison:
-        try:
-            dernier_numero = int(last_livraison.numlivrer.split('-')[-1])
-        except (IndexError, ValueError):
-            dernier_numero = 0
-    else:
-        dernier_numero = 0
-
-    nouveau_numero = dernier_numero + 1
-
-    return f"{prefix}-{date_str}-{str(nouveau_numero).zfill(4)}"
-
-@login_required
-@transaction.atomic
-def reception_livraison(request):
-    """
-    Réception des commandes NON encore totalement livrées
-    Avec possibilité d'annuler une partie de la commande
-    """
-    commandes_data = []
-
-    # 🔹 Récupérer uniquement les commandes non totalement livrées
-    commandes = Commandes.objects.exclude(statuts="Livrée").order_by("-datecmd")
-
-    for cmd in commandes:
-        total_livree = (
-            LivraisonsProduits.objects
-            .filter(commande=cmd)
-            .aggregate(total=Sum("qtelivrer"))["total"] or 0
-        )
-        qte_restante = cmd.qtecmd - total_livree
-
-        if qte_restante > 0:
-            commandes_data.append({
-                "commande": cmd,
-                "total_livree": total_livree,
-                "qte_restante": qte_restante
-            })
-
-    # 🔹 Traitement POST
-    if request.method == "POST":
-        commande_ids = request.POST.getlist("commande_id[]")
-        qte_livree_list = request.POST.getlist("qte_livree[]")
-
-        if len(commande_ids) != len(qte_livree_list):
-            messages.error(request, "Erreur : données invalides.")
-            return redirect("produits:reception_livraison")
-
-        livraisons_effectuees = []
-
-        for i, cmd_id in enumerate(commande_ids):
-            try:
-                cmd = Commandes.objects.get(id=cmd_id)
-                qte_livree = int(qte_livree_list[i])
-                # 🔹 Récupérer la quantité à annuler depuis POST
-                qte_annuler = int(request.POST.get(f"qte_annuler_{cmd.id}", 0))
-            except (Commandes.DoesNotExist, ValueError):
-                continue
-
-            # 🔹 Calcul de la quantité restante
-            total_livree = (
-                LivraisonsProduits.objects
-                .filter(commande=cmd)
-                .aggregate(total=Sum("qtelivrer"))["total"] or 0
-            )
-            qte_restante = cmd.qtecmd - total_livree
-
-            # 🔹 Sécurité : ne pas dépasser le restant
-            if qte_livree < 0 or qte_livree > qte_restante:
-                qte_livree = min(max(qte_livree, 0), qte_restante)
-            if qte_annuler < 0 or qte_annuler > qte_restante:
-                qte_annuler = min(max(qte_annuler, 0), qte_restante)
-
-            if qte_livree == 0 and qte_annuler == 0:
-                continue  # rien à faire pour cette commande
-
-            # 🔹 Enregistrement livraison
-            if qte_livree > 0:
-                LivraisonsProduits.objects.create(
-                    numlivrer = generer_code_livraisons(),
-                    commande=cmd,
-                    produits=cmd.produits,
-                    qtelivrer=qte_livree,
-                    datelivrer=timezone.now().date(),
-                    statuts="Livrée"
-                )
-
-                # 🔹 Mise à jour stock
-                stock, created = StockProduit.objects.get_or_create(
-                    produit=cmd.produits,
-                    defaults={"qtestock": qte_livree}
-                )
-                if not created:
-                    stock.qtestock += qte_livree
-                    stock.save(update_fields=["qtestock"])
-
-            # 🔹 Mise à jour commande : retirer quantité annulée
-            cmd.qtecmd -= qte_annuler
-            total_livree += qte_livree
-            if total_livree >= cmd.qtecmd:
-                cmd.statuts = "Livrée"
-            elif total_livree > 0:
-                cmd.statuts = "Partiellement livrée"
-            else:
-                cmd.statuts = "Non Livrée"
-            cmd.save(update_fields=["qtecmd", "statuts"])
-
-            # 🔹 Historique pour notification
-            livraisons_effectuees.append({
-                "commande": cmd.numcmd,
-                "produit": cmd.produits.desgprod,
-                "qte_livree": qte_livree,
-                "qte_annuler": qte_annuler,
-                "fournisseur": cmd.nom_complet_fournisseur
-            })
-
-        # 🔹 Notification email
-        if livraisons_effectuees:
-            contenu = "📦 Nouvelle réception de livraison :\n\n"
-            for l in livraisons_effectuees:
-                contenu += (
-                    f"- Commande : {l['commande']} | "
-                    f"Produit : {l['produit']} | "
-                    f"Livrée : {l['qte_livree']} | "
-                    f"Annulée : {l['qte_annuler']} | "
-                    f"Fournisseur : {l['fournisseur']}\n"
-                )
-
-            EmailMessage(
-                subject="Nouvelle réception de livraison",
-                body=contenu,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[settings.ADMIN_EMAIL]
-            ).send(fail_silently=True)
-        # Notification
-        try:
-            Notification.objects.create(
-                destinataire=None,  # ou request.user si tu veux lier la notif à l'utilisateur
-                destinataire_email=settings.ADMIN_EMAIL,
-                titre=f"Nouvelle Livraison {l['commande']}",
-                message=(
-                    f"Livraison enregistrée par {request.user.get_full_name() or 'Admin'} | "
-                    f"Commande {l['commande']} | Produit : {l['produit']} | "
-                    f"Livrée : {l['qte_livree']} | Annulée : {l['qte_annuler']}"
-                )
-            )
-        except Exception as e:
-            logger.warning(f"Notification non créée pour livraison {l['commande']}: {e}")
-        messages.success(request, "Livraison enregistrée avec succès.")
-        return redirect("produits:listes_des_livraisons")
-
-    return render(
-        request,
-        "gestion_produits/livraisons/reception_livraison.html",
-        {"commandes": commandes_data}
-    )
-
 #=============================================================================================
 # Fonction pour gérer les réçu Global de Ventes
 #=============================================================================================
@@ -998,32 +1164,6 @@ def recu_vente_global(request, vente_code):
     return render(request, "gestion_produits/recu_ventes/recu_vente_global.html", context)
 
 #================================================================================================
-# Fonction pour afficher la listes des catégories
-#================================================================================================
-@login_required
-def listes_categorie(request):
-    try:
-        # Récupérer toutes les catégories par ordre décroissant d'id
-        listes_categories = CategorieProduit.objects.all().order_by('-id')
-
-        # Pagination : 10 catégories par page
-        paginator = Paginator(listes_categories, 10)
-        page_number = request.GET.get('page', 1)
-        page_obj = paginator.get_page(page_number)
-
-        total_categories = listes_categories.count()
-    except Exception as ex:
-        messages.warning(request, f"Erreur lors du chargement des catégories : {str(ex)}")
-        page_obj = []
-        total_categories = 0
-
-    context = {
-        'liste_categories': page_obj,  # objet paginé pour le template
-        'total_categories': total_categories,
-    }
-    return render(request, "gestion_produits/listes_categorie.html", context)
-
-#================================================================================================
 # Fonction pour modifier les informations d'une catégorie de produit
 #================================================================================================
 @login_required
@@ -1050,6 +1190,43 @@ def modifier_categorie(request):
             messages.error(request, f"Erreur lors de la modification : {str(ex)}")
 
         return redirect('produits:listes_categorie')
+
+#================================================================================================
+# Fonction pour modifier un produit donnée
+#================================================================================================
+@login_required
+def modifier_produit(request, id):
+    try:
+        produit = Produits.objects.get(id=id)
+    except Produits.DoesNotExist:
+        messages.error(request, "Produit introuvable.")
+        return redirect('produits:editer_produit')
+
+    categories = CategorieProduit.objects.all()
+
+    if request.method == 'POST':
+        produit.desgprod = request.POST.get('desgprod')
+        produit.qtestock = request.POST.get('qtestock')
+        produit.seuil = request.POST.get('seuil')
+        produit.pu = request.POST.get('pu')
+        produit.prix_en_gros = request.POST.get('prix_en_gros')
+
+        categorie_id = request.POST.get('categorie')
+        produit.categorie_id = categorie_id
+
+        if 'photoprod' in request.FILES:
+            produit.photoprod = request.FILES['photoprod']
+
+        produit.save()
+
+        messages.success(request, "Produit modifié avec succès !")
+        return redirect('produits:listes_produits')
+
+    context = {
+        'produit': produit,
+        'categories': categories,
+    }
+    return render(request, 'gestion_produits/modifier_produits.html', context)
 
 #================================================================================================
 # Fonction pour supprimer une catégorie de produit
@@ -1445,6 +1622,33 @@ def supprimer_ventes(request):
 
     return redirect('produits:listes_des_ventes')
 
+
+#================================================================================================
+# Fonction pour afficher la listes des catégories
+#================================================================================================
+@login_required
+def listes_categorie(request):
+    try:
+        # Récupérer toutes les catégories par ordre décroissant d'id
+        listes_categories = CategorieProduit.objects.all().order_by('-id')
+
+        # Pagination : 10 catégories par page
+        paginator = Paginator(listes_categories, 10)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        total_categories = listes_categories.count()
+    except Exception as ex:
+        messages.warning(request, f"Erreur lors du chargement des catégories : {str(ex)}")
+        page_obj = []
+        total_categories = 0
+
+    context = {
+        'liste_categories': page_obj,  # objet paginé pour le template
+        'total_categories': total_categories,
+    }
+    return render(request, "gestion_produits/listes_categorie.html", context)
+
 #================================================================================================
 # Fonction pour afficher la liste de tout les produits
 #================================================================================================
@@ -1667,139 +1871,6 @@ def listes_des_livraisons(request):
     )
 
 #================================================================================================
-# Fonction pour filtrer la liste des livraisons par date
-#================================================================================================
-@login_required
-def filtrer_listes_livraisons(request):
-
-    date_debut = request.GET.get("date_debut")
-    date_fin = request.GET.get("date_fin")
-
-    try:
-        # ================= QUERYSET DE BASE =================
-        livraisons_qs = LivraisonsProduits.objects.select_related(
-            'commande',
-            'produits',
-            'produits__categorie'
-        ).order_by('-id')
-
-        # ================= FILTRE PAR DATE =================
-        if date_debut and date_fin:
-            livraisons_qs = livraisons_qs.filter(
-                datelivrer__range=[date_debut, date_fin]
-            )
-        elif date_debut:
-            livraisons_qs = livraisons_qs.filter(
-                datelivrer=date_debut
-            )
-        elif date_fin:
-            livraisons_qs = livraisons_qs.filter(
-                datelivrer=date_fin
-            )
-
-        # ================= QTE LIVRÉE PAR COMMANDE =================
-        livraison_par_commande = (
-            livraisons_qs
-            .values('commande_id')
-            .annotate(total_livree=Sum('qtelivrer'))
-        )
-
-        livraison_map = {
-            l['commande_id']: l['total_livree']
-            for l in livraison_par_commande
-        }
-
-        # ================= QTE RESTANTE =================
-        total_quantite_restante = 0
-        for l in livraisons_qs:
-            total_livree = livraison_map.get(l.commande_id, 0)
-            l.qte_restante = max(l.commande.qtecmd - total_livree, 0)
-            total_quantite_restante += l.qte_restante
-
-        # ================= TOTAUX GLOBAUX =================
-        total_livraison = livraisons_qs.count()
-
-        total_qtecmd = livraisons_qs.aggregate(
-            total=Sum('commande__qtecmd')
-        )['total'] or 0
-
-        total_quantite_livrer = livraisons_qs.aggregate(
-            total=Sum('qtelivrer')
-        )['total'] or 0
-
-        total_quantite_restante = total_qtecmd - total_quantite_livrer
-
-        # ================= TOTAUX PAR CATÉGORIE =================
-        total_par_categorie = (
-            livraisons_qs
-            .values('produits__categorie__desgcategorie')
-            .annotate(
-                nombre_livraisons=Count('id'),
-                total_qtecmd=Sum('commande__qtecmd'),
-                total_qtelivree=Sum('qtelivrer'),
-            )
-            .annotate(
-                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
-            )
-            .order_by('produits__categorie__desgcategorie')
-        )
-
-        # ================= TOTAUX PAR PRODUIT =================
-        total_par_produit = (
-            livraisons_qs
-            .values(
-                'produits_id',
-                'produits__desgprod',
-                'produits__categorie__desgcategorie'
-            )
-            .annotate(
-                nombre_livraisons=Count('id'),
-                total_qtecmd=Sum('commande__qtecmd'),
-                total_qtelivree=Sum('qtelivrer'),
-            )
-            .annotate(
-                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
-            )
-            .order_by('produits__desgprod')
-        )
-
-        # ================= PAGINATION (FIN) =================
-        listes_livraisons_filtre = pagination_liste_filtre(
-            request,
-            livraisons_qs
-        )
-                # ================= QUERY PARAMS (IMPORTANT) =================
-        query_params = request.GET.copy()
-        query_params.pop('page', None)
-        query_params = urlencode(query_params)
-
-    except Exception as ex:
-        messages.warning(request, f"Erreur lors du filtrage : {ex}")
-        listes_livraisons_filtre = []
-        total_livraison = total_qtecmd = total_quantite_livrer = total_quantite_restante = 0
-        total_par_categorie = []
-        total_par_produit = []
-        query_params = ""
-
-    return render(
-        request,
-        "gestion_produits/livraisons/listes_livraisons.html",
-        {
-            "date_debut": date_debut,
-            "date_fin": date_fin,
-            "listes_livraisons_filtre": listes_livraisons_filtre,
-            "total_livraison": total_livraison,
-            "total_qtecmd": total_qtecmd,
-            "total_quantite_livrer": total_quantite_livrer,
-            "total_quantite_restante": total_quantite_restante,
-            "total_par_categorie": total_par_categorie,
-            "total_par_produit": total_par_produit,
-            
-            'query_params' : query_params,
-        }
-    )
-
-#================================================================================================
 # Fonction pour afficher la liste des ventes
 #================================================================================================
 @login_required
@@ -1947,6 +2018,139 @@ def listes_des_commandes(request):
     }
 
     return render(request, "gestion_produits/commandes/listes_commandes.html", context)
+
+#================================================================================================
+# Fonction pour filtrer la liste des livraisons par date
+#================================================================================================
+@login_required
+def filtrer_listes_livraisons(request):
+
+    date_debut = request.GET.get("date_debut")
+    date_fin = request.GET.get("date_fin")
+
+    try:
+        # ================= QUERYSET DE BASE =================
+        livraisons_qs = LivraisonsProduits.objects.select_related(
+            'commande',
+            'produits',
+            'produits__categorie'
+        ).order_by('-id')
+
+        # ================= FILTRE PAR DATE =================
+        if date_debut and date_fin:
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer__range=[date_debut, date_fin]
+            )
+        elif date_debut:
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer=date_debut
+            )
+        elif date_fin:
+            livraisons_qs = livraisons_qs.filter(
+                datelivrer=date_fin
+            )
+
+        # ================= QTE LIVRÉE PAR COMMANDE =================
+        livraison_par_commande = (
+            livraisons_qs
+            .values('commande_id')
+            .annotate(total_livree=Sum('qtelivrer'))
+        )
+
+        livraison_map = {
+            l['commande_id']: l['total_livree']
+            for l in livraison_par_commande
+        }
+
+        # ================= QTE RESTANTE =================
+        total_quantite_restante = 0
+        for l in livraisons_qs:
+            total_livree = livraison_map.get(l.commande_id, 0)
+            l.qte_restante = max(l.commande.qtecmd - total_livree, 0)
+            total_quantite_restante += l.qte_restante
+
+        # ================= TOTAUX GLOBAUX =================
+        total_livraison = livraisons_qs.count()
+
+        total_qtecmd = livraisons_qs.aggregate(
+            total=Sum('commande__qtecmd')
+        )['total'] or 0
+
+        total_quantite_livrer = livraisons_qs.aggregate(
+            total=Sum('qtelivrer')
+        )['total'] or 0
+
+        total_quantite_restante = total_qtecmd - total_quantite_livrer
+
+        # ================= TOTAUX PAR CATÉGORIE =================
+        total_par_categorie = (
+            livraisons_qs
+            .values('produits__categorie__desgcategorie')
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtecmd=Sum('commande__qtecmd'),
+                total_qtelivree=Sum('qtelivrer'),
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
+            .order_by('produits__categorie__desgcategorie')
+        )
+
+        # ================= TOTAUX PAR PRODUIT =================
+        total_par_produit = (
+            livraisons_qs
+            .values(
+                'produits_id',
+                'produits__desgprod',
+                'produits__categorie__desgcategorie'
+            )
+            .annotate(
+                nombre_livraisons=Count('id'),
+                total_qtecmd=Sum('commande__qtecmd'),
+                total_qtelivree=Sum('qtelivrer'),
+            )
+            .annotate(
+                total_qte_restante=F('total_qtecmd') - F('total_qtelivree')
+            )
+            .order_by('produits__desgprod')
+        )
+
+        # ================= PAGINATION (FIN) =================
+        listes_livraisons_filtre = pagination_liste_filtre(
+            request,
+            livraisons_qs
+        )
+                # ================= QUERY PARAMS (IMPORTANT) =================
+        query_params = request.GET.copy()
+        query_params.pop('page', None)
+        query_params = urlencode(query_params)
+
+    except Exception as ex:
+        messages.warning(request, f"Erreur lors du filtrage : {ex}")
+        listes_livraisons_filtre = []
+        total_livraison = total_qtecmd = total_quantite_livrer = total_quantite_restante = 0
+        total_par_categorie = []
+        total_par_produit = []
+        query_params = ""
+
+    return render(
+        request,
+        "gestion_produits/livraisons/listes_livraisons.html",
+        {
+            "date_debut": date_debut,
+            "date_fin": date_fin,
+            "listes_livraisons_filtre": listes_livraisons_filtre,
+            "total_livraison": total_livraison,
+            "total_qtecmd": total_qtecmd,
+            "total_quantite_livrer": total_quantite_livrer,
+            "total_quantite_restante": total_quantite_restante,
+            "total_par_categorie": total_par_categorie,
+            "total_par_produit": total_par_produit,
+            
+            'query_params' : query_params,
+        }
+    )
 
 #================================================================================================
 # Fonction pour filter la liste des commandes selon un intervalle de date donnée
@@ -2184,208 +2388,6 @@ def editer_produit(request, id):
     return render(request, 'gestion_produits/modifier_produits.html', context)
 
 #================================================================================================
-# Fonction pour modifier un produit donnée
-#================================================================================================
-@login_required
-def modifier_produit(request, id):
-    try:
-        produit = Produits.objects.get(id=id)
-    except Produits.DoesNotExist:
-        messages.error(request, "Produit introuvable.")
-        return redirect('produits:editer_produit')
-
-    categories = CategorieProduit.objects.all()
-
-    if request.method == 'POST':
-        produit.desgprod = request.POST.get('desgprod')
-        produit.qtestock = request.POST.get('qtestock')
-        produit.seuil = request.POST.get('seuil')
-        produit.pu = request.POST.get('pu')
-        produit.prix_en_gros = request.POST.get('prix_en_gros')
-
-        categorie_id = request.POST.get('categorie')
-        produit.categorie_id = categorie_id
-
-        if 'photoprod' in request.FILES:
-            produit.photoprod = request.FILES['photoprod']
-
-        produit.save()
-
-        messages.success(request, "Produit modifié avec succès !")
-        return redirect('produits:listes_produits')
-
-    context = {
-        'produit': produit,
-        'categories': categories,
-    }
-    return render(request, 'gestion_produits/modifier_produits.html', context)
-
-#================================================================================================
-# Fonction gérer les réferenes de produit
-#================================================================================================
-def generate_references(prefix, date_str, numero):
-    return f"{prefix}{date_str}{str(numero).zfill(4)}"
-
-#================================================================================================
-# Fonction pour ajouter un nouveau produit
-#================================================================================================
-@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-def nouveau_produit(request):
-    prefix = "PROD"
-    date_str = datetime.now().strftime("%Y%m%d")
-
-    # Trouver le dernier produit du jour pour incrémentation
-    last_produit = Produits.objects.filter(
-        refprod__startswith=f"{prefix}{date_str}"
-    ).order_by('-refprod').first()
-
-    if last_produit:
-        dernier_numero = int(last_produit.refprod[-4:])
-    else:
-        dernier_numero = 0
-
-    # Première référence à afficher
-    ref_generee = generate_references(prefix, date_str, dernier_numero + 1)
-
-    # ------- TRAITEMENT DU FORMULAIRE -------
-    if request.method == 'POST':
-
-        refs = request.POST.getlist("refprod[]")
-        noms = request.POST.getlist("desgprod[]")
-        pus = request.POST.getlist("pu[]")
-        pu_engros = request.POST.getlist("pu_engros[]")
-        categories = request.POST.getlist("categorie[]")
-        photos = request.FILES.getlist("photoprod[]")
-
-        total = len(noms)
-        success_count = 0
-
-        # Vérification cohérence des listes
-        if not (len(refs) == len(noms) == len(pus) == len(pu_engros) == len(categories)):
-            messages.error(request, "Erreur : Données incomplètes dans le formulaire.")
-            return redirect("produits:nouveau_produit")
-
-        for i in range(total):
-            ref = refs[i]
-            desg = noms[i]
-            try:
-                pu = int(pus[i])
-                pu_engro_val = int(pu_engros[i])
-            except ValueError:
-                messages.error(request, f"Erreur : Le prix doit être un nombre pour le produit {desg}.")
-                return redirect("produits:nouveau_produit")
-
-            cat_id = categories[i]
-            photo = photos[i] if i < len(photos) else None
-
-            # Vérifier doublons
-            if Produits.objects.filter(refprod=ref).exists():
-                messages.error(request, f"La Référence {ref} existe déjà.")
-                return redirect('produits:nouveau_produit')
-            elif Produits.objects.filter(desgprod=desg).exists():
-                messages.error(request, f"Le nom du Produit {desg} existe déjà.")
-                return redirect('produits:nouveau_produit')
-
-            # Création du produit
-            try:
-                Produits.objects.create(
-                    refprod=ref,
-                    desgprod=desg,
-                    pu=pu,
-                    prix_en_gros=pu_engro_val,
-                    photoprod=photo,
-                    categorie_id=cat_id
-                )
-                success_count += 1
-            except Exception as e:
-                messages.error(request, f"Erreur lors de l’enregistrement de {ref} : {e}")
-
-        if success_count > 0:
-            messages.success(request, f"{success_count} produit(s) enregistré(s) avec succès.")
-            return redirect("produits:listes_produits")
-
-    # ------- CONTEXTE POUR LE TEMPLATE -------
-    context = {
-        "ref_generee": ref_generee,
-        "categorie_choices": CategorieProduit.objects.all(),
-    }
-
-    return render(request, "gestion_produits/nouveau_produit.html", context)
-
-#================================================================================================
-# Fonction pour ajouter un nouveau produit
-#================================================================================================
-@login_required(login_url='gestionUtilisateur:connexion_utilisateur')
-def ajouter_stock_multiple(request):
-    produits = Produits.objects.all().order_by('desgprod')
-    total_quantite = StockProduit.objects.aggregate(
-        total = Sum('qtestock'))['total'] or 0
-
-    if request.method == "POST":
-        produit_ids = request.POST.getlist("produit[]")
-        qte_list = request.POST.getlist("qtestock[]")
-        seuil_list = request.POST.getlist("seuil[]")
-
-        success_count = 0
-
-        for i in range(len(produit_ids)):
-            try:
-                produit = Produits.objects.get(id=int(produit_ids[i]))
-
-                qte = int(qte_list[i])
-                seuil = int(seuil_list[i])
-
-                # Création ou mise à jour du stock unique
-                if qte != 0 :
-                    stock, created = StockProduit.objects.get_or_create(
-                        produit=produit,
-                        defaults={
-                            "qtestock": qte,
-                            "seuil": seuil
-                        }
-                    )
-                    if not stock.seuil :
-                        if not created :
-                            stock.qtestock += qte
-                            stock.seuil = seuil
-                            stock.save()
-                    success_count += 1
-
-            except Produits.DoesNotExist:
-                messages.error(
-                    request,
-                    f"Produit introuvable à la ligne {i + 1}."
-                )
-
-            except ValueError as ve:
-                messages.error(
-                    request,
-                    f"Quantité ou seuil invalide pour le produit sélectionné {str(ve)}."
-                )
-            except Exception as e:
-                messages.error(
-                    request,
-                    f"Erreur pour le produit {produit.refprod} : {str(e)}"
-                )
-
-        messages.success(
-            request,
-            f"{success_count} produit(s) enregistré(s) / mis à jour avec succès."
-        )
-
-        return redirect("produits:listes_produits_stock")
-
-    return render(
-        request,
-        "gestion_produits/stocks/ajouter_stock_multiple.html",
-        {
-            "produits": produits,
-            'total_quantite' : total_quantite,
-        }
-    )
-
-
-#================================================================================================
 # Fonction pour imprimer la listes des produits
 #================================================================================================
 @login_required
@@ -2540,7 +2542,7 @@ def listes_ventes_impression(request):
             total_quantite_retourner += ligne.quantite_retournee
 
     ventes_liste = list(ventes_dict.values())
-    nom_entreprise = Entreprise.objects.first()  # Si plusieurs, prendre le premier
+    nom_entreprise = Entreprise.objects.first()
 
     context = {
         'nom_entreprise': nom_entreprise,

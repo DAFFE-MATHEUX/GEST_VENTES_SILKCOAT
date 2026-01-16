@@ -3,11 +3,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-     {% if date_debut == date_fin %}
-    <title>LISTE DES VENTES D'AUJOURD'HUI</title>
-    {% else %}
+
     <title>LISTE DES VENTES DU {{ date_debut }} au {{ date_fin }}</title>
-    {% endif %}
     <style>
         body { font-family: "Trebuchet MS", Arial, sans-serif; font-size: 12px; margin: 25px; color: #222; }
         h2, h3, h4 { text-align: center; margin: 0; }
@@ -56,11 +53,8 @@
     </div>
 
     <!-- TITRE -->
-     {% if date_debut == date_fin %}
-    <h3>LES VENTES D'AUJOURD'HUI</h3>
-    {% else %}
+
     <h3>Les Ventes du {{ date_debut }} au {{ date_fin }}</h3>
-    {% endif %}
 
     <!-- TABLEAU PRINCIPAL DES VENTES -->
     <table>
@@ -188,7 +182,6 @@
             <th>#</th>
             <th>Produit</th>
             <th>Quantité Vendue</th>
-            <th>Montant Total (GNF)</th>
         </tr>
     </thead>
     <tbody>
@@ -198,7 +191,6 @@
                 <td>{{ forloop.counter }}</td>
                 <td>{{ prod.produit__desgprod }}</td>
                 <td>{{ prod.total_quantite }}</td>
-                <td>{{ prod.total_montant|floatformat:"0" }} GNF</td>
             </tr>
             {% endfor %}
         {% else %}
@@ -211,7 +203,6 @@
         <tr style="font-weight:bold; background-color:#e6f7ff;">
             <td colspan="2" style="text-align:center;">Totaux :</td>
             <td>{{ total_quantite_produits|default:0 }}</td>
-            <td>{{ total_montant_produits|floatformat:"0"|default:"0" }} GNF</td>
         </tr>
     </tfoot>
 </table>
@@ -226,7 +217,6 @@
             <th>#</th>
             <th>Catégorie</th>
             <th>Quantité Vendue</th>
-            <th>Montant Total (GNF)</th>
         </tr>
     </thead>
     <tbody>
@@ -236,7 +226,6 @@
                 <td>{{ forloop.counter }}</td>
                 <td>{{ cat.produit__categorie__desgcategorie }}</td>
                 <td>{{ cat.total_quantite }}</td>
-                <td>{{ cat.total_montant|floatformat:"0" }} GNF</td>
             </tr>
             {% endfor %}
         {% else %}
@@ -247,9 +236,9 @@
     </tbody>
     <tfoot>
         <tr style="font-weight:bold; background-color:#e6f7ff;">
-            <td colspan="2" style="text-align:center;">Totaux :</td>
+            <td style="text-align:center;">Totaux :</td>
+            <td style="text-align: center;">-</td>
             <td>{{ total_quantite_categories|default:0 }}</td>
-            <td>{{ total_montant_categories|floatformat:"0"|default:"0" }} GNF</td>
         </tr>
     </tfoot>
 </table>

@@ -34,6 +34,8 @@
       {% endfor %}
     {% endif %} 
 
+     {% if request.user.type_utilisateur != 'Gerante' %}
+
     <div class="row mb-3">
 
       <div class="col-md-6">
@@ -42,6 +44,7 @@
         </button>
       </div>
     </div>
+    {% endif %}
 
     <div class="panel panel-default">
       <div class="panel-heading">LISTE DES CATÉGORIES</div>
@@ -65,8 +68,11 @@
                 <th>#</th>
                 <th>Nom Catégorie</th>
                 <th>Description</th>
+
+              {% if request.user.type_utilisateur != 'Gerante' %}
                 <th>Date Mise à jour</th>
                 <th>Actions</th>
+              {% endif %}
               </tr>
             </thead>
             <tbody id="table_categories">
@@ -75,9 +81,11 @@
                 <td>{{ forloop.counter }}</td>
                 <td>{{ element.desgcategorie }}</td>
                 <td>{{ element.description }}</td>
-                <td>{{ element.date_maj|date:'Y-m-d' }}</td>
-                <td class="text-center">
+                
+                 {% if request.user.type_utilisateur != 'Gerante' %}
 
+                 <td>{{ element.date_maj|date:'Y-m-d' }}</td>
+                <td class="text-center">
                   <!-- Modifier -->
                   <button type="button" class="btn btn-warning btn-sm btn-cat-mod" data-toggle="modal"
                     data-target="#modifier_categorie"
@@ -95,6 +103,8 @@
                   </button>
 
                 </td>
+                {% endif %}
+
               </tr>
               {% endfor %}
             </tbody>
