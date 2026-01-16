@@ -479,8 +479,7 @@ def vendre_produit(request):
             messages.success(request, "✅ Vente enregistrée avec succès.")
             return redirect(
                 reverse(
-                    "produits:recu_vente_global",
-                    kwargs={"vente_code": vente.code}
+                    "produits:listes_des_ventes"
                 )
             )
 

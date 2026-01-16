@@ -194,7 +194,17 @@
 
 </form>
 
+
 <script>
+
+  // 🚫 Bloquer la touche Entrée dans tout le formulaire
+document.getElementById("form-vente").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        return false;
+    }
+});
+
 // Autoriser uniquement les chiffres
 document.addEventListener("input", e => {
   if (e.target.classList.contains("only-numbers")) {
