@@ -1,14 +1,10 @@
 from .base import *
-import environ
+from .info import *  # variables de l'environnement PROD
 
 # ----------------------------------------
-# ENVIRONNEMENT PROD
+# DEBUG & HOSTS
 # ----------------------------------------
-env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')  # Lit le fichier .env
-
 DEBUG = env.bool('DEBUG', default=False)
-
 ALLOWED_HOSTS = [
     'itracopaint.com',
     'www.itracopaint.com',
@@ -17,9 +13,15 @@ ALLOWED_HOSTS = [
 # ----------------------------------------
 # DATABASES PROD
 # ----------------------------------------
-DATABASES['default'].update({
-    'NAME': env('DB_NAME_PROD'),
-})
+DATABASES['default'] = {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': DB_NAME_PROD,  # importé depuis info.py
+    'USER': DB_USER,
+    'PASSWORD': DB_PASSWORD,
+    'HOST': DB_HOST,
+    'PORT': DB_PORT,
+    'OPTIONS': {'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"},
+}
 
 # ----------------------------------------
 # HTTPS & SÉCURITÉ
@@ -34,7 +36,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.itracopaint.com',
 ]
 
-SECURE_HSTS_SECONDS = 31536000  # 1 an
+SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_BROWSER_XSS_FILTER = True
@@ -45,11 +47,11 @@ X_FRAME_OPTIONS = 'DENY'
 # EMAIL PROD
 # ----------------------------------------
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST')
-EMAIL_PORT = env('EMAIL_PORT', default=587)
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+EMAIL_HOST = EMAIL_HOST
+EMAIL_PORT = EMAIL_PORT
+EMAIL_USE_TLS = EMAIL_USE_TLS
+EMAIL_HOST_USER = EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ADMIN_EMAIL = EMAIL_HOST_USER
 EMAIL_FAIL_SILENTLY = False
@@ -79,3 +81,4 @@ LOGGING = {
         'level': 'WARNING',
     },
 }
+# ----------------------------------------

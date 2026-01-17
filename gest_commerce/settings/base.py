@@ -1,6 +1,5 @@
 from pathlib import Path
 import environ
-from django.contrib.messages import constants as messages
 
 # ----------------------------------------
 # BASE DIR
@@ -13,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     DEBUG=(bool, False)
 )
-environ.Env.read_env(BASE_DIR / '.env')  # Lit le fichier .env
+environ.Env.read_env(BASE_DIR / '.env')  # lit le fichier .env
 
 # ----------------------------------------
 # SECRET & DEBUG
@@ -25,29 +24,33 @@ DEBUG = env.bool('DEBUG', default=True)
 # APPLICATIONS
 # ----------------------------------------
 INSTALLED_APPS = [
+    # Apps Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+
+    # Apps tierces
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
+    'social_django',              # OAuth social
+    'import_export',              # import/export
+    'rest_framework',
+    'simple_history',
+
+    # Apps du projet
     'gestion_utilisateur',
     'gestion_audit',
     'gestion_notifications',
     'gestion_produits',
     'gest_entreprise',
     'gestion_rapports',
-    'simple_history',
-    'django.contrib.sites',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
-    'allauth.socialaccount.providers.facebook',
-    'social_django',
-    'rest_framework',
-    'import_export',
-    'axes',
 ]
 
 SITE_ID = 1
@@ -61,7 +64,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
@@ -69,12 +71,12 @@ MIDDLEWARE = [
 ]
 
 # ----------------------------------------
-# DATABASES (DEV / par défaut)
+# DATABASES (DEV par défaut)
 # ----------------------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': env('DB_NAME', default='gest_commerce_dev'),  # valeur par défaut dev
+        'NAME': env('DB_NAME', default='gest_commerce_dev'),
         'USER': env('DB_USER', default='gest_user'),
         'PASSWORD': env('DB_PASSWORD', default='matheux'),
         'HOST': env('DB_HOST', default='localhost'),
